@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-09-12T18:05:04.746673+00:00",
+    "generated_at": "2026-09-12T18:16:41.724789+00:00",
     "status": "partial_live",
     "pipeline_version": "1.0.0",
     "errors": [
@@ -215,7 +215,7 @@
   },
   "safety": {
     "status": "365-day relative context",
-    "detail": "91,990 city incident rows summarized for context. This is not a crime forecast or a safe/unsafe label.",
+    "detail": "91,989 city incident rows summarized for context. This is not a crime forecast or a safe/unsafe label.",
     "category_count": 50
   },
   "journey": {
