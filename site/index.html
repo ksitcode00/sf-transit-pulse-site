@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f5f7">
   <meta name="description" content="Live, explainable San Francisco Muni conditions and route guidance.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <title>SF Transit Pulse</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -133,23 +134,65 @@
       <div class="section-heading journey-heading">
         <div>
           <p class="eyebrow" data-i18n="journeyDecision">Journey decision</p>
-          <h2 data-i18n="threeWays">Three ways to choose.</h2>
-          <p class="section-lead" id="journey-od">Current QA journey</p>
+          <h2 data-i18n="whereGoing">Where are you going?</h2>
+          <p class="section-lead" data-i18n="plannerLead">Choose any cached Muni stop. The planner compares direct and one-transfer journeys.</p>
         </div>
-        <span class="prototype-chip" data-i18n="referenceCase">Reference case</span>
+        <span class="prototype-chip" data-i18n="dynamicPlanner">Dynamic planner · Scheme A</span>
       </div>
+
+      <form class="planner-form" id="trip-planner-form">
+        <label class="planner-field">
+          <span data-i18n="fromStop">From</span>
+          <input id="origin-input" list="stop-options" autocomplete="off" placeholder="4th St & Market St · 13161" required>
+        </label>
+        <button class="swap-button" id="swap-stops" type="button" aria-label="Swap origin and destination" title="Swap origin and destination">⇅</button>
+        <label class="planner-field">
+          <span data-i18n="toStop">To</span>
+          <input id="destination-input" list="stop-options" autocomplete="off" placeholder="Market St & Buchanan St · 15659" required>
+        </label>
+        <button class="primary-button planner-submit" id="plan-trip-button" type="submit" data-i18n="findRoute">Find best route</button>
+        <datalist id="stop-options"></datalist>
+      </form>
+      <div class="planner-status" id="planner-status" role="status"></div>
+      <p class="journey-od" id="journey-od">Select two stops to begin.</p>
+
       <div class="mode-grid" id="mode-grid"></div>
+
+      <div class="journey-workspace" id="journey-workspace" hidden>
+        <div class="map-shell journey-map-shell">
+          <div id="journey-map" aria-label="Selected journey map"></div>
+          <div class="map-caption">
+            <span id="journey-map-label">Selected journey</span>
+            <span data-i18n="journeyMapHint">Transit legs are solid; walking connections are dotted.</span>
+          </div>
+        </div>
+        <article class="journey-detail-card">
+          <p class="eyebrow" data-i18n="journeyTimeline">Journey timeline</p>
+          <h3 id="selected-journey-title">Choose an option</h3>
+          <p class="selected-journey-summary" id="selected-journey-summary"></p>
+          <ol class="journey-timeline" id="journey-timeline"></ol>
+        </article>
+      </div>
+
+      <div class="journey-evidence-grid" id="journey-evidence" hidden>
+        <article class="journey-evidence-card">
+          <p class="eyebrow" data-i18n="journeyReliability">Journey reliability</p>
+          <h3 id="journey-reliability-status">—</h3>
+          <div id="journey-reliability-detail"></div>
+        </article>
+        <article class="journey-evidence-card">
+          <p class="eyebrow" data-i18n="journeySafety">Journey safety context</p>
+          <h3 id="journey-safety-status">—</h3>
+          <div id="journey-safety-detail"></div>
+        </article>
+      </div>
+
       <div class="alternatives-panel">
         <div>
           <p class="eyebrow" data-i18n="alternatives">Alternatives</p>
           <h3 data-i18n="tradeoffs">The trade-offs stay visible.</h3>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th data-i18n="route">Route</th><th data-i18n="eta">ETA</th><th data-i18n="walk">Walk</th><th data-i18n="reliability">Reliability</th><th data-i18n="exposure">Exposure context</th></tr></thead>
-            <tbody id="alternatives-body"></tbody>
-          </table>
-        </div>
+        <div class="alternatives-list" id="alternatives-list"></div>
       </div>
     </section>
 
@@ -177,6 +220,7 @@
           <span class="context-index">03</span>
           <h3 data-i18n="dataQuality">Data quality</h3>
           <p class="context-value" id="quality-status">Checking…</p>
+          <div class="freshness-list" id="source-freshness"></div>
           <p id="quality-detail">Every source publishes freshness and failure state instead of silently substituting stale data.</p>
         </article>
       </div>
@@ -210,6 +254,7 @@
 
   <div class="error-banner" id="error-banner" role="status" hidden></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="config.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>
