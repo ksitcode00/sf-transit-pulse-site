@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f5f7">
+  <meta name="description" content="Live, explainable San Francisco Muni conditions and route guidance.">
+  <title>SF Transit Pulse</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to live transit information</a>
+
+  <header class="global-nav" aria-label="Global navigation">
+    <div class="nav-inner">
+      <a class="wordmark" href="#top" aria-label="SF Transit Pulse home">
+        <span class="pulse-mark" aria-hidden="true"></span>
+        SF Transit Pulse
+      </a>
+      <nav aria-label="Page sections">
+        <a href="#network" data-i18n="navNetwork">Network</a>
+        <a href="#journey" data-i18n="navJourney">Journey</a>
+        <a href="#context" data-i18n="navContext">City context</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="sub-nav">
+    <div class="sub-nav-inner">
+      <div>
+        <span class="live-dot" aria-hidden="true"></span>
+        <span id="freshness-label">Loading current snapshot…</span>
+      </div>
+      <div class="sub-actions">
+        <button class="text-action" id="language-toggle" type="button" aria-label="Switch language">中文</button>
+        <button class="primary-button" id="refresh-button" type="button" data-i18n="refresh">Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow" data-i18n="eyebrow">San Francisco · right now</p>
+        <h1 data-i18n="heroTitle">Know your next move.</h1>
+        <p class="hero-lead" data-i18n="heroLead">Live Muni movement, service spacing, street disruptions, and city context—distilled into one calm view.</p>
+        <div class="hero-actions">
+          <a class="primary-button large" href="#network" data-i18n="viewNetwork">View the network</a>
+          <a class="secondary-button large" href="#method" data-i18n="howWorks">How it works</a>
+        </div>
+      </div>
+      <div class="hero-metrics" aria-live="polite">
+        <article><span id="vehicle-count">—</span><small data-i18n="vehiclesReporting">vehicles reporting</small></article>
+        <article><span id="route-count">—</span><small data-i18n="routesObserved">routes observed</small></article>
+        <article><span id="alert-count">—</span><small data-i18n="activeNotices">active notices</small></article>
+      </div>
+    </section>
+
+    <section class="section light" id="network">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow" data-i18n="liveNetwork">Live network</p>
+          <h2 data-i18n="seeCityMove">See the city move.</h2>
+        </div>
+        <div class="route-controls">
+          <label class="route-control">
+            <span data-i18n="focusRoute">Focus a route</span>
+            <select id="route-select" aria-label="Choose a Muni route">
+              <option value="all">All routes</option>
+            </select>
+          </label>
+          <label class="route-control">
+            <span data-i18n="focusDirection">Direction</span>
+            <select id="direction-select" aria-label="Choose a route direction" disabled>
+              <option value="all">All directions</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="network-grid">
+        <div class="map-shell">
+          <div id="map" role="application" aria-label="Map of current Muni vehicle positions"></div>
+          <div class="map-caption">
+            <span id="map-label">All reporting vehicles</span>
+            <span data-i18n="mapHint">Select a route to focus the map.</span>
+          </div>
+        </div>
+        <aside class="route-focus" id="route-focus" aria-live="polite">
+          <p class="eyebrow" data-i18n="routePulse">Route pulse</p>
+          <h3 id="focus-route-name">Network overview</h3>
+          <p class="focus-status" id="focus-route-status">Waiting for the latest snapshot.</p>
+          <dl class="metric-list">
+            <div><dt data-i18n="vehicles">Vehicles</dt><dd id="focus-vehicles">—</dd></div>
+            <div><dt data-i18n="medianGap">Median predicted gap</dt><dd id="focus-headway">—</dd></div>
+            <div><dt data-i18n="bunching">Bunching</dt><dd id="focus-bunching">—</dd></div>
+            <div><dt data-i18n="serviceGaps">Service gaps</dt><dd id="focus-gaps">—</dd></div>
+            <div><dt data-i18n="currentSpeed">Median vehicle speed</dt><dd id="focus-speed">—</dd></div>
+            <div><dt data-i18n="evidence">Evidence</dt><dd id="focus-evidence">—</dd></div>
+          </dl>
+          <p class="fine-print" id="focus-explanation">Health is computed by route and direction; limited observations remain explicitly limited.</p>
+        </aside>
+      </div>
+
+      <div class="route-list-header">
+        <h3 data-i18n="routeOverview">Route overview</h3>
+        <p data-i18n="directionNote">Each direction is evaluated separately to avoid hiding one-sided disruption.</p>
+      </div>
+      <div class="route-grid" id="route-grid" aria-live="polite"></div>
+    </section>
+
+    <section class="section dark" id="disruptions">
+      <div class="dark-heading">
+        <p class="eyebrow" data-i18n="streetsService">Streets + service</p>
+        <h2 data-i18n="explainWhy">Explain what may be changing the ride.</h2>
+        <p data-i18n="causalityNote">Road overlap is treated as context—not proof of causation—until live transit evidence supports it.</p>
+      </div>
+      <div class="dark-columns">
+        <div>
+          <h3 data-i18n="serviceNotices">Service notices</h3>
+          <div class="event-list" id="alert-list"></div>
+        </div>
+        <div>
+          <h3 data-i18n="roadEvents">Road events</h3>
+          <div class="event-list" id="road-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section parchment" id="journey">
+      <div class="section-heading journey-heading">
+        <div>
+          <p class="eyebrow" data-i18n="journeyDecision">Journey decision</p>
+          <h2 data-i18n="threeWays">Three ways to choose.</h2>
+          <p class="section-lead" id="journey-od">Current QA journey</p>
+        </div>
+        <span class="prototype-chip" data-i18n="referenceCase">Reference case</span>
+      </div>
+      <div class="mode-grid" id="mode-grid"></div>
+      <div class="alternatives-panel">
+        <div>
+          <p class="eyebrow" data-i18n="alternatives">Alternatives</p>
+          <h3 data-i18n="tradeoffs">The trade-offs stay visible.</h3>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th data-i18n="route">Route</th><th data-i18n="eta">ETA</th><th data-i18n="walk">Walk</th><th data-i18n="reliability">Reliability</th><th data-i18n="exposure">Exposure context</th></tr></thead>
+            <tbody id="alternatives-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section light" id="context">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow" data-i18n="cityContext">City context</p>
+          <h2 data-i18n="moreThanBus">More than the bus.</h2>
+        </div>
+      </div>
+      <div class="context-grid">
+        <article class="context-card">
+          <span class="context-index">01</span>
+          <h3 data-i18n="parkingDemand">Parking demand</h3>
+          <p class="context-value" id="parking-status">Loading…</p>
+          <p id="parking-detail">Recent paid-session activity is compared with the feed's own timestamp.</p>
+        </article>
+        <article class="context-card">
+          <span class="context-index">02</span>
+          <h3 data-i18n="safetyContext">Safety context</h3>
+          <p class="context-value" id="safety-status">Loading…</p>
+          <p id="safety-detail">Historical incident exposure is relative context, not a prediction of crime.</p>
+        </article>
+        <article class="context-card">
+          <span class="context-index">03</span>
+          <h3 data-i18n="dataQuality">Data quality</h3>
+          <p class="context-value" id="quality-status">Checking…</p>
+          <p id="quality-detail">Every source publishes freshness and failure state instead of silently substituting stale data.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section method" id="method">
+      <div class="method-copy">
+        <p class="eyebrow" data-i18n="methodEyebrow">Method</p>
+        <h2 data-i18n="evidenceTitle">Evidence before confidence.</h2>
+        <p data-i18n="evidenceBody">The page never changes actual ETA with preference penalties. FASTEST, BALANCED, and SAFETY_FIRST compare the same candidates while keeping travel time, reliability, walking, and relative exposure separate and explainable.</p>
+      </div>
+      <ol class="method-steps">
+        <li><span>1</span><div><strong data-i18n="collect">Collect</strong><p data-i18n="collectBody">Fetch official transit and city feeds on a controlled schedule.</p></div></li>
+        <li><span>2</span><div><strong data-i18n="normalize">Normalize</strong><p data-i18n="normalizeBody">Align identifiers, directions, timestamps, units, and freshness.</p></div></li>
+        <li><span>3</span><div><strong data-i18n="explain">Explain</strong><p data-i18n="explainBody">Publish observations, limitations, and decision reasons together.</p></div></li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <div>
+      <strong>SF Transit Pulse</strong>
+      <p data-i18n="footerNote">An independent research prototype. Not an official SFMTA service.</p>
+    </div>
+    <div class="footer-meta">
+      <span id="generated-at">Snapshot time unavailable</span>
+      <span>Data: 511 SF Bay · DataSF · SFMTA</span>
+      <span>Map © OpenStreetMap contributors</span>
+    </div>
+  </footer>
+
+  <div class="error-banner" id="error-banner" role="status" hidden></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>

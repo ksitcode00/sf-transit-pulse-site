@@ -1,0 +1,284 @@
+{
+  "meta": {
+    "generated_at": "2026-09-12T18:05:04.746673+00:00",
+    "status": "partial_live",
+    "pipeline_version": "1.0.0",
+    "errors": [
+      "511_API_KEY is not configured; the last transit snapshot is retained."
+    ],
+    "sources": [
+      "511 SF Bay",
+      "DataSF",
+      "SFMTA"
+    ],
+    "refresh_policy": "Every 10 minutes via GitHub Actions"
+  },
+  "system": {
+    "vehicle_count": 6,
+    "route_count": 4,
+    "route_direction_count": 8,
+    "alert_count": 2,
+    "road_event_count": 1
+  },
+  "vehicles": [
+    {
+      "vehicle_id": "demo-1",
+      "route_id": "38R",
+      "direction_id": "0",
+      "direction_label": "Outbound",
+      "lat": 37.7851,
+      "lon": -122.4066,
+      "age_seconds": 18
+    },
+    {
+      "vehicle_id": "demo-2",
+      "route_id": "38R",
+      "direction_id": "1",
+      "direction_label": "Inbound",
+      "lat": 37.7836,
+      "lon": -122.4321,
+      "age_seconds": 33
+    },
+    {
+      "vehicle_id": "demo-3",
+      "route_id": "N",
+      "direction_id": "0",
+      "direction_label": "Outbound",
+      "lat": 37.7697,
+      "lon": -122.4284,
+      "age_seconds": 21
+    },
+    {
+      "vehicle_id": "demo-4",
+      "route_id": "N",
+      "direction_id": "1",
+      "direction_label": "Inbound",
+      "lat": 37.7636,
+      "lon": -122.4581,
+      "age_seconds": 44
+    },
+    {
+      "vehicle_id": "demo-5",
+      "route_id": "14R",
+      "direction_id": "0",
+      "direction_label": "Outbound",
+      "lat": 37.7562,
+      "lon": -122.418,
+      "age_seconds": 25
+    },
+    {
+      "vehicle_id": "demo-6",
+      "route_id": "5",
+      "direction_id": "1",
+      "direction_label": "Inbound",
+      "lat": 37.7745,
+      "lon": -122.4428,
+      "age_seconds": 51
+    }
+  ],
+  "routes": [
+    {
+      "route_id": "38R",
+      "direction_id": "0",
+      "direction_label": "Outbound",
+      "vehicle_count": 12,
+      "health": "STABLE",
+      "median_headway_min": 7.1,
+      "predictions_observed": 8,
+      "evidence_quality": "GOOD"
+    },
+    {
+      "route_id": "38R",
+      "direction_id": "1",
+      "direction_label": "Inbound",
+      "vehicle_count": 11,
+      "health": "WATCH",
+      "median_headway_min": 11.8,
+      "predictions_observed": 7,
+      "evidence_quality": "GOOD"
+    },
+    {
+      "route_id": "14R",
+      "direction_id": "0",
+      "direction_label": "Outbound",
+      "vehicle_count": 9,
+      "health": "STABLE",
+      "median_headway_min": 8.4,
+      "predictions_observed": 6,
+      "evidence_quality": "MODERATE"
+    },
+    {
+      "route_id": "14R",
+      "direction_id": "1",
+      "direction_label": "Inbound",
+      "vehicle_count": 8,
+      "health": "STABLE",
+      "median_headway_min": 8.8,
+      "predictions_observed": 6,
+      "evidence_quality": "MODERATE"
+    },
+    {
+      "route_id": "N",
+      "direction_id": "0",
+      "direction_label": "Outbound",
+      "vehicle_count": 10,
+      "health": "WATCH",
+      "median_headway_min": 12.2,
+      "predictions_observed": 5,
+      "evidence_quality": "MODERATE"
+    },
+    {
+      "route_id": "N",
+      "direction_id": "1",
+      "direction_label": "Inbound",
+      "vehicle_count": 9,
+      "health": "STABLE",
+      "median_headway_min": 9.2,
+      "predictions_observed": 6,
+      "evidence_quality": "MODERATE"
+    },
+    {
+      "route_id": "5",
+      "direction_id": "0",
+      "direction_label": "Outbound",
+      "vehicle_count": 7,
+      "health": "STABLE",
+      "median_headway_min": 10.0,
+      "predictions_observed": 5,
+      "evidence_quality": "MODERATE"
+    },
+    {
+      "route_id": "5",
+      "direction_id": "1",
+      "direction_label": "Inbound",
+      "vehicle_count": 7,
+      "health": "UNSTABLE",
+      "median_headway_min": 20.5,
+      "predictions_observed": 5,
+      "evidence_quality": "MODERATE"
+    }
+  ],
+  "alerts": [
+    {
+      "title": "Muni service alert",
+      "description": "Demo service notice. The scheduled refresh replaces this with the official feed."
+    },
+    {
+      "title": "Route 5 · inbound",
+      "description": "Service spacing needs attention in the Golden Reference snapshot."
+    }
+  ],
+  "road_events": [
+    {
+      "title": "Road-event context",
+      "description": "Road events are matched to route + direction before any impact explanation is published."
+    }
+  ],
+  "parking": {
+    "status": "Recent demand snapshot",
+    "detail": "568 paid-session starts in the latest three-hour feed window. Demand proxy only; not physical occupancy.",
+    "source_snapshot_time": "2026-09-11T22:00:11",
+    "busiest_blocks": [
+      {
+        "street_block": "BLUXOME ST 0",
+        "payments_3h": 40
+      },
+      {
+        "street_block": "BRANNAN ST 500",
+        "payments_3h": 28
+      },
+      {
+        "street_block": "TERRY A FRANCOIS BLVD 500",
+        "payments_3h": 19
+      },
+      {
+        "street_block": "BRANNAN ST 100",
+        "payments_3h": 17
+      },
+      {
+        "street_block": "BRANNAN ST 400",
+        "payments_3h": 16
+      },
+      {
+        "street_block": "EMBARCADERO SOUTH 400",
+        "payments_3h": 15
+      },
+      {
+        "street_block": "BERRY ST 300",
+        "payments_3h": 14
+      },
+      {
+        "street_block": "BRANNAN ST 300",
+        "payments_3h": 14
+      }
+    ]
+  },
+  "safety": {
+    "status": "365-day relative context",
+    "detail": "91,990 city incident rows summarized for context. This is not a crime forecast or a safe/unsafe label.",
+    "category_count": 50
+  },
+  "journey": {
+    "origin": "4th St & Market St",
+    "destination": "Market St & Buchanan St",
+    "modes": [
+      {
+        "mode": "FASTEST",
+        "route": "NOWL",
+        "eta_min": 19.2,
+        "walking_min": 0.7,
+        "transfer_count": 0,
+        "reliability_label": "Stable · moderate evidence",
+        "explanation": "About 19 minutes door-to-door with minimal walking."
+      },
+      {
+        "mode": "BALANCED",
+        "route": "NOWL",
+        "eta_min": 19.2,
+        "walking_min": 0.7,
+        "transfer_count": 0,
+        "reliability_label": "Stable · moderate evidence",
+        "explanation": "Best current balance of ETA, service spacing, walking, and context."
+      },
+      {
+        "mode": "SAFETY_FIRST",
+        "route": "NOWL",
+        "eta_min": 19.2,
+        "walking_min": 0.7,
+        "transfer_count": 0,
+        "reliability_label": "Stable · moderate evidence",
+        "explanation": "Uses the same feasible candidates while weighting relative exposure more strongly."
+      }
+    ],
+    "alternatives": [
+      {
+        "route_sequence": "NOWL",
+        "eta_min": 19.2,
+        "walking_min": 0.7,
+        "reliability": "Stable",
+        "exposure": "Higher relative exposure"
+      },
+      {
+        "route_sequence": "NOWL → LOWL",
+        "eta_min": 32.1,
+        "walking_min": 4.8,
+        "reliability": "Stable",
+        "exposure": "Higher relative exposure"
+      },
+      {
+        "route_sequence": "LOWL",
+        "eta_min": 35.0,
+        "walking_min": 0.7,
+        "reliability": "Stable",
+        "exposure": "Higher relative exposure"
+      },
+      {
+        "route_sequence": "5 → LOWL",
+        "eta_min": 35.0,
+        "walking_min": 2.4,
+        "reliability": "Watch",
+        "exposure": "Higher relative exposure"
+      }
+    ]
+  }
+}
