@@ -33,7 +33,8 @@ ACCESS_RADIUS_M = 250.0
 TRANSFER_RADIUS_M = 180.0
 MAX_ACCESS_STOPS = 10
 MAX_ALTERNATIVES = 12
-ENGINE_VERSION = "16A.2-beta"
+BOARDING_BUFFER_MIN = 1.0
+ENGINE_VERSION = "20.1-beta"
 
 HEALTH_SEVERITY = {
     "STABLE": 0,
@@ -95,6 +96,29 @@ class Pattern:
     shape: tuple[tuple[float, float], ...]
     stop_index: dict[str, int]
     prefix_distance_m: tuple[float, ...]
+
+
+@dataclass(frozen=True)
+class PredictedStop:
+    """One absolute GTFS-RT arrival/departure prediction."""
+
+    stop_id: str
+    stop_sequence: int
+    arrival_epoch: int | None
+    departure_epoch: int | None
+
+
+@dataclass(frozen=True)
+class PredictedTrip:
+    """A concrete realtime trip retained in the public snapshot."""
+
+    trip_id: str
+    route_id: str
+    direction_id: str
+    shape_id: str
+    vehicle_id: str
+    update_timestamp: int | None
+    stops: tuple[PredictedStop, ...]
 
 
 def haversine_m(a: Stop | tuple[float, float], b: Stop | tuple[float, float]) -> float:
@@ -200,6 +224,7 @@ class PlannerEngine:
             for row in realtime.get("routes", [])
         }
         self.vehicle_speeds = self._build_vehicle_speed_lookup()
+        self.predicted_trips = self._build_trip_prediction_lookup()
 
     @classmethod
     def from_files(cls, network_path: Path, realtime_path: Path) -> "PlannerEngine":
@@ -231,6 +256,100 @@ class PlannerEngine:
             key: max(5.0, min(18.0, median(values)))
             for key, values in grouped.items()
         }
+
+    def _build_trip_prediction_lookup(self) -> dict[tuple[str, str], list[PredictedTrip]]:
+        """Index concrete trips by route + direction for fast candidate lookup.
+
+        中文：Feature 20 的输入来自公开 latest.json，不会在用户查询时调用 511。
+        shape_id 会在下一步用于排除同一路线、同方向但不同分支的错误班次。
+
+        English: Feature 20 reads the public cache only. The shape id prevents a
+        prediction for a different branch from being attached to this pattern.
+        """
+
+        grouped: dict[tuple[str, str], list[PredictedTrip]] = {}
+        for raw in self.realtime.get("trip_predictions", []):
+            trip_id = str(raw.get("trip_id") or "")
+            route_id = str(raw.get("route_id") or "")
+            direction_id = str(raw.get("direction_id") or "")
+            if not trip_id or not route_id:
+                continue
+            stops = []
+            for row in raw.get("stops", []):
+                stop_id = str(row.get("stop_id") or "")
+                if not stop_id:
+                    continue
+                try:
+                    arrival = int(row["arrival_time"]) if row.get("arrival_time") else None
+                    departure = int(row["departure_time"]) if row.get("departure_time") else None
+                    sequence = int(row.get("stop_sequence") or 0)
+                except (TypeError, ValueError):
+                    continue
+                if arrival is None and departure is None:
+                    continue
+                stops.append(PredictedStop(stop_id, sequence, arrival, departure))
+            stops.sort(key=lambda stop: (stop.stop_sequence, stop.arrival_epoch or stop.departure_epoch or 0))
+            if not stops:
+                continue
+            try:
+                update_timestamp = int(raw["update_timestamp"]) if raw.get("update_timestamp") else None
+            except (TypeError, ValueError):
+                update_timestamp = None
+            trip = PredictedTrip(
+                trip_id=trip_id,
+                route_id=route_id,
+                direction_id=direction_id,
+                shape_id=str(raw.get("shape_id") or ""),
+                vehicle_id=str(raw.get("vehicle_id") or ""),
+                update_timestamp=update_timestamp,
+                stops=tuple(stops),
+            )
+            grouped.setdefault((route_id, direction_id), []).append(trip)
+        for trips in grouped.values():
+            trips.sort(key=lambda trip: trip.stops[0].departure_epoch or trip.stops[0].arrival_epoch or 0)
+        return grouped
+
+    def _trip_for_leg(
+        self,
+        pattern: Pattern,
+        board_stop_id: str,
+        alight_stop_id: str,
+        ready_epoch: float,
+    ) -> dict[str, Any] | None:
+        """Return the first concrete trip that boards after the rider is ready."""
+
+        route_trips = self.predicted_trips.get((pattern.route_id, pattern.direction_id), [])
+        exact_shape = [trip for trip in route_trips if trip.shape_id == pattern.key.rsplit("|", 1)[-1]]
+        candidates = exact_shape or [trip for trip in route_trips if not trip.shape_id]
+        best = None
+        for trip in candidates:
+            for board_index, board in enumerate(trip.stops):
+                if board.stop_id != board_stop_id:
+                    continue
+                board_epoch = board.departure_epoch or board.arrival_epoch
+                if board_epoch is None or board_epoch < ready_epoch:
+                    continue
+                for alight in trip.stops[board_index + 1 :]:
+                    if alight.stop_id != alight_stop_id:
+                        continue
+                    alight_epoch = alight.arrival_epoch or alight.departure_epoch
+                    if alight_epoch is None or alight_epoch <= board_epoch:
+                        continue
+                    result = {
+                        "trip": trip,
+                        "board_epoch": board_epoch,
+                        "alight_epoch": alight_epoch,
+                    }
+                    if best is None or board_epoch < best["board_epoch"]:
+                        best = result
+                    break
+        return best
+
+    @staticmethod
+    def _iso_time(epoch: int | float | None) -> str | None:
+        if epoch is None:
+            return None
+        return datetime.fromtimestamp(epoch, timezone.utc).isoformat()
 
     # -------------------------------------------------------------------------
     # Feature 16A · Public catalogs / 前端搜索目录
@@ -418,16 +537,34 @@ class PlannerEngine:
         alight: Stop,
         alight_index: int,
         destination_walk_m: float,
+        planning_epoch: float,
     ) -> dict[str, Any]:
-        wait_min = self._wait_minutes(pattern)
-        ride_min = self._ride_minutes(pattern, board_index, alight_index)
         origin_walk_min = origin_walk_m / WALK_SPEED_M_PER_MIN
         destination_walk_min = destination_walk_m / WALK_SPEED_M_PER_MIN
+        realtime_trip = self._trip_for_leg(
+            pattern,
+            board.stop_id,
+            alight.stop_id,
+            planning_epoch + origin_walk_min * 60,
+        )
+        if realtime_trip:
+            trip = realtime_trip["trip"]
+            wait_min = max(
+                0.0,
+                (realtime_trip["board_epoch"] - planning_epoch - origin_walk_min * 60) / 60,
+            )
+            ride_min = (realtime_trip["alight_epoch"] - realtime_trip["board_epoch"]) / 60
+            eta_status = "REALTIME_TRIP_PREDICTION"
+        else:
+            trip = None
+            wait_min = self._wait_minutes(pattern)
+            ride_min = self._ride_minutes(pattern, board_index, alight_index)
+            eta_status = "ESTIMATED"
         walking_min = origin_walk_min + destination_walk_min
         eta_min = walking_min + wait_min + ride_min
         health, reliability_penalty, evidence = self._reliability([pattern])
         journey_id = self._candidate_id(
-            ["direct", pattern.key, board.stop_id, alight.stop_id]
+            ["direct", pattern.key, board.stop_id, alight.stop_id, trip.trip_id if trip else "estimate"]
         )
         return {
             "journey_id": journey_id,
@@ -435,6 +572,7 @@ class PlannerEngine:
             "route_sequence": pattern.route_id,
             "eta_min": round(eta_min, 1),
             "walking_min": round(walking_min, 1),
+            "eta_status": eta_status,
             "transfer_count": 0,
             "reliability": health,
             "reliability_detail": evidence,
@@ -457,8 +595,11 @@ class PlannerEngine:
                 {
                     "type": "WAIT",
                     "at": board.public(),
-                    "duration_min": wait_min,
+                    "duration_min": round(wait_min, 1),
                     "route_id": pattern.route_id,
+                    "trip_id": trip.trip_id if trip else None,
+                    "predicted_departure": self._iso_time(realtime_trip["board_epoch"]) if realtime_trip else None,
+                    "timing_status": eta_status,
                 },
                 {
                     "type": "RIDE",
@@ -470,6 +611,16 @@ class PlannerEngine:
                     "to": alight.public(),
                     "duration_min": round(ride_min, 1),
                     "stop_count": alight_index - board_index,
+                    "trip_id": trip.trip_id if trip else None,
+                    "vehicle_id": trip.vehicle_id if trip else None,
+                    "predicted_departure": self._iso_time(realtime_trip["board_epoch"]) if realtime_trip else None,
+                    "predicted_arrival": self._iso_time(realtime_trip["alight_epoch"]) if realtime_trip else None,
+                    "prediction_age_seconds": (
+                        max(0, round(planning_epoch - trip.update_timestamp))
+                        if trip and trip.update_timestamp
+                        else None
+                    ),
+                    "timing_status": eta_status,
                 },
                 {
                     "type": "WALK",
@@ -540,25 +691,86 @@ class PlannerEngine:
         final_alight_index: int,
         destination_walk_m: float,
         transfer_pair: tuple[Stop, int, Stop, int, float],
+        planning_epoch: float,
     ) -> dict[str, Any]:
         first_alight, first_alight_index, second_board, second_board_index, transfer_m = transfer_pair
-        first_wait = self._wait_minutes(first)
-        second_wait = self._wait_minutes(second)
-        first_ride = self._ride_minutes(first, first_board_index, first_alight_index)
-        second_ride = self._ride_minutes(second, second_board_index, final_alight_index)
         origin_walk_min = origin_walk_m / WALK_SPEED_M_PER_MIN
         transfer_walk_min = transfer_m / WALK_SPEED_M_PER_MIN
         destination_walk_min = destination_walk_m / WALK_SPEED_M_PER_MIN
+
+        # Feature 21 · Concrete transfer catchability / 具体班次换乘可行性
+        # 中文：先找用户步行到起点后能赶上的第一趟车，再用这趟车到达换乘站的
+        # 预测时间作为第二段搜索起点。第二趟车必须晚于“到达 + 换乘步行 + 1 分钟
+        # 上车余量”。若任一段缺少完整预测，就明确退回班距估算，不能伪装成实时。
+        # English: Select Trip 1 after the access walk, then search for Trip 2
+        # after Trip 1 arrival, the transfer walk, and a one-minute boarding
+        # allowance. Incomplete evidence falls back to an explicitly estimated
+        # connection rather than presenting false precision.
+        first_prediction = self._trip_for_leg(
+            first,
+            first_board.stop_id,
+            first_alight.stop_id,
+            planning_epoch + origin_walk_min * 60,
+        )
+        if first_prediction:
+            first_trip = first_prediction["trip"]
+            first_wait = max(
+                0.0,
+                (first_prediction["board_epoch"] - planning_epoch - origin_walk_min * 60) / 60,
+            )
+            first_ride = (first_prediction["alight_epoch"] - first_prediction["board_epoch"]) / 60
+            transfer_walk_complete_epoch = first_prediction["alight_epoch"] + transfer_walk_min * 60
+            second_prediction = self._trip_for_leg(
+                second,
+                second_board.stop_id,
+                final_alight.stop_id,
+                transfer_walk_complete_epoch + BOARDING_BUFFER_MIN * 60,
+            )
+        else:
+            first_trip = None
+            first_wait = self._wait_minutes(first)
+            first_ride = self._ride_minutes(first, first_board_index, first_alight_index)
+            transfer_walk_complete_epoch = None
+            second_prediction = None
+
+        if second_prediction and transfer_walk_complete_epoch is not None:
+            second_trip = second_prediction["trip"]
+            second_wait = max(
+                0.0,
+                (second_prediction["board_epoch"] - transfer_walk_complete_epoch) / 60,
+            )
+            second_ride = (second_prediction["alight_epoch"] - second_prediction["board_epoch"]) / 60
+            transfer_buffer = (
+                second_prediction["board_epoch"]
+                - transfer_walk_complete_epoch
+                - BOARDING_BUFFER_MIN * 60
+            ) / 60
+            eta_status = "REALTIME_TRIP_PREDICTION"
+            transfer_basis = "Concrete GTFS-RT arrival and departure predictions for both trips."
+        else:
+            second_trip = None
+            second_wait = self._wait_minutes(second)
+            second_ride = self._ride_minutes(second, second_board_index, final_alight_index)
+            transfer_buffer = second_wait - BOARDING_BUFFER_MIN
+            eta_status = "MIXED_REALTIME" if first_prediction else "ESTIMATED"
+            transfer_basis = "Estimated from route headway evidence; not a guaranteed connection."
+
         walking_min = origin_walk_min + transfer_walk_min + destination_walk_min
         eta_min = walking_min + first_wait + first_ride + second_wait + second_ride
         health, reliability_penalty, evidence = self._reliability([first, second])
-        transfer_buffer = max(0.0, second_wait - transfer_walk_min)
-        catchability = "CATCHABLE" if transfer_buffer >= 3 else "TIGHT"
+        if transfer_buffer < 0:
+            catchability = "MISS"
+        elif transfer_buffer >= 3:
+            catchability = "CATCHABLE"
+        else:
+            catchability = "TIGHT"
         route_sequence = f"{first.route_id} → {second.route_id}"
         journey_id = self._candidate_id(
             [
                 "transfer", first.key, second.key, first_board.stop_id,
                 first_alight.stop_id, second_board.stop_id, final_alight.stop_id,
+                first_trip.trip_id if first_trip else "estimate",
+                second_trip.trip_id if second_trip else "estimate",
             ]
         )
         return {
@@ -567,6 +779,7 @@ class PlannerEngine:
             "route_sequence": route_sequence,
             "eta_min": round(eta_min, 1),
             "walking_min": round(walking_min, 1),
+            "eta_status": eta_status,
             "transfer_count": 1,
             "reliability": health,
             "reliability_detail": evidence,
@@ -576,9 +789,25 @@ class PlannerEngine:
                 "from_stop": first_alight.public(),
                 "to_stop": second_board.public(),
                 "walk_min": round(transfer_walk_min, 1),
+                "catch_slack_min": round(transfer_buffer, 1),
                 "estimated_buffer_min": round(transfer_buffer, 1),
                 "catchability": catchability,
-                "basis": "Estimated from route headway evidence; not a guaranteed connection.",
+                "basis": transfer_basis,
+                "timing_status": eta_status,
+                "first_trip_arrival": (
+                    self._iso_time(first_prediction["alight_epoch"])
+                    if first_prediction
+                    else None
+                ),
+                "ready_to_board_at": self._iso_time(
+                    transfer_walk_complete_epoch + BOARDING_BUFFER_MIN * 60
+                ) if transfer_walk_complete_epoch is not None else None,
+                "second_trip_departure": (
+                    self._iso_time(second_prediction["board_epoch"])
+                    if second_prediction
+                    else None
+                ),
+                "boarding_buffer_min": BOARDING_BUFFER_MIN,
             },
             "costs": {
                 "fastest": round(eta_min, 3),
@@ -586,13 +815,112 @@ class PlannerEngine:
                 "safety_first": round(eta_min + reliability_penalty + walking_min * 0.15 + 3.0, 3),
             },
             "legs": [
-                {"type": "WALK", "from": origin.public(), "to": first_board.public(), "duration_min": round(origin_walk_min, 1), "distance_m": round(origin_walk_m)},
-                {"type": "WAIT", "at": first_board.public(), "duration_min": first_wait, "route_id": first.route_id},
-                {"type": "RIDE", "route_id": first.route_id, "direction_id": first.direction_id, "direction_label": first.direction_label, "headsign": first.headsign, "from": first_board.public(), "to": first_alight.public(), "duration_min": round(first_ride, 1), "stop_count": first_alight_index - first_board_index},
-                {"type": "WALK", "from": first_alight.public(), "to": second_board.public(), "duration_min": round(transfer_walk_min, 1), "distance_m": round(transfer_m), "transfer": True},
-                {"type": "WAIT", "at": second_board.public(), "duration_min": second_wait, "route_id": second.route_id, "estimated_buffer_min": round(transfer_buffer, 1)},
-                {"type": "RIDE", "route_id": second.route_id, "direction_id": second.direction_id, "direction_label": second.direction_label, "headsign": second.headsign, "from": second_board.public(), "to": final_alight.public(), "duration_min": round(second_ride, 1), "stop_count": final_alight_index - second_board_index},
-                {"type": "WALK", "from": final_alight.public(), "to": destination.public(), "duration_min": round(destination_walk_min, 1), "distance_m": round(destination_walk_m)},
+                {
+                    "type": "WALK",
+                    "from": origin.public(),
+                    "to": first_board.public(),
+                    "duration_min": round(origin_walk_min, 1),
+                    "distance_m": round(origin_walk_m),
+                },
+                {
+                    "type": "WAIT",
+                    "at": first_board.public(),
+                    "duration_min": round(first_wait, 1),
+                    "route_id": first.route_id,
+                    "trip_id": first_trip.trip_id if first_trip else None,
+                    "predicted_departure": (
+                        self._iso_time(first_prediction["board_epoch"])
+                        if first_prediction
+                        else None
+                    ),
+                    "timing_status": (
+                        "REALTIME_TRIP_PREDICTION" if first_prediction else "ESTIMATED"
+                    ),
+                },
+                {
+                    "type": "RIDE",
+                    "route_id": first.route_id,
+                    "direction_id": first.direction_id,
+                    "direction_label": first.direction_label,
+                    "headsign": first.headsign,
+                    "from": first_board.public(),
+                    "to": first_alight.public(),
+                    "duration_min": round(first_ride, 1),
+                    "stop_count": first_alight_index - first_board_index,
+                    "trip_id": first_trip.trip_id if first_trip else None,
+                    "vehicle_id": first_trip.vehicle_id if first_trip else None,
+                    "predicted_departure": (
+                        self._iso_time(first_prediction["board_epoch"])
+                        if first_prediction
+                        else None
+                    ),
+                    "predicted_arrival": (
+                        self._iso_time(first_prediction["alight_epoch"])
+                        if first_prediction
+                        else None
+                    ),
+                    "timing_status": (
+                        "REALTIME_TRIP_PREDICTION" if first_prediction else "ESTIMATED"
+                    ),
+                },
+                {
+                    "type": "WALK",
+                    "from": first_alight.public(),
+                    "to": second_board.public(),
+                    "duration_min": round(transfer_walk_min, 1),
+                    "distance_m": round(transfer_m),
+                    "transfer": True,
+                },
+                {
+                    "type": "WAIT",
+                    "at": second_board.public(),
+                    "duration_min": round(second_wait, 1),
+                    "route_id": second.route_id,
+                    "trip_id": second_trip.trip_id if second_trip else None,
+                    "predicted_departure": (
+                        self._iso_time(second_prediction["board_epoch"])
+                        if second_prediction
+                        else None
+                    ),
+                    "catch_slack_min": round(transfer_buffer, 1),
+                    "estimated_buffer_min": round(transfer_buffer, 1),
+                    "timing_status": (
+                        "REALTIME_TRIP_PREDICTION" if second_prediction else "ESTIMATED"
+                    ),
+                },
+                {
+                    "type": "RIDE",
+                    "route_id": second.route_id,
+                    "direction_id": second.direction_id,
+                    "direction_label": second.direction_label,
+                    "headsign": second.headsign,
+                    "from": second_board.public(),
+                    "to": final_alight.public(),
+                    "duration_min": round(second_ride, 1),
+                    "stop_count": final_alight_index - second_board_index,
+                    "trip_id": second_trip.trip_id if second_trip else None,
+                    "vehicle_id": second_trip.vehicle_id if second_trip else None,
+                    "predicted_departure": (
+                        self._iso_time(second_prediction["board_epoch"])
+                        if second_prediction
+                        else None
+                    ),
+                    "predicted_arrival": (
+                        self._iso_time(second_prediction["alight_epoch"])
+                        if second_prediction
+                        else None
+                    ),
+                    "timing_status": (
+                        "REALTIME_TRIP_PREDICTION" if second_prediction else "ESTIMATED"
+                    ),
+                },
+                {
+                    "type": "WALK",
+                    "from": final_alight.public(),
+                    "to": destination.public(),
+                    "duration_min": round(destination_walk_min, 1),
+                    "distance_m": round(destination_walk_m),
+                },
             ],
             "map": {
                 "route_paths": [
@@ -615,7 +943,12 @@ class PlannerEngine:
             },
         }
 
-    def _generate_candidates(self, origin: Stop, destination: Stop) -> list[dict[str, Any]]:
+    def _generate_candidates(
+        self,
+        origin: Stop,
+        destination: Stop,
+        planning_epoch: float,
+    ) -> list[dict[str, Any]]:
         origin_access = self._pattern_access(self._nearby_stops(origin), boarding=True)
         destination_access = self._pattern_access(self._nearby_stops(destination), boarding=False)
         candidates: list[dict[str, Any]] = []
@@ -635,7 +968,15 @@ class PlannerEngine:
                         best_score = score
                         best_pair = (board, board_index, origin_walk_m, alight, alight_index, destination_walk_m)
             if best_pair:
-                candidates.append(self._direct_candidate(origin, destination, pattern, *best_pair))
+                candidates.append(
+                    self._direct_candidate(
+                        origin,
+                        destination,
+                        pattern,
+                        *best_pair,
+                        planning_epoch,
+                    )
+                )
 
         # 中文：再找一次换乘，禁止同一路线自己换自己，并限制站间步行距离。
         # English: One-transfer candidates exclude same-route transfers and cap transfer walking.
@@ -667,6 +1008,7 @@ class PlannerEngine:
                             final_alight_index,
                             destination_walk_m,
                             transfer_pair,
+                            planning_epoch,
                         )
                         if best_candidate is None or candidate["eta_min"] < best_candidate["eta_min"]:
                             best_candidate = candidate
@@ -712,7 +1054,8 @@ class PlannerEngine:
         if origin.stop_id == destination.stop_id:
             raise PlannerError("Origin and destination must be different stops.")
 
-        candidates = self._generate_candidates(origin, destination)
+        planning_epoch = datetime.now(timezone.utc).timestamp()
+        candidates = self._generate_candidates(origin, destination, planning_epoch)
         if not candidates:
             raise NoJourneyError(
                 "No direct or one-transfer journey was found within the current access limits."
@@ -749,6 +1092,7 @@ class PlannerEngine:
                     "eta_min": winner["eta_min"],
                     "walking_min": winner["walking_min"],
                     "transfer_count": winner["transfer_count"],
+                    "eta_status": winner["eta_status"],
                     "reliability_label": winner["reliability"],
                     "exposure_label": winner["exposure"],
                     "explanation": explanation,
@@ -761,7 +1105,8 @@ class PlannerEngine:
                 "engine_version": ENGINE_VERSION,
                 "calculated_at": datetime.now(timezone.utc).isoformat(),
                 "calculation_basis": "Cached GTFS route-direction patterns plus the latest credential-free realtime snapshot.",
-                "eta_status": "ESTIMATED",
+                "eta_status": selected["eta_status"],
+                "trip_prediction_count": sum(len(rows) for rows in self.predicted_trips.values()),
                 "safety_status": "CITY_CONTEXT_ONLY",
                 "future_browser_engine_contract": "The response is transport-neutral so a future JavaScript engine can return the same schema.",
                 "freshness": {

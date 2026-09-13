@@ -12,7 +12,7 @@ const I18N = {
     causalityNote: "A street event near a route may affect service, but it does not prove what caused a delay.",
     serviceNotices: "Muni service updates", roadEvents: "Nearby street work", journeyDecision: "Plan your trip",
     whereGoing: "Where do you want to go?", plannerLead: "Choose two Muni stops. We'll compare direct trips and trips with one transfer using the latest available data.",
-    dynamicPlanner: "Trip estimates · Public Beta", fromStop: "Starting stop", toStop: "Destination stop", findRoute: "Compare routes", tryExample: "Try a sample trip",
+    dynamicPlanner: "Live predictions + estimates · Public Beta", fromStop: "Starting stop", toStop: "Destination stop", findRoute: "Compare routes", tryExample: "Try a sample trip",
     journeyMapHint: "Transit legs are solid; walking connections are dotted.", journeyTimeline: "Your trip",
     journeyReliability: "How steady is this trip?", journeySafety: "Historical incident context",
     threeWays: "Choose what matters most.", referenceCase: "Reference trip", alternatives: "Other routes",
@@ -23,9 +23,9 @@ const I18N = {
     northStarBody: "SF Transit Pulse answers one practical question: What should I take right now, and why?", evidenceBody: "We only say what the available data supports.",
     observe: "Collect current updates", observeBody: "Check vehicle locations, arrival estimates, service notices, route paths, and when each source was updated.",
     diagnose: "Check each route direction", diagnoseBody: "Look for steady vehicle spacing, vehicles too close together, long waits, and limited live data in each direction.",
-    build: "Build trips you may be able to make", buildBody: "Compare direct trips and one-transfer trips, including walking time and whether the transfer appears to leave enough time.",
+    build: "Build trips you may be able to make", buildBody: "Compare direct and one-transfer trips. When complete live predictions are available, check whether two specific trips connect; otherwise label the time as an estimate.",
     compare: "Compare what matters to you", compareBody: "Fastest favors time. Balanced also considers steady service, walking, and transfers. Safety-first is waiting for trip-level historical incident data.",
-    boundariesTitle: "Important limits", boundarySafety: "Historical incident data cannot tell whether you will be safe.", boundaryRoad: "A nearby street event does not prove what caused a transit delay.", boundaryMissing: "No live update does not mean a route has stopped running.", boundaryCost: "A comparison score is not an arrival time.", boundaryTransfer: "A possible transfer is not guaranteed.",
+    boundariesTitle: "Important limits", boundarySafety: "Historical incident data cannot tell whether you will be safe.", boundaryRoad: "A nearby street event does not prove what caused a transit delay.", boundaryMissing: "No live update does not mean a route has stopped running.", boundaryCost: "A comparison score is not an arrival time.", boundaryTransfer: "Live predictions can change, so a possible transfer is not guaranteed.",
     explain: "Explain the recommendation", explainBody: "Show why one route ranks first, what the other options offer, and where the data is limited.",
     footerNote: "An independent research prototype. Not an official SFMTA service.", reportIssue: "Report an issue"
   },
@@ -42,7 +42,7 @@ const I18N = {
     causalityNote: "线路附近的道路事件可能影响公交，但不能单凭位置接近就认定它造成了延误。",
     serviceNotices: "Muni 服务更新", roadEvents: "附近道路施工与事件", journeyDecision: "规划行程",
     whereGoing: "你想从哪里去哪里？", plannerLead: "选择两个 Muni 站点。我们会用最新数据比较直达和一次换乘的路线。",
-    dynamicPlanner: "行程估算 · 测试版", fromStop: "起点站", toStop: "终点站", findRoute: "比较路线", tryExample: "试试示例行程",
+    dynamicPlanner: "实时预测与估算 · 测试版", fromStop: "起点站", toStop: "终点站", findRoute: "比较路线", tryExample: "试试示例行程",
     journeyMapHint: "实线是公交路段，虚线是步行连接。", journeyTimeline: "行程步骤",
     journeyReliability: "这趟行程稳不稳定？", journeySafety: "历史事件参考",
     threeWays: "按你最在意的事情来选。", referenceCase: "参考行程", alternatives: "其他路线",
@@ -53,9 +53,9 @@ const I18N = {
     northStarBody: "SF Transit Pulse 只想回答一个实用问题：我现在该坐什么？为什么？", evidenceBody: "数据能说明多少，我们就只说多少。",
     observe: "收集最新信息", observeBody: "查看车辆位置、预计到站时间、服务通知、线路路径，以及每份数据的更新时间。",
     diagnose: "分方向检查每条线路", diagnoseBody: "查看车辆间隔是否稳定、是否挤在一起、会不会等很久，以及实时信息是否足够。",
-    build: "找出可能坐得上的路线", buildBody: "比较直达和一次换乘，并计算步行时间，再估算换乘时是否来得及。",
+    build: "找出可能坐得上的路线", buildBody: "比较直达和一次换乘。有完整实时预测时，会检查两趟具体班次是否接得上；数据不足时会明确写成估算。",
     compare: "按你的需要比较", compareBody: "最快到达优先看时间；综合推荐也考虑等车稳定性、步行和换乘；安全优先仍在等待行程级历史事件数据。",
-    boundariesTitle: "请注意这些限制", boundarySafety: "历史事件记录不能判断你这次出行是否安全。", boundaryRoad: "附近有道路事件，不代表它一定造成了公交延误。", boundaryMissing: "没有实时信息，不代表这条线路已经停运。", boundaryCost: "路线比较分数不等于预计到达时间。", boundaryTransfer: "地图上可以换乘，不代表实际一定赶得上。",
+    boundariesTitle: "请注意这些限制", boundarySafety: "历史事件记录不能判断你这次出行是否安全。", boundaryRoad: "附近有道路事件，不代表它一定造成了公交延误。", boundaryMissing: "没有实时信息，不代表这条线路已经停运。", boundaryCost: "路线比较分数不等于预计到达时间。", boundaryTransfer: "实时到站预测仍会变化，所以显示能换乘也不代表一定赶得上。",
     explain: "说明推荐理由", explainBody: "告诉你为什么这条路线排在前面、其他路线有什么不同，以及哪些数据仍然不足。",
     footerNote: "独立研究原型，并非 SFMTA 官方服务。", reportIssue: "报告问题"
   }
@@ -770,6 +770,32 @@ function modeExplanation(mode, available = true) {
   return (language === "zh" ? zh : en)[key] || "";
 }
 
+// Feature 20 · Realtime trip copy / 班次级实时结果文案
+// 中文：时间统一按旧金山时区显示；同时把“完整实时预测、部分实时、估算”分开，
+// 避免用户在其他时区打开网页时看到错误钟点，也避免把估算包装成实时 ETA。
+// English: Always show San Francisco clock time and name the evidence level so
+// an estimate is never presented as a concrete realtime arrival.
+function sfTime(value) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", {
+    timeZone: "America/Los_Angeles",
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(parsed);
+}
+
+function timingSource(status) {
+  if (status === "REALTIME_TRIP_PREDICTION") {
+    return language === "zh" ? "实时到站预测" : "Live arrival prediction";
+  }
+  if (status === "MIXED_REALTIME") {
+    return language === "zh" ? "部分实时，部分估算" : "Part live, part estimated";
+  }
+  return language === "zh" ? "根据当前班次间隔估算" : "Estimated from current service spacing";
+}
+
 function renderModeCards(modes) {
   const grid = document.getElementById("mode-grid");
   const safetyReady = appState.plannerResult?.meta?.safety_status === "STOP_LEVEL_LIVE";
@@ -845,20 +871,41 @@ function timelineRow(leg) {
     return {title: `${transfer} → ${leg.to?.name || "next stop"}`, detail: `${fmt(leg.duration_min,1)} min · ${fmt(leg.distance_m)} m`};
   }
   if (leg.type === "WAIT") {
-    const buffer = hasNumber(leg.estimated_buffer_min) ? (language === "zh" ? ` · 预计还剩 ${fmt(leg.estimated_buffer_min,1)} 分钟换乘` : ` · About ${fmt(leg.estimated_buffer_min,1)} min left to transfer`) : "";
-    return {title: `${language === "zh" ? "等候" : "Wait for"} ${leg.route_id || "Muni"}`, detail: `${fmt(leg.duration_min,1)} min${buffer}`};
+    const departure = sfTime(leg.predicted_departure);
+    const slack = hasNumber(leg.catch_slack_min)
+      ? (language === "zh" ? ` · 换乘余量 ${Number(leg.catch_slack_min) >= 0 ? "+" : ""}${fmt(leg.catch_slack_min,1)} 分钟` : ` · Transfer slack ${Number(leg.catch_slack_min) >= 0 ? "+" : ""}${fmt(leg.catch_slack_min,1)} min`)
+      : "";
+    const time = departure
+      ? (language === "zh" ? `预计 ${departure} 发车` : `Predicted departure ${departure}`)
+      : `${fmt(leg.duration_min,1)} min`;
+    return {
+      title: `${language === "zh" ? "等候" : "Wait for"} ${leg.route_id || "Muni"}`,
+      detail: `${time}${slack} · ${timingSource(leg.timing_status)}`
+    };
   }
   if (leg.type === "RIDE") {
     const toward = leg.headsign ? ` · ${language === "zh" ? "开往" : "toward"} ${leg.headsign}` : "";
-    return {title: `${language === "zh" ? "乘坐" : "Ride"} ${leg.route_id}${toward}`, detail: `${leg.from?.name || "—"} → ${leg.to?.name || "—"} · ${fmt(leg.duration_min,1)} min · ${fmt(leg.stop_count)} ${language === "zh" ? "站" : "stops"}`};
+    const departure = sfTime(leg.predicted_departure);
+    const arrival = sfTime(leg.predicted_arrival);
+    const clock = departure && arrival ? `${departure} → ${arrival} · ` : "";
+    const trip = leg.trip_id ? (language === "zh" ? ` · 班次 ${leg.trip_id}` : ` · Trip ${leg.trip_id}`) : "";
+    return {
+      title: `${language === "zh" ? "乘坐" : "Ride"} ${leg.route_id}${toward}`,
+      detail: `${leg.from?.name || "—"} → ${leg.to?.name || "—"} · ${clock}${fmt(leg.duration_min,1)} min · ${fmt(leg.stop_count)} ${language === "zh" ? "站" : "stops"}${trip} · ${timingSource(leg.timing_status)}`
+    };
   }
   return {title: leg.type || "Step", detail: ""};
 }
 
 function renderJourneyTimeline(journey) {
   document.getElementById("selected-journey-title").textContent = journey.route_sequence;
-  const transfer = journey.transfer ? ` · ${journey.transfer.catchability === "CATCHABLE" ? (language === "zh" ? "预计有足够时间换乘" : "Transfer appears to leave enough time") : (language === "zh" ? "预计换乘时间较紧" : "Transfer time may be tight")}` : "";
-  document.getElementById("selected-journey-summary").textContent = `${fmt(journey.eta_min,1)} min · ${fmt(journey.walking_min,1)} min ${language === "zh" ? "步行" : "walking"}${transfer}`;
+  const transferCopy = {
+    CATCHABLE: language === "zh" ? "按当前预测，换乘时间充足" : "Current predictions leave enough time to transfer",
+    TIGHT: language === "zh" ? "按当前预测，换乘时间较紧" : "Current predictions show a tight transfer",
+    MISS: language === "zh" ? "按当前预测，可能赶不上换乘" : "Current predictions suggest you may miss the connection"
+  };
+  const transfer = journey.transfer ? ` · ${transferCopy[journey.transfer.catchability] || (language === "zh" ? "换乘时间为估算" : "Transfer time is estimated")}` : "";
+  document.getElementById("selected-journey-summary").textContent = `${fmt(journey.eta_min,1)} min · ${fmt(journey.walking_min,1)} min ${language === "zh" ? "步行" : "walking"} · ${timingSource(journey.eta_status)}${transfer}`;
   const rows = [
     {title: appState.plannerResult?.origin?.name || "Origin", detail: language === "zh" ? "出发" : "Start"},
     ...(journey.legs || []).map(timelineRow),
@@ -972,7 +1019,10 @@ async function planTrip() {
     appState.plannerRequestKey = requestKey;
     appState.selectedMode = payload.selected_mode || appState.selectedMode;
     appState.selectedJourneyId = payload.selected_journey_id;
-    setPlannerStatus(language === "zh" ? `已比较 ${payload.alternatives?.length || 0} 条路线。行程时间是估算值，不是保证到达时间。` : `Compared ${payload.alternatives?.length || 0} routes. Trip times are estimates, not guarantees.`);
+    const hasLivePrediction = (payload.alternatives || []).some(row => row.eta_status === "REALTIME_TRIP_PREDICTION");
+    setPlannerStatus(hasLivePrediction
+      ? (language === "zh" ? `已比较 ${payload.alternatives?.length || 0} 条路线。部分方案使用实时到站预测；预测仍可能变化。` : `Compared ${payload.alternatives?.length || 0} routes. Some options use live arrival predictions, which can still change.`)
+      : (language === "zh" ? `已比较 ${payload.alternatives?.length || 0} 条路线。目前没有完整班次预测，时间按当前运行情况估算。` : `Compared ${payload.alternatives?.length || 0} routes. Complete trip predictions are unavailable, so times use current service estimates.`));
     renderJourney();
   } catch (error) {
     appState.plannerResult = null;

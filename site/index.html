@@ -147,7 +147,7 @@
           <h2 data-i18n="whereGoing">Where do you want to go?</h2>
           <p class="section-lead" data-i18n="plannerLead">Choose two Muni stops. We'll compare direct trips and trips with one transfer using the latest available data.</p>
         </div>
-        <span class="prototype-chip" data-i18n="dynamicPlanner">Trip estimates · Public Beta</span>
+        <span class="prototype-chip" data-i18n="dynamicPlanner">Live predictions + estimates · Public Beta</span>
       </div>
 
       <form class="planner-form" id="trip-planner-form">
@@ -248,7 +248,7 @@
       <ol class="method-steps">
         <li><span>1</span><div><strong data-i18n="observe">Collect current updates</strong><p data-i18n="observeBody">Check vehicle locations, arrival estimates, service notices, route paths, and when each source was updated.</p></div></li>
         <li><span>2</span><div><strong data-i18n="diagnose">Check each route direction</strong><p data-i18n="diagnoseBody">Look for steady vehicle spacing, vehicles too close together, long waits, and limited live data in each direction.</p></div></li>
-        <li><span>3</span><div><strong data-i18n="build">Build trips you may be able to make</strong><p data-i18n="buildBody">Compare direct trips and one-transfer trips, including walking time and whether the transfer appears to leave enough time.</p></div></li>
+        <li><span>3</span><div><strong data-i18n="build">Build trips you may be able to make</strong><p data-i18n="buildBody">Compare direct and one-transfer trips. When complete live predictions are available, check whether two specific trips connect; otherwise label the time as an estimate.</p></div></li>
         <li><span>4</span><div><strong data-i18n="compare">Compare what matters to you</strong><p data-i18n="compareBody">Fastest favors time. Balanced also considers steady service, walking, and transfers. Safety-first is waiting for trip-level historical incident data.</p></div></li>
         <li><span>5</span><div><strong data-i18n="explain">Explain the recommendation</strong><p data-i18n="explainBody">Show why one route ranks first, what the other options offer, and where the data is limited.</p></div></li>
       </ol>
@@ -259,7 +259,7 @@
           <li data-i18n="boundaryRoad">A nearby street event does not prove what caused a transit delay.</li>
           <li data-i18n="boundaryMissing">No live update does not mean a route has stopped running.</li>
           <li data-i18n="boundaryCost">A comparison score is not an arrival time.</li>
-          <li data-i18n="boundaryTransfer">A possible transfer is not guaranteed.</li>
+          <li data-i18n="boundaryTransfer">Live predictions can change, so a possible transfer is not guaranteed.</li>
         </ul>
       </div>
     </section>

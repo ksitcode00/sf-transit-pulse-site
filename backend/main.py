@@ -65,7 +65,7 @@ class PlannerRepository:
             import json
 
             return json.loads(Path(source).read_text(encoding="utf-8"))
-        request = Request(source, headers={"User-Agent": "SF-Transit-Pulse-Planner/16A"})
+        request = Request(source, headers={"User-Agent": "SF-Transit-Pulse-Planner/20.1"})
         with urlopen(request, timeout=30) as response:
             import json
 
@@ -104,8 +104,8 @@ allowed_origins = [
 repository = PlannerRepository(NETWORK_SOURCE, REALTIME_SOURCE)
 app = FastAPI(
     title="SF Transit Pulse Planner API",
-    version="16A.1",
-    description="Direct and one-transfer Muni journey planning from credential-free caches.",
+    version="20.1",
+    description="Trip-level direct and one-transfer Muni planning from credential-free caches.",
 )
 app.add_middleware(
     CORSMiddleware,

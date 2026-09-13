@@ -14,23 +14,23 @@ After deployment, verify the service URL in `site/config.js`. The frontend expec
 
 部署后请确认 `site/config.js` 中的服务网址。默认预期地址是 `https://sf-transit-planner-api-ksitcode00.onrender.com`。
 
-The Public Beta planner supports stop search, direct and one-transfer candidates, clickable FASTEST/BALANCED modes, clickable alternatives, a journey map, a timeline, estimated transfer buffer, reliability details, and explicit evidence limitations. SAFETY-FIRST remains visibly part of the product but is disabled until stop-level safety evidence genuinely changes ranking.
+The Public Beta planner supports stop search, direct and one-transfer candidates, clickable FASTEST/BALANCED modes, clickable alternatives, a journey map, and reliability details. Feature 20 now retains concrete trips from the existing GTFS-RT Trip Updates request. When both required stop predictions exist, the planner shows the specific trip, predicted boarding and arrival times, and a transfer catch-slack calculation. Missing or incomplete predictions fall back to a clearly labeled estimate. SAFETY-FIRST remains disabled until stop-level safety evidence genuinely changes ranking.
 
-Public Beta 规划器支持站点搜索、直达与一次换乘、FASTEST/BALANCED 两种可点击模式、可点击备选方案、Journey 地图、时间线、估算换乘余量、可靠性明细和明确的证据限制。SAFETY-FIRST 会一直作为核心产品模式显示，但在站点级安全证据真正改变排序前保持不可用。
+Public Beta 规划器支持站点搜索、直达与一次换乘、FASTEST/BALANCED 两种可点击模式、可点击备选方案、Journey 地图与可靠性明细。Feature 20 会从现有 GTFS-RT Trip Updates 请求中保留具体班次；上下车站都有完整预测时，页面会显示具体班次、预计上下车时间和换乘余量。预测缺失或不完整时，系统会明确退回估算。SAFETY-FIRST 在站点级安全证据真正改变排序前保持不可用。
 
 ## Public Beta truth contract / Public Beta 真实性约定
 
-- Journey times are estimates derived from cached route-direction geometry, observed route speed, and headway evidence. They are not yet trip-level arrival predictions.
-- Transfer labels are based on estimated headway buffer, not a guaranteed connection between two specific vehicles.
+- A journey uses trip-level arrival predictions only when one concrete trip has valid predictions at both the boarding and alighting stops. Otherwise that leg is labeled estimated.
+- A realtime transfer requires complete predictions for both trips. Catch slack equals the second departure minus the first arrival, transfer walk, and a one-minute boarding buffer. Incomplete evidence falls back to an estimated headway buffer.
 - If the planning API is unavailable, the page shows an error and Retry action. It never substitutes the fixed QA journey for a visitor's request.
 - The browser reloads `latest.json` every five minutes but loads the static GTFS network only once per visit.
-- The Network view is live; the Journey view remains an estimated Public Beta until the Scheme A API is deployed and the trip-level engine is connected.
+- The Network view is live. The Journey view needs the Scheme A API deployment; without that service, the page reports that planning is unavailable instead of showing a fake result.
 
-- 行程时间来自缓存路线几何、线路速度和班距证据，仍是估算值，不是具体班次的实时到站预测。
-- 换乘标签来自估算班距余量，不代表两辆具体车辆之间保证可以换乘。
+- 只有同一个具体班次在上下车站都有有效预测时，该路段才标为班次级实时预测；否则会明确标成估算。
+- 实时换乘必须同时有两趟具体班次的完整预测。换乘余量等于第二趟预计离开时间，减去第一趟预计到达、换乘步行和一分钟上车余量；证据不完整时才使用班距估算。
 - 行程 API 不可用时，网页只显示错误与“重试”，绝不会拿固定 QA 行程冒充用户查询结果。
 - 浏览器每五分钟重新读取 `latest.json`，静态 GTFS 路网每次访问只载入一次。
-- Network 页面使用实时快照；Journey 页面在 Scheme A 后端部署和 trip-level engine 接通前明确标为 Public Beta 估算。
+- Network 页面使用实时快照。Journey 页面仍需要部署 Scheme A 后端；后端不可用时，页面会直接说明无法规划，不会显示假结果。
 
 ## Network evidence contract / 路网证据契约
 

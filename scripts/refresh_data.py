@@ -29,7 +29,7 @@ from google.transit import gtfs_realtime_pb2
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = ROOT / "site" / "data" / "latest.json"
 NETWORK_PATH = ROOT / "site" / "data" / "network.json"
-PIPELINE_VERSION = "1.2.0"
+PIPELINE_VERSION = "1.3.0"
 USER_AGENT = "SF-Transit-Pulse/1.0 (+https://github.com/ksitcode00/sf-transit-pulse)"
 SF_BOUNDS = {"south": 37.68, "north": 37.84, "west": -122.55, "east": -122.33}
 REQUEST_BUDGET = {
@@ -65,7 +65,11 @@ def write_json(payload: dict[str, Any], destination: Path, *, compact: bool = Fa
 
 
 def write_snapshot(payload: dict[str, Any]) -> None:
-    write_json(payload, OUTPUT_PATH)
+    # 中文：Feature 20 会增加班次级站点预测；压缩 JSON 可减少 GitHub Pages
+    # 下载量，但不改变公开数据契约或浏览器读取方式。
+    # English: Trip-level stop predictions add useful rows, so compact the public
+    # payload to reduce page weight without changing its JSON contract.
+    write_json(payload, OUTPUT_PATH, compact=True)
 
 
 def request(url: str, *, params: dict[str, Any] | None = None, timeout: int = 45) -> requests.Response:
@@ -514,6 +518,93 @@ def parse_route_health(
     return sorted(rows, key=lambda row: (-row["vehicle_count"], row["route_id"], row["direction_id"]))
 
 
+def parse_trip_predictions(
+    feed: gtfs_realtime_pb2.FeedMessage,
+    trip_lookup: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Keep concrete GTFS-RT trips for routing without exposing credentials.
+
+    Feature 20 · Trip-level realtime routing / 班次级实时规划
+
+    中文：之前 Trip Updates 只被汇总成线路车距，导致 trip_id 和每一站的
+    arrival/departure 在写入 latest.json 前丢失。这里复用同一次 511 请求，保留
+    未来两小时内的具体班次和站点预测；不会增加 API 请求数。只保存规划所需字段，
+    既能让后端计算真实换乘时间，也避免把完整 protobuf 原样公开。
+
+    English: Route-health aggregation used to discard the concrete trip and
+    stop timestamps needed by the journey planner. Reuse the existing feed call
+    and publish only the next two hours of routing fields. This adds zero API
+    requests and keeps the public cache intentionally compact.
+    """
+
+    now_epoch = int(datetime.now(timezone.utc).timestamp())
+    horizon = now_epoch + 2 * 3600
+    rows: list[dict[str, Any]] = []
+    for entity in feed.entity:
+        if not entity.HasField("trip_update"):
+            continue
+        update = entity.trip_update
+        trip_id = str(update.trip.trip_id or "").strip()
+        static = trip_lookup.get(trip_id, {})
+        route_id = str(update.trip.route_id or static.get("route_id") or "").strip()
+        direction_id = (
+            str(update.trip.direction_id)
+            if update.trip.HasField("direction_id")
+            else str(static.get("direction_id", ""))
+        )
+        if not trip_id or not route_id:
+            continue
+
+        stops = []
+        for stop_update in update.stop_time_update:
+            stop_id = str(stop_update.stop_id or "").strip()
+            arrival_time = (
+                int(stop_update.arrival.time or 0)
+                if stop_update.HasField("arrival")
+                else 0
+            )
+            departure_time = (
+                int(stop_update.departure.time or 0)
+                if stop_update.HasField("departure")
+                else 0
+            )
+            usable_time = departure_time or arrival_time
+            if not stop_id or not usable_time:
+                continue
+            if usable_time < now_epoch - 300 or usable_time > horizon:
+                continue
+            stops.append(
+                {
+                    "stop_id": stop_id,
+                    "stop_sequence": int(stop_update.stop_sequence or 0),
+                    "arrival_time": arrival_time or None,
+                    "departure_time": departure_time or None,
+                }
+            )
+        stops.sort(key=lambda row: (row["stop_sequence"], row["arrival_time"] or row["departure_time"] or 0))
+        if not stops:
+            continue
+        rows.append(
+            {
+                "trip_id": trip_id,
+                "route_id": route_id,
+                "direction_id": direction_id,
+                "shape_id": str(static.get("shape_id") or ""),
+                "vehicle_id": str(update.vehicle.id or "") if update.HasField("vehicle") else "",
+                "update_timestamp": int(update.timestamp or 0) or None,
+                "stops": stops,
+            }
+        )
+    return sorted(
+        rows,
+        key=lambda row: (
+            row["stops"][0]["departure_time"] or row["stops"][0]["arrival_time"] or 0,
+            row["route_id"],
+            row["trip_id"],
+        ),
+    )
+
+
 def active_now(periods: Iterable[Any], now_epoch: int) -> bool:
     periods = list(periods)
     if not periods:
@@ -719,7 +810,15 @@ LIMIT 50
 
 def main() -> int:
     previous = load_previous()
-    payload = previous or {"system": {}, "vehicles": [], "routes": [], "alerts": [], "road_events": [], "journey": {}}
+    payload = previous or {
+        "system": {},
+        "vehicles": [],
+        "routes": [],
+        "trip_predictions": [],
+        "alerts": [],
+        "road_events": [],
+        "journey": {},
+    }
     errors: list[str] = []
     configured_sources = 0
     parking_refreshed = False
@@ -742,7 +841,8 @@ def main() -> int:
             trip_feed = fetch_gtfs_rt("https://api.511.org/transit/tripupdates", api_key)
             vehicles = parse_vehicles(vehicle_feed, static["trip_lookup"])
             routes = parse_route_health(trip_feed, static["trip_lookup"], vehicles, static["stop_lookup"])
-            payload.update({"vehicles": vehicles, "routes": routes})
+            trip_predictions = parse_trip_predictions(trip_feed, static["trip_lookup"])
+            payload.update({"vehicles": vehicles, "routes": routes, "trip_predictions": trip_predictions})
             if refresh_context:
                 alert_feed = fetch_gtfs_rt("https://api.511.org/transit/servicealerts", api_key)
                 road_payload = request(
@@ -760,6 +860,7 @@ def main() -> int:
                 "vehicle_count": len(vehicles),
                 "route_count": len({row["route_id"] for row in routes}),
                 "route_direction_count": len(routes),
+                "predicted_trip_count": len(trip_predictions),
                 "alert_count": len(payload.get("alerts", [])),
                 "road_event_count": len(payload.get("road_events", [])),
             }
@@ -787,6 +888,7 @@ def main() -> int:
             "vehicle_count": len(payload.get("vehicles", [])),
             "route_count": len({str(row.get("route_id", "")) for row in fallback_routes if row.get("route_id")}),
             "route_direction_count": len(fallback_routes),
+            "predicted_trip_count": len(payload.get("trip_predictions", [])),
             "alert_count": len(payload.get("alerts", [])),
             "road_event_count": len(payload.get("road_events", [])),
         }

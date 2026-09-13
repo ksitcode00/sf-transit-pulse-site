@@ -4,6 +4,7 @@ import json
 import io
 import zipfile
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 
 from google.transit import gtfs_realtime_pb2
@@ -13,6 +14,7 @@ from scripts.refresh_data import (
     parse_alerts,
     parse_road_events,
     parse_static_gtfs,
+    parse_trip_predictions,
 )
 
 
@@ -79,6 +81,57 @@ def test_live_alert_contract_keeps_route_and_direction() -> None:
     assert alert["route_match_status"] == "MATCHED"
 
 
+def test_trip_predictions_keep_concrete_trip_and_stop_times() -> None:
+    now_epoch = int(datetime.now(timezone.utc).timestamp())
+    feed = gtfs_realtime_pb2.FeedMessage()
+    feed.header.gtfs_realtime_version = "2.0"
+    feed.header.timestamp = now_epoch
+    entity = feed.entity.add()
+    entity.id = "prediction-1"
+    update = entity.trip_update
+    update.trip.trip_id = "trip-1"
+    update.vehicle.id = "vehicle-1"
+    update.timestamp = now_epoch
+    board = update.stop_time_update.add()
+    board.stop_id = "A"
+    board.stop_sequence = 1
+    board.departure.time = now_epoch + 300
+    alight = update.stop_time_update.add()
+    alight.stop_id = "B"
+    alight.stop_sequence = 2
+    alight.arrival.time = now_epoch + 900
+
+    rows = parse_trip_predictions(
+        feed,
+        {
+            "trip-1": {
+                "route_id": "R",
+                "direction_id": "0",
+                "shape_id": "shape-R-0",
+            }
+        },
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["trip_id"] == "trip-1"
+    assert rows[0]["shape_id"] == "shape-R-0"
+    assert rows[0]["vehicle_id"] == "vehicle-1"
+    assert rows[0]["stops"] == [
+        {
+            "stop_id": "A",
+            "stop_sequence": 1,
+            "arrival_time": None,
+            "departure_time": now_epoch + 300,
+        },
+        {
+            "stop_id": "B",
+            "stop_sequence": 2,
+            "arrival_time": now_epoch + 900,
+            "departure_time": None,
+        },
+    ]
+
+
 def test_road_event_without_transit_match_remains_explicit_context() -> None:
     event = parse_road_events(
         {
@@ -125,7 +178,7 @@ def test_public_beta_removes_misleading_planner_fallbacks() -> None:
     assert "planTrip({silent:true})" not in app
     assert 'fetch("data/network.json", {cache:"default"})' in app
     assert "https://tile.openstreetmap.org/{z}/{x}/{y}.png" in app
-    assert "Trip estimates · Public Beta" in page
+    assert "Live predictions + estimates · Public Beta" in page
     assert "Report an issue" in page
     assert 'SAFETY_FIRST:"Safety-first"' in app and "Not available yet" in app
     assert "What we check before recommending a trip" in page
@@ -160,6 +213,20 @@ def test_unknown_vehicle_positions_are_separated_from_route_results() -> None:
     assert "leave them off the map and out of route analysis" in app
     assert "Know your next move." in app and "Know your next move." in page
     assert 'journeyTimeline: "Your trip"' in app
+
+
+def test_realtime_journey_copy_distinguishes_predictions_from_estimates() -> None:
+    app = (ROOT / "site/app.js").read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "Live arrival prediction" in app
+    assert "实时到站预测" in app
+    assert "Part live, part estimated" in app
+    assert "部分实时，部分估算" in app
+    assert "Transfer slack" in app
+    assert "换乘余量" in app
+    assert "one-minute boarding buffer" in readme
+    assert "一分钟上车余量" in readme
 
 
 def test_static_gtfs_keeps_multiple_patterns_per_route_direction() -> None:
