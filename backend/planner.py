@@ -136,6 +136,48 @@ def haversine_m(a: Stop | tuple[float, float], b: Stop | tuple[float, float]) ->
     return 2 * 6_371_000 * math.asin(math.sqrt(value))
 
 
+def point_to_polyline_m(
+    point: tuple[float, float],
+    polyline: Iterable[tuple[float, float]],
+) -> float:
+    """Approximate the shortest point-to-line distance in local meters."""
+
+    points = list(polyline)
+    if not points:
+        return math.inf
+    if len(points) == 1:
+        return haversine_m(point, points[0])
+    reference_lat = math.radians(point[0])
+    meters_per_lon_degree = 111_320 * math.cos(reference_lat)
+    meters_per_lat_degree = 110_540
+
+    def local(candidate: tuple[float, float]) -> tuple[float, float]:
+        return (
+            (candidate[1] - point[1]) * meters_per_lon_degree,
+            (candidate[0] - point[0]) * meters_per_lat_degree,
+        )
+
+    best = math.inf
+    for left, right in zip(points, points[1:]):
+        left_x, left_y = local(left)
+        right_x, right_y = local(right)
+        delta_x, delta_y = right_x - left_x, right_y - left_y
+        denominator = delta_x * delta_x + delta_y * delta_y
+        if denominator == 0:
+            distance = math.hypot(left_x, left_y)
+        else:
+            fraction = max(
+                0.0,
+                min(1.0, -(left_x * delta_x + left_y * delta_y) / denominator),
+            )
+            distance = math.hypot(
+                left_x + fraction * delta_x,
+                left_y + fraction * delta_y,
+            )
+        best = min(best, distance)
+    return best
+
+
 def percentile(values: Iterable[float], fraction: float) -> float | None:
     """Small dependency-free percentile helper used for speed evidence."""
 
@@ -434,6 +476,11 @@ class PlannerEngine:
         observed = self.vehicle_speeds.get((pattern.route_id, pattern.direction_id))
         if observed is not None:
             return observed
+        return self._comparison_speed_mph(pattern)
+
+    def _comparison_speed_mph(self, pattern: Pattern) -> float:
+        """Return a transparent vehicle-mode comparison level, not history."""
+
         route_type = str(self.route_catalog.get(pattern.route_id, {}).get("route_type") or "3")
         if route_type in {"0", "1"}:
             return 11.5
@@ -484,6 +531,126 @@ class PlannerEngine:
         if len(points) < 2:
             points = ((start.lat, start.lon), (end.lat, end.lon))
         return [[round(lat, 6), round(lon, 6)] for lat, lon in points]
+
+    def _leg_disruption(
+        self,
+        pattern: Pattern,
+        start: Stop,
+        end: Stop,
+    ) -> dict[str, Any]:
+        """Explain live movement and nearby road context without claiming cause.
+
+        Feature 22 · Per-leg disruption analysis / 逐段运行与道路背景
+
+        中文：当前速度来自该 route + direction 的车辆回报中位数。对照值只是按
+        交通方式设置的透明参考线，不是假装存在的历史平均速度。道路事件只有在明确
+        匹配线路或距离本段走廊很近时才显示；即使两者同时出现，也只写“可能有关”，
+        绝不写成道路事件已经造成延误。
+
+        English: Current speed is the median reported for this route-direction.
+        The comparison level is a documented mode heuristic, not invented
+        historical data. Road proximity is context; even when a slowdown and an
+        overlap coexist, the result remains corroborating evidence, not causality.
+        """
+
+        current_speed = self.vehicle_speeds.get((pattern.route_id, pattern.direction_id))
+        comparison_speed = self._comparison_speed_mph(pattern)
+        if current_speed is None:
+            movement_status = "NO_LIVE_SPEED"
+            speed_ratio = None
+        else:
+            speed_ratio = current_speed / comparison_speed
+            if speed_ratio < 0.7:
+                movement_status = "SLOWER_THAN_COMPARISON"
+            elif speed_ratio < 0.9:
+                movement_status = "SLIGHTLY_BELOW_COMPARISON"
+            else:
+                movement_status = "NEAR_COMPARISON"
+
+        leg_line = [tuple(point) for point in self._shape_slice(pattern, start, end)]
+        road_context = []
+        for event in self.realtime.get("road_events", []):
+            route_ids = {str(value) for value in event.get("route_ids", [])}
+            relation = None
+            distance_m = None
+            if pattern.route_id in route_ids:
+                relation = "DIRECT_ROUTE_MATCH"
+            else:
+                event_points = []
+                for point in event.get("geometry", []):
+                    try:
+                        event_points.append((float(point[0]), float(point[1])))
+                    except (IndexError, TypeError, ValueError):
+                        continue
+                if not event_points:
+                    try:
+                        event_points = [(float(event["lat"]), float(event["lon"]))]
+                    except (KeyError, TypeError, ValueError):
+                        event_points = []
+                if event_points:
+                    distance_m = min(
+                        point_to_polyline_m(point, leg_line) for point in event_points
+                    )
+                    if distance_m <= 60:
+                        relation = "DIRECT_OVERLAP"
+                    elif distance_m <= 250:
+                        relation = "NEARBY"
+            if relation:
+                road_context.append(
+                    {
+                        "title": str(event.get("title") or "Road event"),
+                        "relation": relation,
+                        "distance_m": round(distance_m) if distance_m is not None else None,
+                    }
+                )
+
+        service_notices = []
+        for alert in self.realtime.get("alerts", []):
+            route_ids = {str(value) for value in alert.get("route_ids", [])}
+            alert_direction = alert.get("direction_id")
+            if pattern.route_id not in route_ids:
+                continue
+            if alert_direction not in (None, "", pattern.direction_id):
+                continue
+            service_notices.append(
+                {
+                    "title": str(alert.get("title") or "Muni service update"),
+                    "route_match_status": "MATCHED",
+                }
+            )
+
+        slower = movement_status == "SLOWER_THAN_COMPARISON"
+        strong_road_match = any(
+            row["relation"] in {"DIRECT_OVERLAP", "DIRECT_ROUTE_MATCH"}
+            for row in road_context
+        )
+        if slower and strong_road_match:
+            evidence_status = "SLOWDOWN_WITH_MATCHED_ROAD_CONTEXT"
+        elif slower:
+            evidence_status = "TRANSIT_SLOWDOWN_ONLY"
+        elif road_context:
+            evidence_status = "ROAD_CONTEXT_WITHOUT_DETECTED_SLOWDOWN"
+        else:
+            evidence_status = "NO_MATCHED_DISRUPTION"
+
+        return {
+            "route_id": pattern.route_id,
+            "direction_id": pattern.direction_id,
+            "from_stop_id": start.stop_id,
+            "to_stop_id": end.stop_id,
+            "current_speed_mph": round(current_speed, 1) if current_speed is not None else None,
+            "comparison_speed_mph": round(comparison_speed, 1),
+            "comparison_basis": "Vehicle-mode heuristic; not a historical average.",
+            "speed_ratio": round(speed_ratio, 2) if speed_ratio is not None else None,
+            "movement_status": movement_status,
+            "evidence_status": evidence_status,
+            "road_context": road_context[:3],
+            "service_notices": service_notices[:3],
+            "causality_note": (
+                "A matched road event may be relevant, but proximity and slowdown "
+                "do not prove that the event caused the delay."
+            ),
+        }
 
     def _reliability(self, patterns: Iterable[Pattern]) -> tuple[str, float, list[dict[str, Any]]]:
         evidence = []
@@ -563,6 +730,7 @@ class PlannerEngine:
         walking_min = origin_walk_min + destination_walk_min
         eta_min = walking_min + wait_min + ride_min
         health, reliability_penalty, evidence = self._reliability([pattern])
+        disruption = self._leg_disruption(pattern, board, alight)
         journey_id = self._candidate_id(
             ["direct", pattern.key, board.stop_id, alight.stop_id, trip.trip_id if trip else "estimate"]
         )
@@ -576,6 +744,7 @@ class PlannerEngine:
             "transfer_count": 0,
             "reliability": health,
             "reliability_detail": evidence,
+            "disruption_analysis": [disruption],
             "exposure": "CITY_CONTEXT_ONLY",
             "safety": self._safety_context(),
             "transfer": None,
@@ -621,6 +790,7 @@ class PlannerEngine:
                         else None
                     ),
                     "timing_status": eta_status,
+                    "disruption": disruption,
                 },
                 {
                     "type": "WALK",
@@ -758,6 +928,8 @@ class PlannerEngine:
         walking_min = origin_walk_min + transfer_walk_min + destination_walk_min
         eta_min = walking_min + first_wait + first_ride + second_wait + second_ride
         health, reliability_penalty, evidence = self._reliability([first, second])
+        first_disruption = self._leg_disruption(first, first_board, first_alight)
+        second_disruption = self._leg_disruption(second, second_board, final_alight)
         if transfer_buffer < 0:
             catchability = "MISS"
         elif transfer_buffer >= 3:
@@ -783,6 +955,7 @@ class PlannerEngine:
             "transfer_count": 1,
             "reliability": health,
             "reliability_detail": evidence,
+            "disruption_analysis": [first_disruption, second_disruption],
             "exposure": "CITY_CONTEXT_ONLY",
             "safety": self._safety_context(),
             "transfer": {
@@ -862,6 +1035,7 @@ class PlannerEngine:
                     "timing_status": (
                         "REALTIME_TRIP_PREDICTION" if first_prediction else "ESTIMATED"
                     ),
+                    "disruption": first_disruption,
                 },
                 {
                     "type": "WALK",
@@ -913,6 +1087,7 @@ class PlannerEngine:
                     "timing_status": (
                         "REALTIME_TRIP_PREDICTION" if second_prediction else "ESTIMATED"
                     ),
+                    "disruption": second_disruption,
                 },
                 {
                     "type": "WALK",

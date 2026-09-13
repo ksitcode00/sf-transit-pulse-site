@@ -916,9 +916,37 @@ function renderJourneyTimeline(journey) {
 
 function renderJourneyEvidence(journey) {
   document.getElementById("journey-reliability-status").textContent = healthCopy(journey.reliability);
-  document.getElementById("journey-reliability-detail").innerHTML = (journey.reliability_detail || []).map(row => `
+  const reliabilityRows = (journey.reliability_detail || []).map(row => `
     <div class="evidence-row"><span>${escapeHtml(`${row.route_id} · ${healthCopy(row.health)}`)}</span><strong>${hasNumber(row.median_headway_min) ? (language === "zh" ? `通常相隔 ${fmt(row.median_headway_min,1)} 分钟` : `Usually ${fmt(row.median_headway_min,1)} min apart`) : (language === "zh" ? "实时信息不足" : "Not enough live data")}</strong></div>
     <p class="fine-print">${language === "zh" ? `${fmt(row.bunching_events)} 处车辆挤在一起 · ${fmt(row.large_gap_events)} 处间隔过长 · 查看了 ${fmt(row.predictions_observed)} 条到站信息` : `${fmt(row.bunching_events)} close-together groups · ${fmt(row.large_gap_events)} long gaps · ${fmt(row.predictions_observed)} arrival estimates checked`}</p>`).join("");
+
+  const movementCopy = {
+    SLOWER_THAN_COMPARISON: language === "zh" ? "目前明显低于参考速度" : "Currently well below the comparison speed",
+    SLIGHTLY_BELOW_COMPARISON: language === "zh" ? "目前略低于参考速度" : "Currently a little below the comparison speed",
+    NEAR_COMPARISON: language === "zh" ? "目前接近参考速度" : "Currently near the comparison speed",
+    NO_LIVE_SPEED: language === "zh" ? "目前没有足够的实时速度" : "Not enough live speed data"
+  };
+  const disruptionRows = (journey.disruption_analysis || []).map(row => {
+    const speed = hasNumber(row.current_speed_mph)
+      ? (language === "zh"
+        ? `${fmt(row.current_speed_mph,1)} mph；参考 ${fmt(row.comparison_speed_mph,1)} mph`
+        : `${fmt(row.current_speed_mph,1)} mph; ${fmt(row.comparison_speed_mph,1)} mph comparison`)
+      : (language === "zh" ? "无法比较当前速度" : "Current speed cannot be compared");
+    const roads = (row.road_context || []).map(event => {
+      const relation = event.relation === "NEARBY"
+        ? (language === "zh" ? "附近" : "nearby")
+        : (language === "zh" ? "与本段走廊重合或明确匹配" : "overlaps or directly matches this leg");
+      return `<p class="fine-print">${escapeHtml(event.title)} · ${escapeHtml(relation)}</p>`;
+    }).join("") || `<p class="fine-print">${language === "zh" ? "没有匹配到本段的道路事件。" : "No road event matched this leg."}</p>`;
+    return `
+      <div class="evidence-row"><span>${escapeHtml(`${language === "zh" ? "线路" : "Route"} ${row.route_id}`)}</span><strong>${escapeHtml(movementCopy[row.movement_status] || row.movement_status)}</strong></div>
+      <p class="fine-print">${escapeHtml(speed)} · ${language === "zh" ? "参考值按交通方式设定，不是历史平均。" : "The comparison is mode-based, not a historical average."}</p>
+      ${roads}`;
+  }).join("");
+  const causality = (journey.disruption_analysis || []).some(row => (row.road_context || []).length)
+    ? `<p class="evidence-note">${language === "zh" ? "道路事件可能与减速有关，但位置接近和同时发生不能证明它就是延误原因。" : "A road event may be relevant, but proximity and timing do not prove it caused a delay."}</p>`
+    : "";
+  document.getElementById("journey-reliability-detail").innerHTML = reliabilityRows + disruptionRows + causality;
 
   const safety = journey.safety || {};
   document.getElementById("journey-safety-status").textContent = language === "zh" ? "暂时没有行程级评分" : "No trip-level rating yet";

@@ -163,3 +163,23 @@ def test_transfer_uses_two_trips_and_calculates_catch_slack() -> None:
         "trip-1",
         "trip-2",
     ]
+
+
+def test_leg_disruption_requires_slowdown_and_road_match_for_corroboration() -> None:
+    engine = _realtime_test_engine(transfer=False)
+    engine.vehicle_speeds[("R1", "0")] = 4.0
+    engine.realtime["road_events"] = [
+        {
+            "title": "Road work near Exchange",
+            "route_ids": [],
+            "geometry": [[37.705, -122.400]],
+        }
+    ]
+    pattern = engine.pattern_by_key["R1|0|s1"]
+
+    context = engine._leg_disruption(pattern, engine.stops["A"], engine.stops["X"])
+
+    assert context["movement_status"] == "SLOWER_THAN_COMPARISON"
+    assert context["road_context"][0]["relation"] == "DIRECT_OVERLAP"
+    assert context["evidence_status"] == "SLOWDOWN_WITH_MATCHED_ROAD_CONTEXT"
+    assert "do not prove" in context["causality_note"]

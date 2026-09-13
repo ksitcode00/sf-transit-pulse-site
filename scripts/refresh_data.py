@@ -680,7 +680,9 @@ def identifier_list(value: Any) -> list[str]:
     return sorted({part.strip() for part in re.split(r"[,;/|]", str(value)) if part.strip()})
 
 
-def geometry_center(raw: dict[str, Any]) -> tuple[float | None, float | None]:
+def geometry_points(raw: dict[str, Any], max_points: int = 80) -> list[list[float]]:
+    """Return an ordered, compact SF-only road-event geometry."""
+
     geometry = raw.get("geometry") if isinstance(raw.get("geometry"), dict) else {}
     coordinates = geometry.get("coordinates")
     points: list[tuple[float, float]] = []
@@ -696,8 +698,24 @@ def geometry_center(raw: dict[str, Any]) -> tuple[float | None, float | None]:
                 collect(child)
 
     collect(coordinates)
+    if len(points) > max_points:
+        indices = sorted(
+            {
+                round(index * (len(points) - 1) / (max_points - 1))
+                for index in range(max_points)
+            }
+        )
+        points = [points[index] for index in indices]
+    return [[round(lat, 6), round(lon, 6)] for lat, lon in points]
+
+
+def geometry_center(raw: dict[str, Any]) -> tuple[float | None, float | None]:
+    points = geometry_points(raw)
     if points:
-        return statistics.median(point[0] for point in points), statistics.median(point[1] for point in points)
+        return (
+            statistics.median(point[0] for point in points),
+            statistics.median(point[1] for point in points),
+        )
     properties = raw.get("properties") if isinstance(raw.get("properties"), dict) else raw
     lat = first_value(properties, ("lat", "latitude", "y"))
     lon = first_value(properties, ("lon", "lng", "longitude", "x"))
@@ -729,6 +747,7 @@ def parse_road_events(payload: Any) -> list[dict[str, Any]]:
             first_value(properties, ("route_ids", "affected_route_ids", "affected_transit_routes", "transit_routes"))
         )
         lat, lon = geometry_center(raw)
+        geometry = geometry_points(raw)
         rows.append(
             {
                 "route_ids": route_ids,
@@ -737,6 +756,7 @@ def parse_road_events(payload: Any) -> list[dict[str, Any]]:
                 "description": (f"{road_label} · " if road_label else "") + str(description)[:500],
                 "lat": round(lat, 6) if lat is not None else None,
                 "lon": round(lon, 6) if lon is not None else None,
+                "geometry": geometry,
             }
         )
     return rows[:20]

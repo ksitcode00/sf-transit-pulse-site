@@ -148,6 +148,7 @@ def test_road_event_without_transit_match_remains_explicit_context() -> None:
     assert event["route_ids"] == []
     assert event["route_match_status"] == "UNAVAILABLE"
     assert (event["lat"], event["lon"]) == (37.77, -122.42)
+    assert event["geometry"] == [[37.77, -122.42]]
 
 
 def test_refresh_plan_stays_below_default_511_rate_limit() -> None:
