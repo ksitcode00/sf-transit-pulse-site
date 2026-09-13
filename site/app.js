@@ -93,7 +93,7 @@ const appState = {
 function plannerWorkerCall(type, payload = {}) {
   if (!window.Worker) return Promise.reject(new Error("This browser does not support background route planning."));
   if (!plannerWorker) {
-    plannerWorker = new Worker("planner-worker.js", {type: "module"});
+    plannerWorker = new Worker("planner-worker.js?v=25b1", {type: "module"});
     plannerWorker.addEventListener("message", event => {
       const request = plannerWorkerRequests.get(event.data?.id);
       if (!request) return;

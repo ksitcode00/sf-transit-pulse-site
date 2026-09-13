@@ -7,7 +7,7 @@
  * responsive. Inputs are public, credential-free cache objects only.
  */
 
-import {BrowserPlannerEngine} from "./planner-engine.mjs";
+import {BrowserPlannerEngine} from "./planner-engine.mjs?v=25b1";
 
 let engine = null;
 
@@ -30,4 +30,3 @@ self.addEventListener("message", event => {
     self.postMessage({id, ok: false, error: error?.message || "Browser planning failed."});
   }
 });
-
