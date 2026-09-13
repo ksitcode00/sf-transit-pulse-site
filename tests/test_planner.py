@@ -5,7 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from backend.planner import PlannerEngine, PlannerError
+from backend.planner import (
+    ACCESS_RADIUS_M,
+    TRANSFER_RADIUS_M,
+    WALK_SPEED_M_PER_MIN,
+    PlannerEngine,
+    PlannerError,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,7 +27,11 @@ def engine() -> PlannerEngine:
 
 def test_catalog_covers_public_network(engine: PlannerEngine) -> None:
     assert len(engine.list_routes()) == engine.network["meta"]["route_count"]
-    assert len(engine.patterns) == engine.network["meta"]["route_direction_count"]
+    expected_patterns = engine.network["meta"].get(
+        "pattern_count", engine.network["meta"]["route_direction_count"]
+    )
+    assert len(engine.patterns) == expected_patterns
+    assert len(engine.patterns) >= engine.network["meta"]["route_direction_count"]
     assert len(engine.stops) > 1_000
 
 
@@ -55,3 +65,9 @@ def test_mode_changes_ranking_not_actual_eta(engine: PlannerEngine) -> None:
 def test_same_stop_is_rejected(engine: PlannerEngine) -> None:
     with pytest.raises(PlannerError):
         engine.plan("13161", "13161")
+
+
+def test_public_beta_uses_the_qa_validated_walking_policy() -> None:
+    assert ACCESS_RADIUS_M == 250.0
+    assert TRANSFER_RADIUS_M == 180.0
+    assert WALK_SPEED_M_PER_MIN == 75.0

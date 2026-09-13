@@ -14,9 +14,23 @@ After deployment, verify the service URL in `site/config.js`. The frontend expec
 
 部署后请确认 `site/config.js` 中的服务网址。默认预期地址是 `https://sf-transit-planner-api-ksitcode00.onrender.com`。
 
-The planner supports stop search, direct and one-transfer candidates, clickable FASTEST/BALANCED/SAFETY_FIRST modes, clickable alternatives, a journey map, a timeline, transfer catchability, reliability details, and explicit evidence limitations.
+The Public Beta planner supports stop search, direct and one-transfer candidates, clickable FASTEST/BALANCED modes, clickable alternatives, a journey map, a timeline, estimated transfer buffer, reliability details, and explicit evidence limitations. SAFETY-FIRST stays hidden until stop-level safety evidence genuinely changes ranking.
 
-规划器支持站点搜索、直达与一次换乘、三种可点击模式、可点击备选方案、Journey 地图、时间线、换乘余量、可靠性明细和明确的证据限制。
+Public Beta 规划器支持站点搜索、直达与一次换乘、FASTEST/BALANCED 两种可点击模式、可点击备选方案、Journey 地图、时间线、估算换乘余量、可靠性明细和明确的证据限制。在站点级安全证据真正改变排序前，SAFETY-FIRST 会保持隐藏。
+
+## Public Beta truth contract / Public Beta 真实性约定
+
+- Journey times are estimates derived from cached route-direction geometry, observed route speed, and headway evidence. They are not yet trip-level arrival predictions.
+- Transfer labels are based on estimated headway buffer, not a guaranteed connection between two specific vehicles.
+- If the planning API is unavailable, the page shows an error and Retry action. It never substitutes the fixed QA journey for a visitor's request.
+- The browser reloads `latest.json` every five minutes but loads the static GTFS network only once per visit.
+- The Network view is live; the Journey view remains an estimated Public Beta until the Scheme A API is deployed and the trip-level engine is connected.
+
+- 行程时间来自缓存路线几何、线路速度和班距证据，仍是估算值，不是具体班次的实时到站预测。
+- 换乘标签来自估算班距余量，不代表两辆具体车辆之间保证可以换乘。
+- 行程 API 不可用时，网页只显示错误与“重试”，绝不会拿固定 QA 行程冒充用户查询结果。
+- 浏览器每五分钟重新读取 `latest.json`，静态 GTFS 路网每次访问只载入一次。
+- Network 页面使用实时快照；Journey 页面在 Scheme A 后端部署和 trip-level engine 接通前明确标为 Public Beta 估算。
 
 ## Network evidence contract / 路网证据契约
 

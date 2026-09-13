@@ -28,12 +28,12 @@ from typing import Any, Iterable
 # English: Access radii let an anchor stop reach nearby platforms. The smaller
 # transfer radius prevents distant stops from being presented as one transfer.
 # -----------------------------------------------------------------------------
-WALK_SPEED_M_PER_MIN = 80.0
-ACCESS_RADIUS_M = 520.0
-TRANSFER_RADIUS_M = 260.0
+WALK_SPEED_M_PER_MIN = 75.0
+ACCESS_RADIUS_M = 250.0
+TRANSFER_RADIUS_M = 180.0
 MAX_ACCESS_STOPS = 10
 MAX_ALTERNATIVES = 12
-ENGINE_VERSION = "16A.1"
+ENGINE_VERSION = "16A.2-beta"
 
 HEALTH_SEVERITY = {
     "STABLE": 0,
@@ -84,7 +84,7 @@ class Stop:
 
 @dataclass
 class Pattern:
-    """One representative route + direction stop pattern and geometry."""
+    """One physical route + direction + shape stop pattern and geometry."""
 
     key: str
     route_id: str
@@ -184,9 +184,12 @@ class PlannerEngine:
         self.route_catalog = {
             str(row.get("route_id")): row for row in network.get("routes", [])
         }
+        # Feature 19: prefer the full physical pattern catalog. Older snapshots
+        # remain readable through the route-direction representative fallback.
+        raw_patterns = network.get("patterns") or network.get("route_directions", {})
         self.patterns = tuple(
             pattern
-            for key, row in network.get("route_directions", {}).items()
+            for key, row in raw_patterns.items()
             for pattern in [build_pattern(str(key), row)]
             if pattern is not None
         )

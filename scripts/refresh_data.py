@@ -187,29 +187,54 @@ def parse_static_gtfs(archive: zipfile.ZipFile) -> dict[str, Any]:
         candidates = trips_by_shape[(key[0], key[1], shape_id)]
         representative[key] = min(candidates, key=lambda row: str(row.get("trip_id") or ""))
 
+    # Feature 19 · Preserve every physical shape pattern for journey routing.
+    # 中文：route + direction 的最长 shape 继续服务 Network 地图，但 Planner 不再只看
+    # 一条代表线；每个 active shape 都保留一个代表 trip 的完整站序，避免分支、短线和
+    # 不同终点被最长 shape 吃掉。
+    # English: Keep the longest route-direction shape for the overview map, while
+    # exposing one stop sequence for every active shape to the journey graph.
+    pattern_representative: dict[tuple[str, str, str], dict[str, str]] = {
+        key: min(candidates, key=lambda row: str(row.get("trip_id") or ""))
+        for key, candidates in trips_by_shape.items()
+        if candidates and shape_points.get(key[2])
+    }
+
     selected_trip_to_key = {
         str(trip.get("trip_id") or ""): key
         for key, trip in representative.items()
         if trip.get("trip_id")
     }
+    selected_trip_to_pattern = {
+        str(trip.get("trip_id") or ""): key
+        for key, trip in pattern_representative.items()
+        if trip.get("trip_id")
+    }
     stop_rows: dict[tuple[str, str], list[tuple[int, str]]] = defaultdict(list)
+    pattern_stop_rows: dict[tuple[str, str, str], list[tuple[int, str]]] = defaultdict(list)
     with archive.open("stop_times.txt") as binary:
         text = io.TextIOWrapper(binary, encoding="utf-8-sig", newline="")
         for row in csv.DictReader(text):
-            key = selected_trip_to_key.get(str(row.get("trip_id") or ""))
-            if key is None:
+            trip_id = str(row.get("trip_id") or "")
+            key = selected_trip_to_key.get(trip_id)
+            pattern_key = selected_trip_to_pattern.get(trip_id)
+            if key is None and pattern_key is None:
                 continue
             try:
                 sequence = int(float(row.get("stop_sequence") or 0))
             except ValueError:
                 sequence = 0
-            stop_rows[key].append((sequence, str(row.get("stop_id") or "")))
+            stop_id = str(row.get("stop_id") or "")
+            if key is not None:
+                stop_rows[key].append((sequence, stop_id))
+            if pattern_key is not None:
+                pattern_stop_rows[pattern_key].append((sequence, stop_id))
 
     direction_labels = {
         (str(row.get("route_id") or ""), str(row.get("direction_id") or "")): str(row.get("direction") or "")
         for row in directions
     }
     route_directions: dict[str, Any] = {}
+    patterns: dict[str, Any] = {}
     directions_by_route: dict[str, list[dict[str, str]]] = defaultdict(list)
     for key in sorted(representative, key=lambda value: (route_sort_key(value[0]), value[1])):
         route_id, direction_id = key
@@ -238,6 +263,30 @@ def parse_static_gtfs(archive: zipfile.ZipFile) -> dict[str, Any]:
             {"direction_id": direction_id, "direction_label": label, "headsign": headsign}
         )
 
+    for key in sorted(pattern_representative, key=lambda value: (route_sort_key(value[0]), value[1], value[2])):
+        route_id, direction_id, shape_id = key
+        trip = pattern_representative[key]
+        label = direction_labels.get((route_id, direction_id)) or (f"Direction {direction_id}" if direction_id else "Direction unavailable")
+        selected_stops = []
+        seen_stops: set[str] = set()
+        for _, stop_id in sorted(pattern_stop_rows.get(key, [])):
+            stop = stop_lookup.get(stop_id)
+            if not stop or stop_id in seen_stops or stop["lat"] is None or stop["lon"] is None:
+                continue
+            seen_stops.add(stop_id)
+            selected_stops.append(stop)
+        if len(selected_stops) < 2:
+            continue
+        patterns[f"{route_id}|{direction_id}|{shape_id}"] = {
+            "route_id": route_id,
+            "direction_id": direction_id,
+            "direction_label": label,
+            "headsign": str(trip.get("trip_headsign") or ""),
+            "shape_id": shape_id,
+            "shape": simplify_path(shape_points[shape_id]),
+            "stops": selected_stops,
+        }
+
     route_catalog = []
     for row in sorted(routes, key=lambda item: route_sort_key(str(item.get("route_short_name") or item.get("route_id") or ""))):
         route_id = str(row.get("route_id") or "")
@@ -263,9 +312,11 @@ def parse_static_gtfs(archive: zipfile.ZipFile) -> dict[str, Any]:
             "feed_version": str(feed.get("feed_version") or ""),
             "route_count": len(route_catalog),
             "route_direction_count": len(route_directions),
+            "pattern_count": len(patterns),
         },
         "routes": route_catalog,
         "route_directions": route_directions,
+        "patterns": patterns,
     }
     return {
         "trip_lookup": trip_lookup,

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f5f7">
-  <meta name="description" content="Live, explainable San Francisco Muni conditions and route guidance.">
+  <meta name="description" content="Live San Francisco Muni conditions with transparent, estimated route guidance.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <title>SF Transit Pulse</title>
   <link rel="preconnect" href="https://unpkg.com">
@@ -36,7 +36,7 @@
       </div>
       <div class="sub-actions">
         <button class="text-action" id="language-toggle" type="button" aria-label="Switch language">中文</button>
-        <button class="primary-button" id="refresh-button" type="button" data-i18n="refresh">Refresh</button>
+        <button class="primary-button" id="refresh-button" type="button" data-i18n="refresh">Reload latest snapshot</button>
       </div>
     </div>
   </div>
@@ -144,24 +144,26 @@
         <div>
           <p class="eyebrow" data-i18n="journeyDecision">Journey decision</p>
           <h2 data-i18n="whereGoing">Where are you going?</h2>
-          <p class="section-lead" data-i18n="plannerLead">Choose any cached Muni stop. The planner compares direct and one-transfer journeys.</p>
+          <p class="section-lead" data-i18n="plannerLead">Choose two Muni stops. Public Beta estimates direct and one-transfer journeys from the latest cached evidence.</p>
         </div>
-        <span class="prototype-chip" data-i18n="dynamicPlanner">Dynamic planner · Scheme A</span>
+        <span class="prototype-chip" data-i18n="dynamicPlanner">Estimated planner · Public Beta</span>
       </div>
 
       <form class="planner-form" id="trip-planner-form">
         <label class="planner-field">
           <span data-i18n="fromStop">From</span>
-          <input id="origin-input" list="stop-options" autocomplete="off" placeholder="4th St & Market St · 13161" required>
+          <input id="origin-input" autocomplete="off" placeholder="Search a Muni stop" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="origin-suggestions" required>
+          <span class="stop-suggestions" id="origin-suggestions" role="listbox" hidden></span>
         </label>
         <button class="swap-button" id="swap-stops" type="button" aria-label="Swap origin and destination" title="Swap origin and destination">⇅</button>
         <label class="planner-field">
           <span data-i18n="toStop">To</span>
-          <input id="destination-input" list="stop-options" autocomplete="off" placeholder="Market St & Buchanan St · 15659" required>
+          <input id="destination-input" autocomplete="off" placeholder="Search a Muni stop" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="destination-suggestions" required>
+          <span class="stop-suggestions" id="destination-suggestions" role="listbox" hidden></span>
         </label>
         <button class="primary-button planner-submit" id="plan-trip-button" type="submit" data-i18n="findRoute">Find best route</button>
-        <datalist id="stop-options"></datalist>
       </form>
+      <button class="text-action example-trip-button" id="example-trip-button" type="button" data-i18n="tryExample">Try an example trip</button>
       <div class="planner-status" id="planner-status" role="status"></div>
       <p class="journey-od" id="journey-od">Select two stops to begin.</p>
 
@@ -239,7 +241,7 @@
       <div class="method-copy">
         <p class="eyebrow" data-i18n="methodEyebrow">Method</p>
         <h2 data-i18n="evidenceTitle">Evidence before confidence.</h2>
-        <p data-i18n="evidenceBody">The page never changes actual ETA with preference penalties. FASTEST, BALANCED, and SAFETY_FIRST compare the same candidates while keeping travel time, reliability, walking, and relative exposure separate and explainable.</p>
+        <p data-i18n="evidenceBody">Travel time remains an estimate and is never altered by preference penalties. Public Beta exposes FASTEST and BALANCED; SAFETY-FIRST stays hidden until stop-level evidence can genuinely affect ranking.</p>
       </div>
       <ol class="method-steps">
         <li><span>1</span><div><strong data-i18n="collect">Collect</strong><p data-i18n="collectBody">Fetch official transit and city feeds on a controlled schedule.</p></div></li>
@@ -258,6 +260,7 @@
       <span id="generated-at">Snapshot time unavailable</span>
       <span>Data: 511 SF Bay · DataSF · SFMTA</span>
       <span>Map © OpenStreetMap contributors</span>
+      <a href="https://github.com/ksitcode00/sf-transit-pulse-site/issues/new" target="_blank" rel="noreferrer" data-i18n="reportIssue">Report an issue</a>
     </div>
   </footer>
 

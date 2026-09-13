@@ -1,6 +1,6 @@
 const I18N = {
   en: {
-    navNetwork: "Network", navJourney: "Journey", navContext: "City context", refresh: "Refresh",
+    navNetwork: "Network", navJourney: "Journey", navContext: "City context", refresh: "Reload latest snapshot",
     eyebrow: "San Francisco · right now", heroTitle: "Know your next move.",
     heroLead: "Live Muni movement, service spacing, street disruptions, and city context—distilled into one calm view.",
     viewNetwork: "View the network", howWorks: "How it works", vehiclesReporting: "vehicles reporting",
@@ -11,8 +11,8 @@ const I18N = {
     streetsService: "Streets + service", explainWhy: "Explain what may be changing the ride.",
     causalityNote: "Road overlap is treated as context—not proof of causation—until live transit evidence supports it.",
     serviceNotices: "Service notices", roadEvents: "Road events", journeyDecision: "Journey decision",
-    whereGoing: "Where are you going?", plannerLead: "Choose any cached Muni stop. The planner compares direct and one-transfer journeys.",
-    dynamicPlanner: "Dynamic planner · Scheme A", fromStop: "From", toStop: "To", findRoute: "Find best route",
+    whereGoing: "Where are you going?", plannerLead: "Choose two Muni stops. Public Beta estimates direct and one-transfer journeys from the latest cached evidence.",
+    dynamicPlanner: "Estimated planner · Public Beta", fromStop: "From", toStop: "To", findRoute: "Find best route", tryExample: "Try an example trip",
     journeyMapHint: "Transit legs are solid; walking connections are dotted.", journeyTimeline: "Journey timeline",
     journeyReliability: "Journey reliability", journeySafety: "Journey safety context",
     threeWays: "Three ways to choose.", referenceCase: "Reference case", alternatives: "Alternatives",
@@ -20,14 +20,14 @@ const I18N = {
     exposure: "Exposure context", cityContext: "City context", moreThanBus: "More than the bus.",
     parkingDemand: "Parking demand", safetyContext: "Safety context", dataQuality: "Data quality",
     methodEyebrow: "Method", evidenceTitle: "Evidence before confidence.",
-    evidenceBody: "The page never changes actual ETA with preference penalties. FASTEST, BALANCED, and SAFETY_FIRST compare the same candidates while keeping travel time, reliability, walking, and relative exposure separate and explainable.",
+    evidenceBody: "Travel time remains an estimate and is never altered by preference penalties. Public Beta exposes FASTEST and BALANCED; SAFETY-FIRST stays hidden until stop-level evidence can genuinely affect ranking.",
     collect: "Collect", collectBody: "Fetch official transit and city feeds on a controlled schedule.",
     normalize: "Normalize", normalizeBody: "Align identifiers, directions, timestamps, units, and freshness.",
     explain: "Explain", explainBody: "Publish observations, limitations, and decision reasons together.",
-    footerNote: "An independent research prototype. Not an official SFMTA service."
+    footerNote: "An independent research prototype. Not an official SFMTA service.", reportIssue: "Report an issue"
   },
   zh: {
-    navNetwork: "实时路网", navJourney: "行程选择", navContext: "城市背景", refresh: "刷新",
+    navNetwork: "实时路网", navJourney: "行程选择", navContext: "城市背景", refresh: "重新载入最新快照",
     eyebrow: "旧金山 · 此时此刻", heroTitle: "清楚知道下一步怎么走。",
     heroLead: "把 Muni 实时移动、发车间隔、道路影响和城市背景，整理成一个安静、清楚的画面。",
     viewNetwork: "查看实时路网", howWorks: "了解计算方法", vehiclesReporting: "辆车正在回报",
@@ -38,8 +38,8 @@ const I18N = {
     streetsService: "道路与服务", explainWhy: "解释这趟车为什么可能正在变化。",
     causalityNote: "道路重叠只代表相关背景，不会在缺少实时交通证据时被当作延误原因。",
     serviceNotices: "服务提示", roadEvents: "道路事件", journeyDecision: "行程决策",
-    whereGoing: "你想去哪里？", plannerLead: "选择任意缓存中的 Muni 站点，比较直达与一次换乘方案。",
-    dynamicPlanner: "动态规划器 · 方案 A", fromStop: "从哪里出发", toStop: "到哪里", findRoute: "寻找最佳路线",
+    whereGoing: "你想去哪里？", plannerLead: "选择两个 Muni 站点；Public Beta 会根据最新缓存证据估算直达与一次换乘方案。",
+    dynamicPlanner: "估算行程规划 · Public Beta", fromStop: "从哪里出发", toStop: "到哪里", findRoute: "寻找最佳路线", tryExample: "试用示例行程",
     journeyMapHint: "实线是公交路段，虚线是步行连接。", journeyTimeline: "行程步骤",
     journeyReliability: "行程可靠性", journeySafety: "行程安全背景",
     threeWays: "用三种方式做选择。", referenceCase: "固定验证案例", alternatives: "其他方案",
@@ -47,11 +47,11 @@ const I18N = {
     exposure: "相对暴露背景", cityContext: "城市背景", moreThanBus: "不只看公交。",
     parkingDemand: "停车需求", safetyContext: "安全背景", dataQuality: "数据质量",
     methodEyebrow: "计算方法", evidenceTitle: "先看证据，再谈信心。",
-    evidenceBody: "偏好权重永远不会修改真实 ETA。FASTEST、BALANCED 和 SAFETY_FIRST 使用同一个候选集合，并把时间、稳定度、步行与相对暴露分别展示。",
+    evidenceBody: "行程时间始终明确标为估算值，也不会被偏好惩罚修改。Public Beta 只开放 FASTEST 与 BALANCED；在站点级安全证据真正参与排序前，SAFETY-FIRST 暂不展示。",
     collect: "获取", collectBody: "按照受控频率获取官方交通与城市数据。",
     normalize: "标准化", normalizeBody: "统一 ID、方向、时区、单位和数据新鲜度。",
     explain: "解释", explainBody: "把观测结果、限制条件和推荐原因一起发布。",
-    footerNote: "独立研究原型，并非 SFMTA 官方服务。"
+    footerNote: "独立研究原型，并非 SFMTA 官方服务。", reportIssue: "报告问题"
   }
 };
 
@@ -63,6 +63,9 @@ let mapLayers = {};
 let journeyMap = null;
 let journeyLayer = null;
 let stopSearchIndex = new Map();
+let plannerStops = [];
+const stopSearchTimers = new Map();
+const stopSearchTokens = new Map();
 const PLANNER_API_BASE = String(window.SF_TRANSIT_API_BASE || "").replace(/\/$/, "");
 const appState = {
   selectedRoute: "all",
@@ -105,7 +108,7 @@ function setLanguage(next) {
 function initMap() {
   if (!window.L) return;
   map = L.map("map", { zoomControl: true, scrollWheelZoom: false }).setView([37.7749, -122.4194], 12);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap contributors"
   }).addTo(map);
@@ -131,7 +134,7 @@ function syncMapLayers() {
 function initJourneyMap() {
   if (!window.L || journeyMap) return;
   journeyMap = L.map("journey-map", { zoomControl: true, scrollWheelZoom: false }).setView([37.7749, -122.4194], 13);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap contributors"
   }).addTo(journeyMap);
@@ -396,6 +399,19 @@ function metricRow(label, value, subtext = "") {
   return `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}${subtext ? `<span class="metric-subtext">${escapeHtml(subtext)}</span>` : ""}</dd></div>`;
 }
 
+function routeAdvice(health, evidenceCount) {
+  if (!evidenceCount || health === "NO_DATA") {
+    return {code:"NO_CURRENT_GUIDANCE", label:language === "zh" ? "先查看时刻与提示" : "Check schedule and notices"};
+  }
+  if (health === "UNSTABLE") {
+    return {code:"ALLOW_EXTRA", label:language === "zh" ? "建议预留额外时间" : "Allow extra time"};
+  }
+  if (["WATCH", "LIMITED_REALTIME_DATA"].includes(health)) {
+    return {code:"CHECK", label:language === "zh" ? "出发前再次查看" : "Check again before leaving"};
+  }
+  return {code:"USE_NORMALLY", label:language === "zh" ? "可按通常方式使用" : "Use normally"};
+}
+
 function renderIssueDetails(events, hasIssueCount) {
   const container = document.getElementById("focus-issues");
   if (!events.length) {
@@ -447,9 +463,11 @@ function renderRouteFocus(routeId = appState.selectedRoute, directionId = appSta
   }
 
   const data = combinedRoute(routeId, directionId);
+  const advice = routeAdvice(data.health, data.evidence_count);
   const positionLabel = transitSource().isSample ? (language === "zh" ? "样本位置" : "Sample positions") : (language === "zh" ? "地图实时车辆" : "Live positions on map");
   document.getElementById("focus-route-status").textContent = healthCopy(data.health);
   metrics.innerHTML = [
+    metricRow(language === "zh" ? "此刻建议" : "Right-now guidance", advice.label, advice.code),
     metricRow(positionLabel, fmt(data.live_position_count), transitSource().isSample ? (language === "zh" ? "不是当前车队数量" : "not a current fleet count") : ""),
     metricRow(language === "zh" ? "预测证据" : "Predictions observed", fmt(data.evidence_count), qualityCopy(data.evidence_quality)),
     metricRow(language === "zh" ? "预测班距中位数" : "Median predicted spacing", Number.isFinite(data.median_headway_min) ? `${fmt(data.median_headway_min,1)} min` : "—"),
@@ -522,7 +540,8 @@ function renderEvents(routeId = appState.selectedRoute, directionId = appState.s
 
 function allPlannerStops() {
   const unique = new Map();
-  Object.values(network?.route_directions || {}).forEach(direction => {
+  const patterns = network?.patterns || network?.route_directions || {};
+  Object.values(patterns).forEach(direction => {
     (direction.stops || []).forEach(stop => {
       if (!stop.stop_id || unique.has(String(stop.stop_id))) return;
       unique.set(String(stop.stop_id), {...stop, stop_id: String(stop.stop_id)});
@@ -536,20 +555,73 @@ function stopLabel(stop) {
 }
 
 function renderStopOptions() {
-  const rows = allPlannerStops();
+  plannerStops = allPlannerStops();
   stopSearchIndex = new Map();
-  rows.forEach(stop => {
+  plannerStops.forEach(stop => {
     stopSearchIndex.set(stopLabel(stop), stop.stop_id);
     stopSearchIndex.set(stop.stop_id, stop.stop_id);
   });
-  document.getElementById("stop-options").innerHTML = rows.map(stop =>
-    `<option value="${escapeHtml(stopLabel(stop))}"></option>`
-  ).join("");
+}
 
-  const originInput = document.getElementById("origin-input");
-  const destinationInput = document.getElementById("destination-input");
-  if (!originInput.value) originInput.value = stopLabel(rows.find(stop => stop.stop_id === "13161") || rows[0]);
-  if (!destinationInput.value) destinationInput.value = stopLabel(rows.find(stop => stop.stop_id === "15659") || rows[1]);
+function localStopMatches(query, limit = 12) {
+  const folded = query.trim().toLocaleLowerCase();
+  if (folded.length < 2) return [];
+  return plannerStops
+    .filter(stop => String(stop.name || "").toLocaleLowerCase().includes(folded) || String(stop.stop_id).includes(folded))
+    .slice(0, limit);
+}
+
+function renderStopSuggestions(input, list, rows) {
+  const unique = new Map();
+  rows.forEach(stop => {
+    const normalized = {...stop, stop_id: String(stop.stop_id)};
+    if (!normalized.stop_id || unique.has(normalized.stop_id)) return;
+    unique.set(normalized.stop_id, normalized);
+    stopSearchIndex.set(stopLabel(normalized), normalized.stop_id);
+    stopSearchIndex.set(normalized.stop_id, normalized.stop_id);
+  });
+  const suggestions = [...unique.values()].slice(0, 12);
+  list.innerHTML = suggestions.map(stop => `
+    <button type="button" role="option" data-stop-id="${escapeHtml(stop.stop_id)}" data-stop-label="${escapeHtml(stopLabel(stop))}">
+      <strong>${escapeHtml(stop.name || "Muni stop")}</strong>
+      <span>${escapeHtml((stop.route_ids || []).slice(0, 6).join(" · ") || `Stop ${stop.stop_id}`)}</span>
+    </button>`).join("");
+  list.hidden = suggestions.length === 0;
+  input.setAttribute("aria-expanded", String(suggestions.length > 0));
+  list.querySelectorAll("button[data-stop-id]").forEach(option => option.addEventListener("mousedown", event => {
+    event.preventDefault();
+    input.value = option.dataset.stopLabel;
+    stopSearchIndex.set(input.value, option.dataset.stopId);
+    list.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+  }));
+}
+
+function scheduleStopSearch(input, list) {
+  const query = input.value.trim();
+  const timer = stopSearchTimers.get(input.id);
+  if (timer) clearTimeout(timer);
+  if (query.length < 2) {
+    list.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+    return;
+  }
+  renderStopSuggestions(input, list, localStopMatches(query));
+  const token = (stopSearchTokens.get(input.id) || 0) + 1;
+  stopSearchTokens.set(input.id, token);
+  stopSearchTimers.set(input.id, setTimeout(async () => {
+    if (!PLANNER_API_BASE) return;
+    try {
+      const response = await fetch(`${PLANNER_API_BASE}/stops?q=${encodeURIComponent(query)}&limit=12`);
+      if (!response.ok) return;
+      const payload = await response.json();
+      if (stopSearchTokens.get(input.id) === token && input.value.trim() === query) {
+        renderStopSuggestions(input, list, payload.stops || []);
+      }
+    } catch (_) {
+      // Local GTFS search remains available while the free beta API wakes up.
+    }
+  }, 300));
 }
 
 function resolveStopInput(value) {
@@ -565,6 +637,19 @@ function setPlannerStatus(message = "", isError = false) {
   status.classList.toggle("error", isError);
 }
 
+function setPlannerError(message) {
+  const status = document.getElementById("planner-status");
+  status.replaceChildren();
+  status.classList.add("error");
+  status.append(document.createTextNode(message));
+  const retry = document.createElement("button");
+  retry.type = "button";
+  retry.className = "planner-retry";
+  retry.textContent = language === "zh" ? "重试" : "Retry";
+  retry.addEventListener("click", () => planTrip());
+  status.append(retry);
+}
+
 function selectedJourney() {
   const alternatives = appState.plannerResult?.alternatives || [];
   return alternatives.find(row => row.journey_id === appState.selectedJourneyId) || alternatives[0] || null;
@@ -572,9 +657,12 @@ function selectedJourney() {
 
 function renderModeCards(modes) {
   const grid = document.getElementById("mode-grid");
-  grid.innerHTML = modes.map(mode => `
-    <button type="button" class="mode-card ${mode.mode === "BALANCED" ? "recommended" : ""}" data-mode="${escapeHtml(mode.mode)}" aria-pressed="${mode.mode === appState.selectedMode}">
-      <span class="mode-label">${escapeHtml(mode.mode.replaceAll("_", "-"))}${mode.mode === "BALANCED" ? " ★" : ""}</span>
+  const safetyReady = appState.plannerResult?.meta?.safety_status === "STOP_LEVEL_LIVE";
+  const visibleModes = modes.filter(mode => mode.mode !== "SAFETY_FIRST" || safetyReady);
+  grid.dataset.modeCount = String(visibleModes.length);
+  grid.innerHTML = visibleModes.map(mode => `
+    <button type="button" class="mode-card" data-mode="${escapeHtml(mode.mode)}" aria-pressed="${mode.mode === appState.selectedMode}">
+      <span class="mode-label">${escapeHtml(mode.mode.replaceAll("_", "-"))}${mode.mode === "BALANCED" ? (language === "zh" ? " · 默认" : " · Default") : ""}</span>
       <p class="mode-route">${escapeHtml(mode.route || "—")}</p>
       <p class="mode-eta">${fmt(mode.eta_min,1)} min</p>
       <p>${escapeHtml(mode.explanation || "")}</p>
@@ -680,11 +768,17 @@ function renderJourneyEvidence(journey) {
 
 function renderAlternatives(alternatives) {
   const list = document.getElementById("alternatives-list");
-  list.innerHTML = alternatives.map((row,index) => `
+  const costKey = {FASTEST:"fastest", BALANCED:"balanced", SAFETY_FIRST:"safety_first"}[appState.selectedMode] || "balanced";
+  const ranked = [...alternatives].sort((left, right) =>
+    Number(left.costs?.[costKey] ?? left.eta_min) - Number(right.costs?.[costKey] ?? right.eta_min)
+    || Number(left.eta_min) - Number(right.eta_min)
+  );
+  const modeLabel = appState.selectedMode.replaceAll("_", "-").toLocaleLowerCase();
+  list.innerHTML = ranked.map((row,index) => `
     <button type="button" class="alternative-card" data-journey-id="${escapeHtml(row.journey_id)}" aria-pressed="${row.journey_id === appState.selectedJourneyId}">
       <div class="alternative-card-header"><span class="alternative-card-route">${escapeHtml(row.route_sequence)}</span><span class="alternative-card-eta">${fmt(row.eta_min,1)} min</span></div>
       <p class="alternative-card-meta">${fmt(row.walking_min,1)} min ${language === "zh" ? "步行" : "walk"} · ${fmt(row.transfer_count)} ${language === "zh" ? "次换乘" : "transfers"} · ${escapeHtml(healthCopy(row.reliability))}</p>
-      ${row.pareto_efficient ? `<span class="alternative-card-badge">${index === 0 ? (language === "zh" ? "当前综合推荐" : "Best overall") : "Pareto efficient"}</span>` : ""}
+      ${index === 0 ? `<span class="alternative-card-badge">${language === "zh" ? `当前 ${modeLabel} 推荐` : `Recommended for ${modeLabel}`}</span>` : row.pareto_efficient ? `<span class="alternative-card-badge">Pareto efficient</span>` : ""}
     </button>`).join("");
   list.querySelectorAll(".alternative-card").forEach(card => card.addEventListener("click", () => {
     appState.selectedJourneyId = card.dataset.journeyId;
@@ -692,16 +786,10 @@ function renderAlternatives(alternatives) {
   }));
 }
 
-function renderLegacyJourney() {
-  const legacy = snapshot?.journey || {};
-  document.getElementById("journey-od").textContent = `${legacy.origin || "4th St & Market St"} → ${legacy.destination || "Market St & Buchanan St"}`;
-  const modes = legacy.modes || [];
-  document.getElementById("mode-grid").innerHTML = modes.map(mode => `
-    <div class="mode-card ${mode.mode === "BALANCED" ? "recommended" : ""}">
-      <span class="mode-label">${escapeHtml(mode.mode)}</span><p class="mode-route">${escapeHtml(mode.route || "—")}</p><p class="mode-eta">${fmt(mode.eta_min,1)} min</p><p>${escapeHtml(mode.explanation || "")}</p>
-    </div>`).join("");
-  document.getElementById("alternatives-list").innerHTML = (legacy.alternatives || []).map(row => `
-    <div class="alternative-card"><div class="alternative-card-header"><span class="alternative-card-route">${escapeHtml(row.route_sequence)}</span><span class="alternative-card-eta">${fmt(row.eta_min,1)} min</span></div><p class="alternative-card-meta">${fmt(row.walking_min,1)} min ${language === "zh" ? "步行" : "walk"} · ${escapeHtml(row.reliability || "—")}</p></div>`).join("");
+function renderPlannerEmpty() {
+  document.getElementById("journey-od").textContent = language === "zh" ? "选择起点和终点后开始规划。" : "Choose an origin and destination to begin.";
+  document.getElementById("mode-grid").innerHTML = `<div class="planner-empty">${language === "zh" ? "这里不会显示与用户输入无关的固定示例结果。" : "No fixed example result will be substituted for your trip."}</div>`;
+  document.getElementById("alternatives-list").innerHTML = `<p class="planner-empty-inline">${language === "zh" ? "提交行程后，备选方案会显示在这里。" : "Alternatives will appear here after you submit a trip."}</p>`;
   document.getElementById("journey-workspace").hidden = true;
   document.getElementById("journey-evidence").hidden = true;
 }
@@ -709,7 +797,7 @@ function renderLegacyJourney() {
 function renderJourney() {
   const result = appState.plannerResult;
   if (!result) {
-    renderLegacyJourney();
+    renderPlannerEmpty();
     return;
   }
   const journey = selectedJourney();
@@ -724,7 +812,7 @@ function renderJourney() {
   renderJourneyEvidence(journey);
 }
 
-async function planTrip({silent = false} = {}) {
+async function planTrip() {
   const originId = resolveStopInput(document.getElementById("origin-input").value);
   const destinationId = resolveStopInput(document.getElementById("destination-input").value);
   if (!originId || !destinationId) {
@@ -736,14 +824,18 @@ async function planTrip({silent = false} = {}) {
     return;
   }
   if (!PLANNER_API_BASE) {
-    setPlannerStatus(language === "zh" ? "行程后端尚未配置；下面保留固定验证案例。" : "Planner backend is not configured; the fixed validation case remains below.", true);
+    appState.plannerResult = null;
+    renderPlannerEmpty();
+    setPlannerError(language === "zh" ? "行程服务尚未配置，当前不能生成可靠的路线结果。" : "The journey service is not configured, so no route result can be generated right now.");
     return;
   }
   const requestKey = `${originId}|${destinationId}|${appState.selectedMode}`;
-  if (silent && requestKey === appState.plannerRequestKey) return;
   const button = document.getElementById("plan-trip-button");
   button.disabled = true;
   setPlannerStatus(language === "zh" ? "正在比较直达和一次换乘方案…" : "Comparing direct and one-transfer journeys…");
+  const coldStartMessage = setTimeout(() => setPlannerStatus(
+    language === "zh" ? "规划服务正在启动。Public Beta 闲置后首次请求可能需要约一分钟…" : "The planner is starting. The first Public Beta request after inactivity can take about a minute…"
+  ), 7000);
   try {
     const response = await fetch(`${PLANNER_API_BASE}/plan-trip`, {
       method: "POST",
@@ -759,10 +851,12 @@ async function planTrip({silent = false} = {}) {
     setPlannerStatus(language === "zh" ? `已比较 ${payload.alternatives?.length || 0} 个候选方案；ETA 为当前证据下的估算。` : `Compared ${payload.alternatives?.length || 0} candidates; ETA is estimated from current evidence.`);
     renderJourney();
   } catch (error) {
-    if (!silent) setPlannerStatus(`${language === "zh" ? "暂时无法规划" : "Could not plan this trip"}: ${error.message}`, true);
-    else setPlannerStatus(language === "zh" ? "行程 API 尚未上线；当前显示固定验证案例。" : "Journey API is not online yet; showing the fixed validation case.", true);
-    renderLegacyJourney();
+    appState.plannerResult = null;
+    appState.selectedJourneyId = null;
+    renderPlannerEmpty();
+    setPlannerError(`${language === "zh" ? "暂时无法规划这趟行程" : "We couldn't plan this trip right now"}: ${error.message}`);
   } finally {
+    clearTimeout(coldStartMessage);
     button.disabled = false;
   }
 }
@@ -800,32 +894,33 @@ function setRouteScope(scope) {
   renderRouteView();
 }
 
-function renderAll() {
+function renderAll({networkChanged = false} = {}) {
   setLanguage(language);
   renderMeta();
   renderHero();
   renderRouteSelector();
   renderDirectionSelector();
   renderRouteView();
-  renderStopOptions();
+  if (networkChanged || plannerStops.length === 0) renderStopOptions();
   renderJourney();
   renderContext();
 }
 
-async function loadData() {
+async function loadData({includeNetwork = false} = {}) {
   const button = document.getElementById("refresh-button");
   button.disabled = true;
   try {
     const cacheBuster = Date.now();
-    const [snapshotResponse, networkResponse] = await Promise.all([
-      fetch(`data/latest.json?t=${cacheBuster}`, {cache:"no-store"}),
-      fetch(`data/network.json?t=${cacheBuster}`, {cache:"no-store"})
-    ]);
+    const snapshotRequest = fetch(`data/latest.json?t=${cacheBuster}`, {cache:"no-store"});
+    const networkRequest = includeNetwork || !network
+      ? fetch("data/network.json", {cache:"default"})
+      : Promise.resolve(null);
+    const [snapshotResponse, networkResponse] = await Promise.all([snapshotRequest, networkRequest]);
     if (!snapshotResponse.ok) throw new Error(`Snapshot request returned HTTP ${snapshotResponse.status}`);
-    if (!networkResponse.ok) throw new Error(`Network catalog request returned HTTP ${networkResponse.status}`);
-    [snapshot, network] = await Promise.all([snapshotResponse.json(), networkResponse.json()]);
-    renderAll();
-    planTrip({silent:true});
+    if (networkResponse && !networkResponse.ok) throw new Error(`Network catalog request returned HTTP ${networkResponse.status}`);
+    snapshot = await snapshotResponse.json();
+    if (networkResponse) network = await networkResponse.json();
+    renderAll({networkChanged: Boolean(networkResponse)});
     document.getElementById("error-banner").hidden = true;
   } catch (error) {
     document.getElementById("error-banner").textContent = `${language === "zh" ? "无法载入页面数据" : "Could not load page data"}: ${error.message}`;
@@ -842,7 +937,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setLanguage(language === "en" ? "zh" : "en");
     if (snapshot && network) renderAll();
   });
-  document.getElementById("refresh-button").addEventListener("click", loadData);
+  document.getElementById("refresh-button").addEventListener("click", () => loadData());
   document.querySelectorAll(".scope-button").forEach(button => button.addEventListener("click", () => setRouteScope(button.dataset.scope)));
   document.querySelectorAll("#map-layer-control input[data-layer]").forEach(input => input.addEventListener("change", () => {
     appState.layers[input.dataset.layer] = input.checked;
@@ -859,8 +954,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const destination = document.getElementById("destination-input");
     [origin.value, destination.value] = [destination.value, origin.value];
     appState.plannerRequestKey = null;
+  });
+  [
+    [document.getElementById("origin-input"), document.getElementById("origin-suggestions")],
+    [document.getElementById("destination-input"), document.getElementById("destination-suggestions")]
+  ].forEach(([input, list]) => {
+    input.addEventListener("input", () => scheduleStopSearch(input, list));
+    input.addEventListener("focus", () => scheduleStopSearch(input, list));
+    input.addEventListener("blur", () => setTimeout(() => {
+      list.hidden = true;
+      input.setAttribute("aria-expanded", "false");
+    }, 150));
+  });
+  document.getElementById("example-trip-button").addEventListener("click", () => {
+    const origin = plannerStops.find(stop => stop.stop_id === "13161");
+    const destination = plannerStops.find(stop => stop.stop_id === "15659");
+    if (!origin || !destination) return;
+    document.getElementById("origin-input").value = stopLabel(origin);
+    document.getElementById("destination-input").value = stopLabel(destination);
+    appState.plannerRequestKey = null;
     planTrip();
   });
-  loadData();
-  setInterval(loadData, 5 * 60 * 1000);
+  loadData({includeNetwork:true});
+  setInterval(() => loadData(), 5 * 60 * 1000);
 });
