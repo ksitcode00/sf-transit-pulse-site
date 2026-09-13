@@ -10,6 +10,7 @@ remains an observable estimate rather than a preference-adjusted number.
 
 from __future__ import annotations
 
+from bisect import bisect_right
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
@@ -34,7 +35,7 @@ TRANSFER_RADIUS_M = 180.0
 MAX_ACCESS_STOPS = 10
 MAX_ALTERNATIVES = 12
 BOARDING_BUFFER_MIN = 1.0
-ENGINE_VERSION = "20.1-beta"
+ENGINE_VERSION = "24.1-beta"
 
 HEALTH_SEVERITY = {
     "STABLE": 0,
@@ -267,6 +268,25 @@ class PlannerEngine:
         }
         self.vehicle_speeds = self._build_vehicle_speed_lookup()
         self.predicted_trips = self._build_trip_prediction_lookup()
+        self.safety_cells = {
+            (round(float(row["lat"]), 3), round(float(row["lon"]), 3)): int(
+                row.get("reported_incidents_365d_cell", 0) or 0
+            )
+            for row in realtime.get("safety", {}).get("cells", [])
+            if row.get("lat") is not None and row.get("lon") is not None
+        }
+        self.safety_distribution = sorted(
+            int(row.get("reported_incidents_365d_nearby", 0) or 0)
+            for row in realtime.get("safety", {}).get("cells", [])
+        )
+        self._safety_stop_cache: dict[str, dict[str, Any]] = {}
+        self.parking_cells = list(realtime.get("parking", {}).get("cells", []))
+        self.parking_pressure_distribution = sorted(
+            float(row.get("paid_session_pressure_ratio") or 0)
+            for row in self.parking_cells
+            if float(row.get("paid_session_pressure_ratio") or 0) > 0
+        )
+        self._parking_stop_cache: dict[str, dict[str, Any]] = {}
 
     @classmethod
     def from_files(cls, network_path: Path, realtime_path: Path) -> "PlannerEngine":
@@ -678,6 +698,120 @@ class PlannerEngine:
         digest = hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()[:12]
         return f"journey-{digest}"
 
+    def _area_safety_context(self, stop: Stop) -> dict[str, Any]:
+        cached = self._safety_stop_cache.get(stop.stop_id)
+        if cached is not None:
+            return cached
+        nearby_count = 0
+        for lat_offset in range(-3, 4):
+            for lon_offset in range(-4, 5):
+                key = (
+                    round(round(stop.lat, 3) + lat_offset / 1000, 3),
+                    round(round(stop.lon, 3) + lon_offset / 1000, 3),
+                )
+                count = self.safety_cells.get(key, 0)
+                if not count:
+                    continue
+                if haversine_m(stop, key) <= 250:
+                    nearby_count += count
+        percentile_value = (
+            round(
+                100
+                * bisect_right(self.safety_distribution, nearby_count)
+                / len(self.safety_distribution)
+            )
+            if self.safety_distribution
+            else None
+        )
+        result = {
+            "stop_id": stop.stop_id,
+            "name": stop.name,
+            "reported_incidents_365d_nearby": nearby_count,
+            "percentile": percentile_value,
+            "radius_m": 250,
+        }
+        self._safety_stop_cache[stop.stop_id] = result
+        return result
+
+    @staticmethod
+    def _relative_context_label(value: float | None) -> str:
+        if value is None:
+            return "NOT_RATED"
+        if value >= 90:
+            return "VERY_HIGHER_REPORTED_CONTEXT"
+        if value >= 75:
+            return "HIGHER_REPORTED_CONTEXT"
+        if value <= 25:
+            return "LOWER_REPORTED_CONTEXT"
+        return "MID_RANGE_REPORTED_CONTEXT"
+
+    def _journey_safety_context(
+        self,
+        origin: Stop,
+        board: Stop,
+        route_stops: Iterable[Stop],
+        transfer_stops: Iterable[Stop],
+        destination: Stop,
+    ) -> dict[str, Any]:
+        """Build comparative historical context for one journey.
+
+        中文：这是 Feature 23 的决策层。起点、上车、沿线、换乘和目的地都用同一
+        250 米规则计算；沿线取多个站点的中位百分位，整趟行程再取各部分中位数。
+        这个数字只用于比较方案，不修改 ETA，也不预测个人安全。
+
+        English: Apply one 250 m rule to origin, boarding, route, transfer, and
+        destination areas. Route and journey values use medians to avoid one
+        outlier dominating the result. This comparison never changes the ETA and
+        never predicts personal safety.
+        """
+
+        if not self.safety_distribution:
+            return self._safety_context()
+        origin_context = self._area_safety_context(origin)
+        boarding_context = self._area_safety_context(board)
+        route_contexts = [self._area_safety_context(stop) for stop in route_stops]
+        transfer_contexts = [self._area_safety_context(stop) for stop in transfer_stops]
+        destination_context = self._area_safety_context(destination)
+
+        route_values = [row["percentile"] for row in route_contexts if row["percentile"] is not None]
+        transfer_values = [
+            row["percentile"] for row in transfer_contexts if row["percentile"] is not None
+        ]
+        route_percentile = round(median(route_values)) if route_values else None
+        transfer_percentile = round(median(transfer_values)) if transfer_values else None
+        component_values = [
+            value
+            for value in (
+                origin_context["percentile"],
+                boarding_context["percentile"],
+                route_percentile,
+                transfer_percentile,
+                destination_context["percentile"],
+            )
+            if value is not None
+        ]
+        overall = round(median(component_values)) if component_values else None
+        return {
+            "status": "JOURNEY_RELATIVE_CONTEXT",
+            "overall_percentile": overall,
+            "origin_percentile": origin_context["percentile"],
+            "boarding_percentile": boarding_context["percentile"],
+            "route_percentile": route_percentile,
+            "transfer_percentile": transfer_percentile,
+            "destination_percentile": destination_context["percentile"],
+            "label": self._relative_context_label(overall),
+            "lookback_days": self.realtime.get("safety", {}).get("lookback_days", 365),
+            "radius_m": 250,
+            "detail": (
+                "Relative count of reported incidents near journey areas compared "
+                "with other observed San Francisco cells."
+            ),
+            "disclaimer": (
+                "Historical reported incidents do not predict crime, label a place "
+                "safe or unsafe, or guarantee personal safety."
+            ),
+        }
+
     def _safety_context(self) -> dict[str, Any]:
         safety = self.realtime.get("safety", {})
         return {
@@ -692,6 +826,104 @@ class PlannerEngine:
             ),
             "disclaimer": "Historical incident context is not a crime forecast or a safe/unsafe label.",
         }
+
+    def _destination_parking_context(self, destination: Stop) -> dict[str, Any]:
+        """Summarize paid-parking pressure within 400 m of the destination.
+
+        Feature 24 · Destination parking pressure / 目的地停车压力
+
+        中文：把目的地 400 米内的路边收费车位、仍在付费有效期内的 session、
+        最近 15/30/60 分钟新开始的付费记录和前后半小时趋势合并。它是“付费停车
+        压力代理值”，不是实际占用率，更不能推算还剩几个空位。
+
+        English: Combine nearby on-street meter inventory, active paid-session
+        proxies, recent starts, and a short trend. This is a demand signal—not
+        physical occupancy and never a count of available spaces.
+        """
+
+        cached = self._parking_stop_cache.get(destination.stop_id)
+        if cached is not None:
+            return cached
+        matched = []
+        for row in self.parking_cells:
+            try:
+                point = (float(row["lat"]), float(row["lon"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+            if haversine_m(destination, point) <= 400:
+                matched.append(row)
+        if not matched:
+            result = {
+                "status": "UNAVAILABLE",
+                "radius_m": 400,
+                "pressure_label": "NOT_RATED",
+                "relative_pressure_percentile": None,
+                "metered_spaces_represented": 0,
+                "active_paid_sessions_proxy": 0,
+                "starts_15m": 0,
+                "starts_30m": 0,
+                "starts_60m": 0,
+                "trend": "UNAVAILABLE",
+                "detail": "No matched on-street meter evidence near this destination.",
+                "disclaimer": "This does not measure physical occupancy or open spaces.",
+            }
+            self._parking_stop_cache[destination.stop_id] = result
+            return result
+
+        inventory = sum(int(row.get("metered_spaces") or 0) for row in matched)
+        active = sum(int(row.get("active_paid_sessions_proxy") or 0) for row in matched)
+        starts_15 = sum(int(row.get("starts_15m") or 0) for row in matched)
+        starts_30 = sum(int(row.get("starts_30m") or 0) for row in matched)
+        starts_60 = sum(int(row.get("starts_60m") or 0) for row in matched)
+        previous_30 = sum(int(row.get("previous_30m_starts") or 0) for row in matched)
+        ratio = active / max(1, inventory)
+        percentile_value = (
+            round(
+                100
+                * bisect_right(self.parking_pressure_distribution, ratio)
+                / len(self.parking_pressure_distribution)
+            )
+            if ratio > 0 and self.parking_pressure_distribution
+            else 0
+        )
+        if percentile_value >= 90:
+            pressure_label = "VERY_HIGH"
+        elif percentile_value >= 70:
+            pressure_label = "HIGH"
+        elif percentile_value >= 35:
+            pressure_label = "MODERATE"
+        else:
+            pressure_label = "LOW"
+        if starts_30 >= previous_30 + 2 and starts_30 >= previous_30 * 1.2:
+            trend = "RISING"
+        elif previous_30 >= starts_30 + 2 and starts_30 <= previous_30 * 0.8:
+            trend = "FALLING"
+        else:
+            trend = "STEADY"
+        result = {
+            "status": "PAID_PARKING_PRESSURE_PROXY",
+            "radius_m": 400,
+            "pressure_label": pressure_label,
+            "relative_pressure_percentile": percentile_value,
+            "metered_spaces_represented": inventory,
+            "active_paid_sessions_proxy": active,
+            "paid_session_pressure_ratio": round(ratio, 3),
+            "starts_15m": starts_15,
+            "starts_30m": starts_30,
+            "starts_60m": starts_60,
+            "previous_30m_starts": previous_30,
+            "trend": trend,
+            "detail": (
+                "Paid-session activity near on-street meter inventory; useful for "
+                "relative demand context only."
+            ),
+            "disclaimer": (
+                "A paid session does not prove a vehicle is present. This does not "
+                "measure physical occupancy or open spaces."
+            ),
+        }
+        self._parking_stop_cache[destination.stop_id] = result
+        return result
 
     def _direct_candidate(
         self,
@@ -731,6 +963,14 @@ class PlannerEngine:
         eta_min = walking_min + wait_min + ride_min
         health, reliability_penalty, evidence = self._reliability([pattern])
         disruption = self._leg_disruption(pattern, board, alight)
+        safety = self._journey_safety_context(
+            origin,
+            board,
+            pattern.stops[board_index : alight_index + 1],
+            [],
+            destination,
+        )
+        safety_penalty = float(safety.get("overall_percentile") or 0) / 10
         journey_id = self._candidate_id(
             ["direct", pattern.key, board.stop_id, alight.stop_id, trip.trip_id if trip else "estimate"]
         )
@@ -745,13 +985,17 @@ class PlannerEngine:
             "reliability": health,
             "reliability_detail": evidence,
             "disruption_analysis": [disruption],
-            "exposure": "CITY_CONTEXT_ONLY",
-            "safety": self._safety_context(),
+            "exposure": safety["label"],
+            "safety": safety,
+            "destination_parking": self._destination_parking_context(destination),
             "transfer": None,
             "costs": {
                 "fastest": round(eta_min, 3),
                 "balanced": round(eta_min + reliability_penalty + walking_min * 0.15, 3),
-                "safety_first": round(eta_min + reliability_penalty + walking_min * 0.15, 3),
+                "safety_first": round(
+                    eta_min + reliability_penalty + walking_min * 0.15 + safety_penalty,
+                    3,
+                ),
             },
             "legs": [
                 {
@@ -930,6 +1174,17 @@ class PlannerEngine:
         health, reliability_penalty, evidence = self._reliability([first, second])
         first_disruption = self._leg_disruption(first, first_board, first_alight)
         second_disruption = self._leg_disruption(second, second_board, final_alight)
+        safety = self._journey_safety_context(
+            origin,
+            first_board,
+            (
+                first.stops[first_board_index : first_alight_index + 1]
+                + second.stops[second_board_index : final_alight_index + 1]
+            ),
+            [first_alight, second_board],
+            destination,
+        )
+        safety_penalty = float(safety.get("overall_percentile") or 0) / 10
         if transfer_buffer < 0:
             catchability = "MISS"
         elif transfer_buffer >= 3:
@@ -956,8 +1211,9 @@ class PlannerEngine:
             "reliability": health,
             "reliability_detail": evidence,
             "disruption_analysis": [first_disruption, second_disruption],
-            "exposure": "CITY_CONTEXT_ONLY",
-            "safety": self._safety_context(),
+            "exposure": safety["label"],
+            "safety": safety,
+            "destination_parking": self._destination_parking_context(destination),
             "transfer": {
                 "from_stop": first_alight.public(),
                 "to_stop": second_board.public(),
@@ -985,7 +1241,14 @@ class PlannerEngine:
             "costs": {
                 "fastest": round(eta_min, 3),
                 "balanced": round(eta_min + reliability_penalty + walking_min * 0.15 + 3.0, 3),
-                "safety_first": round(eta_min + reliability_penalty + walking_min * 0.15 + 3.0, 3),
+                "safety_first": round(
+                    eta_min
+                    + reliability_penalty
+                    + walking_min * 0.15
+                    + 3.0
+                    + safety_penalty,
+                    3,
+                ),
             },
             "legs": [
                 {
@@ -1258,7 +1521,12 @@ class PlannerEngine:
             elif mode_name == "BALANCED":
                 explanation = "Balances ETA, walking, transfers, and current service-spacing evidence."
             else:
-                explanation = "Stop-level safety evidence is not yet available, so this transparently falls back to the reliability-aware ranking."
+                explanation = (
+                    "Uses relative 365-day reported-incident context when location cells are available; "
+                    "this is not a prediction of personal safety."
+                    if self.safety_distribution
+                    else "Stop-level historical context is not available, so this falls back to the reliability-aware ranking."
+                )
             modes.append(
                 {
                     "mode": mode_name,
@@ -1282,7 +1550,11 @@ class PlannerEngine:
                 "calculation_basis": "Cached GTFS route-direction patterns plus the latest credential-free realtime snapshot.",
                 "eta_status": selected["eta_status"],
                 "trip_prediction_count": sum(len(rows) for rows in self.predicted_trips.values()),
-                "safety_status": "CITY_CONTEXT_ONLY",
+                "safety_status": (
+                    "JOURNEY_RELATIVE_CONTEXT"
+                    if self.safety_distribution
+                    else "CITY_CONTEXT_ONLY"
+                ),
                 "future_browser_engine_contract": "The response is transport-neutral so a future JavaScript engine can return the same schema.",
                 "freshness": {
                     "realtime_generated_at": self.realtime.get("meta", {}).get("generated_at"),

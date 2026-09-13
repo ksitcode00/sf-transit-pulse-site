@@ -14,7 +14,7 @@ const I18N = {
     whereGoing: "Where do you want to go?", plannerLead: "Choose two Muni stops. We'll compare direct trips and trips with one transfer using the latest available data.",
     dynamicPlanner: "Live predictions + estimates · Public Beta", fromStop: "Starting stop", toStop: "Destination stop", findRoute: "Compare routes", tryExample: "Try a sample trip",
     journeyMapHint: "Transit legs are solid; walking connections are dotted.", journeyTimeline: "Your trip",
-    journeyReliability: "How steady is this trip?", journeySafety: "Historical incident context",
+    journeyReliability: "How steady is this trip?", journeySafety: "Historical incident context", journeyParking: "Parking near your destination",
     threeWays: "Choose what matters most.", referenceCase: "Reference trip", alternatives: "Other routes",
     tradeoffs: "Compare time, walking, and transfers.", route: "Route", eta: "Estimated trip time", walk: "Walking", reliability: "Current service",
     exposure: "Historical incident context", cityContext: "More travel info", moreThanBus: "Other things that may affect your trip.",
@@ -24,7 +24,7 @@ const I18N = {
     observe: "Collect current updates", observeBody: "Check vehicle locations, arrival estimates, service notices, route paths, and when each source was updated.",
     diagnose: "Check each route direction", diagnoseBody: "Look for steady vehicle spacing, vehicles too close together, long waits, and limited live data in each direction.",
     build: "Build trips you may be able to make", buildBody: "Compare direct and one-transfer trips. When complete live predictions are available, check whether two specific trips connect; otherwise label the time as an estimate.",
-    compare: "Compare what matters to you", compareBody: "Fastest favors time. Balanced also considers steady service, walking, and transfers. Safety-first is waiting for trip-level historical incident data.",
+    compare: "Compare what matters to you", compareBody: "Fastest favors time. Balanced also considers steady service, walking, and transfers. Safety-first works only when location-level historical report data is available.",
     boundariesTitle: "Important limits", boundarySafety: "Historical incident data cannot tell whether you will be safe.", boundaryRoad: "A nearby street event does not prove what caused a transit delay.", boundaryMissing: "No live update does not mean a route has stopped running.", boundaryCost: "A comparison score is not an arrival time.", boundaryTransfer: "Live predictions can change, so a possible transfer is not guaranteed.",
     explain: "Explain the recommendation", explainBody: "Show why one route ranks first, what the other options offer, and where the data is limited.",
     footerNote: "An independent research prototype. Not an official SFMTA service.", reportIssue: "Report an issue"
@@ -44,7 +44,7 @@ const I18N = {
     whereGoing: "你想从哪里去哪里？", plannerLead: "选择两个 Muni 站点。我们会用最新数据比较直达和一次换乘的路线。",
     dynamicPlanner: "实时预测与估算 · 测试版", fromStop: "起点站", toStop: "终点站", findRoute: "比较路线", tryExample: "试试示例行程",
     journeyMapHint: "实线是公交路段，虚线是步行连接。", journeyTimeline: "行程步骤",
-    journeyReliability: "这趟行程稳不稳定？", journeySafety: "历史事件参考",
+    journeyReliability: "这趟行程稳不稳定？", journeySafety: "历史事件参考", journeyParking: "目的地附近停车情况",
     threeWays: "按你最在意的事情来选。", referenceCase: "参考行程", alternatives: "其他路线",
     tradeoffs: "比较时间、步行和换乘。", route: "线路", eta: "预计行程时间", walk: "步行", reliability: "当前运行情况",
     exposure: "历史事件参考", cityContext: "更多出行信息", moreThanBus: "看看其他可能影响出行的情况。",
@@ -54,7 +54,7 @@ const I18N = {
     observe: "收集最新信息", observeBody: "查看车辆位置、预计到站时间、服务通知、线路路径，以及每份数据的更新时间。",
     diagnose: "分方向检查每条线路", diagnoseBody: "查看车辆间隔是否稳定、是否挤在一起、会不会等很久，以及实时信息是否足够。",
     build: "找出可能坐得上的路线", buildBody: "比较直达和一次换乘。有完整实时预测时，会检查两趟具体班次是否接得上；数据不足时会明确写成估算。",
-    compare: "按你的需要比较", compareBody: "最快到达优先看时间；综合推荐也考虑等车稳定性、步行和换乘；安全优先仍在等待行程级历史事件数据。",
+    compare: "按你的需要比较", compareBody: "最快到达优先看时间；综合推荐也考虑运行稳定性、步行和换乘；只有具备地点级历史报告数据时，安全优先才会开放。",
     boundariesTitle: "请注意这些限制", boundarySafety: "历史事件记录不能判断你这次出行是否安全。", boundaryRoad: "附近有道路事件，不代表它一定造成了公交延误。", boundaryMissing: "没有实时信息，不代表这条线路已经停运。", boundaryCost: "路线比较分数不等于预计到达时间。", boundaryTransfer: "实时到站预测仍会变化，所以显示能换乘也不代表一定赶得上。",
     explain: "说明推荐理由", explainBody: "告诉你为什么这条路线排在前面、其他路线有什么不同，以及哪些数据仍然不足。",
     footerNote: "独立研究原型，并非 SFMTA 官方服务。", reportIssue: "报告问题"
@@ -760,12 +760,12 @@ function modeExplanation(mode, available = true) {
   const en = {
     FASTEST:"Gets you there soonest based on current estimates.",
     BALANCED:"Balances time, steady service, walking, and transfers.",
-    SAFETY_FIRST:"Also considers trip-level historical incident context."
+    SAFETY_FIRST:"Favors trips with fewer historical incident reports nearby. It does not predict personal safety."
   };
   const zh = {
     FASTEST:"按当前估算，优先选择最快到达的路线。",
     BALANCED:"同时考虑时间、等车稳定性、步行和换乘。",
-    SAFETY_FIRST:"还会参考这趟行程沿途的历史事件情况。"
+    SAFETY_FIRST:"优先考虑附近历史事件报告相对较少的路线，但不能预测你这次是否安全。"
   };
   return (language === "zh" ? zh : en)[key] || "";
 }
@@ -798,7 +798,7 @@ function timingSource(status) {
 
 function renderModeCards(modes) {
   const grid = document.getElementById("mode-grid");
-  const safetyReady = appState.plannerResult?.meta?.safety_status === "STOP_LEVEL_LIVE";
+  const safetyReady = appState.plannerResult?.meta?.safety_status === "JOURNEY_RELATIVE_CONTEXT";
   grid.dataset.modeCount = String(modes.length);
   grid.innerHTML = modes.map(mode => {
     const unavailable = mode.mode === "SAFETY_FIRST" && !safetyReady;
@@ -949,15 +949,46 @@ function renderJourneyEvidence(journey) {
   document.getElementById("journey-reliability-detail").innerHTML = reliabilityRows + disruptionRows + causality;
 
   const safety = journey.safety || {};
-  document.getElementById("journey-safety-status").textContent = language === "zh" ? "暂时没有行程级评分" : "No trip-level rating yet";
+  const safetyReady = safety.status === "JOURNEY_RELATIVE_CONTEXT" && hasNumber(safety.overall_percentile);
+  document.getElementById("journey-safety-status").textContent = safetyReady
+    ? (language === "zh" ? `历史报告相对值：第 ${fmt(safety.overall_percentile)} 百分位` : `Historical report context: ${fmt(safety.overall_percentile)}th percentile`)
+    : (language === "zh" ? "暂时没有行程级数据" : "No trip-level data yet");
   const percentileRows = [
+    [language === "zh" ? "起点区域" : "Origin area", safety.origin_percentile],
     [language === "zh" ? "上车区域" : "Boarding area", safety.boarding_percentile],
+    [language === "zh" ? "沿线路段" : "Along the route", safety.route_percentile],
     [language === "zh" ? "换乘区域" : "Transfer area", safety.transfer_percentile],
     [language === "zh" ? "目的地区域" : "Destination area", safety.destination_percentile]
   ];
   document.getElementById("journey-safety-detail").innerHTML = percentileRows.map(([label,value]) => `
-    <div class="evidence-row"><span>${escapeHtml(label)}</span><strong>${hasNumber(value) ? (language === "zh" ? `高于 ${fmt(value)}% 的区域` : `${fmt(value)}th percentile`) : (language === "zh" ? "暂无评分" : "Not rated")}</strong></div>`).join("") +
-    `<p class="evidence-note">${language === "zh" ? "历史事件记录只能用于比较区域背景，不能预测犯罪，也不能保证个人安全。" : "Historical incident records only compare area context. They do not predict crime or guarantee personal safety."}</p>`;
+    <div class="evidence-row"><span>${escapeHtml(label)}</span><strong>${hasNumber(value) ? (language === "zh" ? `第 ${fmt(value)} 百分位` : `${fmt(value)}th percentile`) : (language === "zh" ? "这部分没有足够数据" : "Not enough data here")}</strong></div>`).join("") +
+    `<p class="evidence-note">${language === "zh" ? "百分位只比较过去 365 天附近的历史报告数量。它不能预测犯罪、判断地点是否安全，也不能保证个人安全。" : "Percentiles only compare nearby reports from the past 365 days. They do not predict crime, label a place safe or unsafe, or guarantee personal safety."}</p>`;
+
+  const parking = journey.destination_parking || {};
+  const parkingReady = parking.status === "PAID_PARKING_PRESSURE_PROXY";
+  const parkingLabel = {
+    LOW: language === "zh" ? "附近付费停车活动较少" : "Lower paid-parking activity nearby",
+    MODERATE: language === "zh" ? "附近付费停车活动中等" : "Moderate paid-parking activity nearby",
+    HIGH: language === "zh" ? "附近付费停车活动较多" : "Higher paid-parking activity nearby",
+    VERY_HIGH: language === "zh" ? "附近付费停车活动很多" : "Very high paid-parking activity nearby"
+  };
+  const trendCopy = {
+    RISING: language === "zh" ? "最近半小时有所增加" : "Increased in the latest 30 minutes",
+    FALLING: language === "zh" ? "最近半小时有所减少" : "Decreased in the latest 30 minutes",
+    STEADY: language === "zh" ? "最近两个半小时差不多" : "Similar across the last two half-hours"
+  };
+  document.getElementById("journey-parking-status").textContent = parkingReady
+    ? (parkingLabel[parking.pressure_label] || (language === "zh" ? "已有附近付费停车数据" : "Nearby paid-parking data available"))
+    : (language === "zh" ? "附近暂时没有足够数据" : "Not enough nearby data yet");
+  document.getElementById("journey-parking-detail").innerHTML = parkingReady
+    ? `
+      <div class="evidence-row"><span>${language === "zh" ? "仍在付费时段内的记录" : "Paid sessions still within their paid period"}</span><strong>${fmt(parking.active_paid_sessions_proxy)}</strong></div>
+      <div class="evidence-row"><span>${language === "zh" ? "最近 60 分钟开始付费" : "Paid sessions started in the last 60 min"}</span><strong>${fmt(parking.starts_60m)}</strong></div>
+      <div class="evidence-row"><span>${language === "zh" ? "附近收录的收费车位" : "Metered spaces represented nearby"}</span><strong>${fmt(parking.metered_spaces_represented)}</strong></div>
+      <div class="evidence-row"><span>${language === "zh" ? "近期变化" : "Recent change"}</span><strong>${escapeHtml(trendCopy[parking.trend] || (language === "zh" ? "无法判断" : "Unavailable"))}</strong></div>
+      <p class="fine-print">${language === "zh" ? `相对值为第 ${fmt(parking.relative_pressure_percentile)} 百分位，只用于和有数据的区域比较付费活动。` : `The ${fmt(parking.relative_pressure_percentile)}th percentile only compares paid activity with other areas that have data.`}</p>
+      <p class="evidence-note">${language === "zh" ? "付费记录不代表车辆一定仍在现场，也不能告诉你还有多少空位。" : "A paid session does not prove a vehicle is still present and cannot tell you how many spaces are open."}</p>`
+    : `<p class="evidence-note">${language === "zh" ? "这不是实时车位查询。没有匹配数据时，我们不会猜测停车难度。" : "This is not a live space finder. When nearby evidence is missing, we do not guess how difficult parking will be."}</p>`;
 }
 
 function renderAlternatives(alternatives) {
@@ -1065,7 +1096,9 @@ async function planTrip() {
 
 function renderContext() {
   const parking = snapshot.parking || {};
-  const parkingStarts = String(parking.detail || "").match(/[\d,]+/)?.[0];
+  const parkingStarts = hasNumber(parking.recent_3h_transaction_count)
+    ? fmt(parking.recent_3h_transaction_count)
+    : String(parking.detail || "").match(/[\d,]+/)?.[0];
   document.getElementById("parking-status").textContent = language === "zh" ? "最近 3 小时的停车付费活动" : "Paid parking activity in the last 3 hours";
   document.getElementById("parking-detail").textContent = parkingStarts
     ? (language === "zh" ? `最近的数据中有 ${parkingStarts} 次停车付费开始记录。它反映付费活动，不代表实际还有多少空位。` : `${parkingStarts} paid parking sessions began in the latest data. This shows payment activity, not the number of open spaces.`)

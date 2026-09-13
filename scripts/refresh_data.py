@@ -9,6 +9,7 @@ writes a credential-free JSON snapshot for GitHub Pages.
 from __future__ import annotations
 
 import csv
+from bisect import bisect_right
 import io
 import json
 import math
@@ -29,7 +30,8 @@ from google.transit import gtfs_realtime_pb2
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = ROOT / "site" / "data" / "latest.json"
 NETWORK_PATH = ROOT / "site" / "data" / "network.json"
-PIPELINE_VERSION = "1.3.0"
+PARKING_INVENTORY_PATH = ROOT / "site" / "data" / "parking-inventory.json"
+PIPELINE_VERSION = "1.4.0"
 USER_AGENT = "SF-Transit-Pulse/1.0 (+https://github.com/ksitcode00/sf-transit-pulse)"
 SF_BOUNDS = {"south": 37.68, "north": 37.84, "west": -122.55, "east": -122.33}
 REQUEST_BUDGET = {
@@ -778,6 +780,224 @@ def datasf_records(dataset_id: str, query: str, page_size: int) -> list[dict[str
     return []
 
 
+def load_parking_inventory() -> list[dict[str, Any]]:
+    """Cache weekly meter-space locations used to geolocate paid sessions."""
+
+    if PARKING_INVENTORY_PATH.exists():
+        try:
+            cached = json.loads(PARKING_INVENTORY_PATH.read_text(encoding="utf-8"))
+            generated = datetime.fromisoformat(
+                str(cached.get("generated_at") or "").replace("Z", "+00:00")
+            )
+            if generated.tzinfo is None:
+                generated = generated.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) - generated <= timedelta(days=7):
+                return list(cached.get("meters", []))
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            pass
+
+    query = """
+SELECT post_id, parking_space_id, latitude, longitude, street_name, street_num, data_as_of
+WHERE post_id IS NOT NULL
+  AND parking_space_id IS NOT NULL
+  AND latitude IS NOT NULL
+  AND longitude IS NOT NULL
+  AND active_meter_flag IN ('M', 'T')
+  AND on_offstreet_type = 'ON'
+LIMIT 50000
+""".strip()
+    rows = datasf_records("8vzz-qzz9", query, 50000)
+    meters = []
+    seen_spaces = set()
+    for row in rows:
+        space_id = str(row.get("parking_space_id") or "")
+        post_id = str(row.get("post_id") or "")
+        try:
+            lat = float(row["latitude"])
+            lon = float(row["longitude"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not space_id or not post_id or space_id in seen_spaces or not inside_sf(lat, lon):
+            continue
+        seen_spaces.add(space_id)
+        meters.append(
+            {
+                "post_id": post_id,
+                "parking_space_id": space_id,
+                "lat": round(lat, 6),
+                "lon": round(lon, 6),
+                "street": " ".join(
+                    filter(
+                        None,
+                        [str(row.get("street_num") or ""), str(row.get("street_name") or "")],
+                    )
+                ),
+            }
+        )
+    if not meters:
+        raise ValueError("Parking meter inventory returned no usable on-street spaces.")
+    write_json(
+        {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "source": "DataSF Parking Meters 8vzz-qzz9",
+            "meter_count": len(meters),
+            "meters": meters,
+        },
+        PARKING_INVENTORY_PATH,
+        compact=True,
+    )
+    return meters
+
+
+def build_parking_pressure(
+    rows: list[dict[str, Any]],
+    meters: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Create destination-level paid-parking pressure cells."""
+
+    positions_by_post: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    cells: dict[tuple[float, float], dict[str, Any]] = {}
+    for meter in meters:
+        try:
+            lat, lon = float(meter["lat"]), float(meter["lon"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        post_id = str(meter.get("post_id") or "")
+        if not post_id:
+            continue
+        positions_by_post[post_id].append(meter)
+        key = (round(round(lat / 0.002) * 0.002, 3), round(round(lon / 0.002) * 0.002, 3))
+        cell = cells.setdefault(
+            key,
+            {
+                "lat": key[0],
+                "lon": key[1],
+                "metered_spaces": 0,
+                "active_paid_sessions_proxy": 0,
+                "starts_15m": 0,
+                "starts_30m": 0,
+                "starts_60m": 0,
+                "starts_90m": 0,
+                "previous_30m_starts": 0,
+            },
+        )
+        cell["metered_spaces"] += 1
+
+    parsed = []
+    for row in rows:
+        try:
+            started = datetime.fromisoformat(
+                str(row.get("session_start_dt", "")).replace("Z", "+00:00")
+            )
+        except ValueError:
+            continue
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=timezone.utc)
+        ended = None
+        try:
+            ended = datetime.fromisoformat(
+                str(row.get("session_end_dt", "")).replace("Z", "+00:00")
+            )
+            if ended.tzinfo is None:
+                ended = ended.replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
+        parsed.append((started, ended, str(row.get("post_id") or ""), str(row.get("street_block") or "")))
+    if not parsed or not cells:
+        return {
+            "status": "PARKING_PRESSURE_UNAVAILABLE",
+            "detail": "Parking sessions or meter inventory could not be matched.",
+            "cells": [],
+        }
+
+    newest = max(row[0] for row in parsed)
+    block_counts = Counter()
+    unmatched = 0
+    for started, ended, post_id, street in parsed:
+        positions = positions_by_post.get(post_id, [])
+        if not positions:
+            unmatched += 1
+            continue
+        mean_lat = statistics.mean(float(row["lat"]) for row in positions)
+        mean_lon = statistics.mean(float(row["lon"]) for row in positions)
+        key = (
+            round(round(mean_lat / 0.002) * 0.002, 3),
+            round(round(mean_lon / 0.002) * 0.002, 3),
+        )
+        cell = cells.get(key)
+        if cell is None:
+            continue
+        age_min = (newest - started).total_seconds() / 60
+        if 0 <= age_min <= 15:
+            cell["starts_15m"] += 1
+        if 0 <= age_min <= 30:
+            cell["starts_30m"] += 1
+        elif 30 < age_min <= 60:
+            cell["previous_30m_starts"] += 1
+        if 0 <= age_min <= 60:
+            cell["starts_60m"] += 1
+        if 0 <= age_min <= 90:
+            cell["starts_90m"] += 1
+        if ended is not None and started <= newest <= ended:
+            cell["active_paid_sessions_proxy"] += 1
+        if street and 0 <= age_min <= 180:
+            block_counts[street] += 1
+
+    ratios = []
+    for cell in cells.values():
+        inventory = max(1, int(cell["metered_spaces"]))
+        ratio = cell["active_paid_sessions_proxy"] / inventory
+        cell["paid_session_pressure_ratio"] = round(ratio, 3)
+        recent = cell["starts_30m"]
+        previous = cell["previous_30m_starts"]
+        if recent >= previous + 2 and recent >= previous * 1.2:
+            cell["trend"] = "RISING"
+        elif previous >= recent + 2 and recent <= previous * 0.8:
+            cell["trend"] = "FALLING"
+        else:
+            cell["trend"] = "STEADY"
+        ratios.append(ratio)
+    ratio_distribution = sorted(value for value in ratios if value > 0) or [0.0]
+    for cell in cells.values():
+        percentile_value = (
+            round(
+                100
+                * bisect_right(ratio_distribution, cell["paid_session_pressure_ratio"])
+                / len(ratio_distribution)
+            )
+            if cell["paid_session_pressure_ratio"] > 0
+            else 0
+        )
+        cell["relative_pressure_percentile"] = percentile_value
+        if percentile_value >= 90:
+            cell["pressure_label"] = "VERY_HIGH"
+        elif percentile_value >= 70:
+            cell["pressure_label"] = "HIGH"
+        elif percentile_value >= 35:
+            cell["pressure_label"] = "MODERATE"
+        else:
+            cell["pressure_label"] = "LOW"
+
+    cell_rows = sorted(cells.values(), key=lambda row: (row["lat"], row["lon"]))
+    return {
+        "status": "DESTINATION_PAID_PARKING_PRESSURE",
+        "detail": (
+            "Active paid-session and recent-start proxies near on-street meter inventory. "
+            "This does not measure physical occupancy or open spaces."
+        ),
+        "source_snapshot_time": newest.isoformat(),
+        "meter_inventory_count": len(meters),
+        "matched_transaction_count": len(parsed) - unmatched,
+        "unmatched_transaction_count": unmatched,
+        "recent_3h_transaction_count": sum(block_counts.values()),
+        "busiest_blocks": [
+            {"street_block": street, "payments_3h": count}
+            for street, count in block_counts.most_common(8)
+        ],
+        "cells": cell_rows,
+    }
+
+
 def refresh_parking() -> dict[str, Any]:
     query = """
 SELECT session_start_dt, session_end_dt, post_id, street_block
@@ -786,46 +1006,92 @@ ORDER BY session_start_dt DESC
 LIMIT 5000
 """.strip()
     rows = datasf_records("imvp-dq3v", query, 5000)
-    parsed = []
+    return build_parking_pressure(rows, load_parking_inventory())
+
+
+def build_safety_context(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Turn aggregate incident cells into relative, non-predictive context."""
+
+    counts: dict[tuple[float, float], int] = {}
+    latest_values = []
     for row in rows:
         try:
-            started = datetime.fromisoformat(str(row.get("session_start_dt", "")).replace("Z", "+00:00"))
-        except ValueError:
+            key = (round(float(row["latitude"]), 3), round(float(row["longitude"]), 3))
+            count = int(float(row.get("incident_count", 0) or 0))
+        except (KeyError, TypeError, ValueError):
             continue
-        street = str(row.get("street_block") or "").strip()
-        if not street or "GARAGE" in street.upper() or " LOT" in street.upper():
+        if count <= 0 or not inside_sf(*key):
             continue
-        parsed.append((started, street))
-    if not parsed:
-        return {"status": "Parking evidence limited", "detail": "No valid recent paid-session rows were returned."}
-    newest = max(item[0] for item in parsed)
-    window = newest - timedelta(hours=3)
-    counts = Counter(street for started, street in parsed if started >= window)
-    busiest = [{"street_block": street, "payments_3h": count} for street, count in counts.most_common(8)]
+        counts[key] = counts.get(key, 0) + count
+        latest = str(row.get("latest_incident_datetime") or "")
+        if latest:
+            latest_values.append(latest)
+    if not counts:
+        return {
+            "status": "CITY_CONTEXT_ONLY",
+            "detail": "No usable location cells were returned for journey comparison.",
+            "cells": [],
+        }
+
+    # Feature 23 · Journey historical context / 行程级历史事件背景
+    # 中文：先按约 100 米网格聚合，再把每个网格周围约 250 米内的报告数与全市
+    # 有记录的网格比较，得到相对百分位。这里只表达“历史报告相对多或少”，不预测
+    # 犯罪，也不把任何地点标记为安全或危险。
+    # English: Aggregate to roughly 100 m cells, then compare each cell's nearby
+    # 365-day report count with other observed city cells. The percentile is
+    # descriptive historical context, never a crime forecast or safety label.
+    nearby_counts: dict[tuple[float, float], int] = {}
+    for lat, lon in counts:
+        nearby_counts[(lat, lon)] = sum(
+            counts.get((round(lat + lat_offset / 1000, 3), round(lon + lon_offset / 1000, 3)), 0)
+            for lat_offset in range(-2, 3)
+            for lon_offset in range(-3, 4)
+            if math.hypot(lat_offset * 110.54, lon_offset * 88.0) <= 250
+        )
+    distribution = sorted(nearby_counts.values())
+    cells = [
+        {
+            "lat": lat,
+            "lon": lon,
+            "reported_incidents_365d_cell": counts[(lat, lon)],
+            "reported_incidents_365d_nearby": nearby_counts[(lat, lon)],
+            "relative_percentile": round(
+                100 * bisect_right(distribution, nearby_counts[(lat, lon)]) / len(distribution)
+            ),
+        }
+        for lat, lon in sorted(counts)
+    ]
+    total = sum(counts.values())
     return {
-        "status": "Recent demand snapshot",
-        "detail": f"{sum(counts.values()):,} paid-session starts in the latest three-hour feed window. Demand proxy only; not physical occupancy.",
-        "source_snapshot_time": newest.isoformat(),
-        "busiest_blocks": busiest,
+        "status": "JOURNEY_RELATIVE_CONTEXT",
+        "detail": (
+            f"{total:,} reported incident rows summarized into {len(cells):,} location cells. "
+            "Relative historical context only; not a crime forecast or safe/unsafe label."
+        ),
+        "source_snapshot_time": max(latest_values) if latest_values else None,
+        "lookback_days": 365,
+        "cell_precision_degrees": 0.001,
+        "nearby_window": "approximately 250 meters",
+        "cell_count": len(cells),
+        "cells": cells,
     }
 
 
 def refresh_safety() -> dict[str, Any]:
     since = (datetime.now(timezone.utc) - timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%S")
     query = f"""
-SELECT incident_category, count(*) AS incident_count
+SELECT
+  round(latitude, 3) AS latitude,
+  round(longitude, 3) AS longitude,
+  count(*) AS incident_count,
+  max(incident_datetime) AS latest_incident_datetime
 WHERE incident_datetime >= '{since}'
-GROUP BY incident_category
-ORDER BY incident_count DESC
-LIMIT 50
+  AND latitude IS NOT NULL
+  AND longitude IS NOT NULL
+GROUP BY round(latitude, 3), round(longitude, 3)
+LIMIT 20000
 """.strip()
-    rows = datasf_records("wg3w-h783", query, 50)
-    total = sum(int(float(row.get("incident_count", 0) or 0)) for row in rows)
-    return {
-        "status": "365-day relative context",
-        "detail": f"{total:,} city incident rows summarized for context. This is not a crime forecast or a safe/unsafe label.",
-        "category_count": len(rows),
-    }
+    return build_safety_context(datasf_records("wg3w-h783", query, 20000))
 
 
 def main() -> int:

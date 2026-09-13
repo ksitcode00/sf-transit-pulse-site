@@ -74,7 +74,9 @@ def test_public_beta_uses_the_qa_validated_walking_policy() -> None:
     assert WALK_SPEED_M_PER_MIN == 75.0
 
 
-def _realtime_test_engine(*, transfer: bool) -> PlannerEngine:
+def _realtime_test_engine(
+    *, transfer: bool, safety: bool = False, parking: bool = False
+) -> PlannerEngine:
     now_epoch = int(datetime.now(timezone.utc).timestamp())
     stops = {
         "A": {"stop_id": "A", "name": "Alpha", "lat": 37.700, "lon": -122.400},
@@ -136,7 +138,50 @@ def _realtime_test_engine(*, transfer: bool) -> PlannerEngine:
         "route_directions": {},
         "patterns": patterns,
     }
-    realtime = {"meta": {"status": "live"}, "routes": [], "vehicles": [], "trip_predictions": predictions}
+    safety_payload = {
+        "status": "JOURNEY_RELATIVE_CONTEXT",
+        "lookback_days": 365,
+        "cells": [
+            {"lat": 37.700, "lon": -122.400, "reported_incidents_365d_cell": 2, "reported_incidents_365d_nearby": 2},
+            {"lat": 37.710, "lon": -122.400, "reported_incidents_365d_cell": 8, "reported_incidents_365d_nearby": 8},
+            {"lat": 37.720, "lon": -122.400, "reported_incidents_365d_cell": 20, "reported_incidents_365d_nearby": 20},
+        ],
+    } if safety else {}
+    parking_payload = {
+        "status": "DESTINATION_PAID_PARKING_PRESSURE",
+        "cells": [
+            {
+                "lat": 37.720,
+                "lon": -122.400,
+                "metered_spaces": 10,
+                "active_paid_sessions_proxy": 7,
+                "paid_session_pressure_ratio": 0.7,
+                "starts_15m": 2,
+                "starts_30m": 4,
+                "starts_60m": 6,
+                "previous_30m_starts": 1,
+            },
+            {
+                "lat": 37.730,
+                "lon": -122.430,
+                "metered_spaces": 10,
+                "active_paid_sessions_proxy": 2,
+                "paid_session_pressure_ratio": 0.2,
+                "starts_15m": 0,
+                "starts_30m": 1,
+                "starts_60m": 2,
+                "previous_30m_starts": 1,
+            },
+        ],
+    } if parking else {}
+    realtime = {
+        "meta": {"status": "live"},
+        "routes": [],
+        "vehicles": [],
+        "trip_predictions": predictions,
+        "safety": safety_payload,
+        "parking": parking_payload,
+    }
     return PlannerEngine(network, realtime)
 
 
@@ -183,3 +228,29 @@ def test_leg_disruption_requires_slowdown_and_road_match_for_corroboration() -> 
     assert context["road_context"][0]["relation"] == "DIRECT_OVERLAP"
     assert context["evidence_status"] == "SLOWDOWN_WITH_MATCHED_ROAD_CONTEXT"
     assert "do not prove" in context["causality_note"]
+
+
+def test_journey_safety_context_enables_real_safety_first_contract() -> None:
+    result = _realtime_test_engine(transfer=True, safety=True).plan("A", "D", "SAFETY_FIRST")
+    journey = next(row for row in result["alternatives"] if row["route_sequence"] == "R1 → R2")
+
+    assert result["meta"]["safety_status"] == "JOURNEY_RELATIVE_CONTEXT"
+    assert journey["safety"]["status"] == "JOURNEY_RELATIVE_CONTEXT"
+    assert journey["safety"]["origin_percentile"] is not None
+    assert journey["safety"]["route_percentile"] is not None
+    assert journey["safety"]["transfer_percentile"] is not None
+    assert journey["safety"]["destination_percentile"] is not None
+    assert journey["costs"]["safety_first"] > journey["costs"]["balanced"]
+
+
+def test_destination_parking_context_is_a_pressure_proxy_not_availability() -> None:
+    result = _realtime_test_engine(transfer=True, parking=True).plan("A", "D", "BALANCED")
+    journey = next(row for row in result["alternatives"] if row["route_sequence"] == "R1 → R2")
+    parking = journey["destination_parking"]
+
+    assert parking["status"] == "PAID_PARKING_PRESSURE_PROXY"
+    assert parking["metered_spaces_represented"] == 10
+    assert parking["active_paid_sessions_proxy"] == 7
+    assert parking["starts_60m"] == 6
+    assert parking["trend"] == "RISING"
+    assert "does not measure physical occupancy or open spaces" in parking["disclaimer"]

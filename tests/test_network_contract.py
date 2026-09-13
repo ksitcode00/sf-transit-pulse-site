@@ -10,6 +10,8 @@ from pathlib import Path
 from google.transit import gtfs_realtime_pb2
 
 from scripts.refresh_data import (
+    build_parking_pressure,
+    build_safety_context,
     build_spacing_events,
     parse_alerts,
     parse_road_events,
@@ -132,6 +134,52 @@ def test_trip_predictions_keep_concrete_trip_and_stop_times() -> None:
     ]
 
 
+def test_safety_context_aggregates_locations_without_labeling_places_safe() -> None:
+    context = build_safety_context(
+        [
+            {"latitude": "37.700", "longitude": "-122.400", "incident_count": "2"},
+            {"latitude": "37.701", "longitude": "-122.400", "incident_count": "5"},
+            {"latitude": "37.780", "longitude": "-122.420", "incident_count": "20"},
+        ]
+    )
+
+    assert context["status"] == "JOURNEY_RELATIVE_CONTEXT"
+    assert context["lookback_days"] == 365
+    assert len(context["cells"]) == 3
+    assert all("relative_percentile" in row for row in context["cells"])
+    assert "not a crime forecast or safe/unsafe label" in context["detail"]
+
+
+def test_parking_pressure_uses_paid_sessions_without_claiming_open_spaces() -> None:
+    meters = [
+        {"post_id": "P1", "parking_space_id": "S1", "lat": 37.780, "lon": -122.420},
+        {"post_id": "P2", "parking_space_id": "S2", "lat": 37.780, "lon": -122.420},
+    ]
+    rows = [
+        {
+            "post_id": "P1",
+            "session_start_dt": "2026-09-13T12:00:00",
+            "session_end_dt": "2026-09-13T13:00:00",
+            "street_block": "100 Market St",
+        },
+        {
+            "post_id": "P2",
+            "session_start_dt": "2026-09-13T12:20:00",
+            "session_end_dt": "2026-09-13T13:20:00",
+            "street_block": "100 Market St",
+        },
+    ]
+
+    context = build_parking_pressure(rows, meters)
+
+    assert context["status"] == "DESTINATION_PAID_PARKING_PRESSURE"
+    assert context["matched_transaction_count"] == 2
+    assert context["recent_3h_transaction_count"] == 2
+    assert context["cells"][0]["metered_spaces"] == 2
+    assert context["cells"][0]["active_paid_sessions_proxy"] == 2
+    assert "does not measure physical occupancy or open spaces" in context["detail"]
+
+
 def test_road_event_without_transit_match_remains_explicit_context() -> None:
     event = parse_road_events(
         {
@@ -169,6 +217,7 @@ def test_workflow_runs_core_every_five_minutes_and_context_every_fifteen() -> No
     assert 'cron: "3,18,33,48 * * * *"' in workflow
     assert 'cron: "8,13,23,28,38,43,53,58 * * * *"' in workflow
     assert "SF_TRANSIT_REFRESH_CONTEXT" in workflow
+    assert "site/data/parking-inventory.json" in workflow
 
 
 def test_public_beta_removes_misleading_planner_fallbacks() -> None:
@@ -228,6 +277,11 @@ def test_realtime_journey_copy_distinguishes_predictions_from_estimates() -> Non
     assert "换乘余量" in app
     assert "one-minute boarding buffer" in readme
     assert "一分钟上车余量" in readme
+    assert 'safety_status === "JOURNEY_RELATIVE_CONTEXT"' in app
+    assert "不能预测你这次是否安全" in app
+    assert "Parking near your destination" in app
+    assert "目的地附近停车情况" in app
+    assert "cannot tell you how many spaces are open" in app
 
 
 def test_static_gtfs_keeps_multiple_patterns_per_route_direction() -> None:

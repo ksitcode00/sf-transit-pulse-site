@@ -240,7 +240,7 @@ button.issue-card { cursor: pointer; }
 .journey-timeline li::before { content: ""; position: absolute; left: -6px; top: 4px; width: 10px; height: 10px; border: 1px solid var(--blue); border-radius: 50%; background: var(--white); }
 .journey-timeline strong { display: block; }
 .journey-timeline span { display: block; margin-top: 3px; color: var(--muted); font-size: 14px; }
-.journey-evidence-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
+.journey-evidence-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 24px; }
 .evidence-row { display: flex; justify-content: space-between; gap: 20px; padding: 10px 0; border-top: 1px solid var(--soft-divider); font-size: 14px; }
 .evidence-row span:first-child { color: var(--muted); }
 .evidence-note { margin: 18px 0 0; color: var(--muted); font-size: 13px; }

@@ -104,7 +104,7 @@ allowed_origins = [
 repository = PlannerRepository(NETWORK_SOURCE, REALTIME_SOURCE)
 app = FastAPI(
     title="SF Transit Pulse Planner API",
-    version="20.1",
+    version="24.1",
     description="Trip-level direct and one-transfer Muni planning from credential-free caches.",
 )
 app.add_middleware(
