@@ -822,13 +822,11 @@ def load_parking_inventory() -> list[dict[str, Any]]:
             pass
 
     query = """
-SELECT post_id, parking_space_id, latitude, longitude, street_name, street_num, data_as_of
+SELECT post_id, parking_space_id, latitude, longitude, street_name, street_num,
+       active_meter_flag, on_offstreet_type, data_as_of
 WHERE post_id IS NOT NULL
-  AND parking_space_id IS NOT NULL
   AND latitude IS NOT NULL
   AND longitude IS NOT NULL
-  AND active_meter_flag IN ('M', 'T')
-  AND on_offstreet_type = 'ON'
 LIMIT 40000
 """.strip()
     rows = datasf_records("8vzz-qzz9", query, 5000, max_pages=8)
@@ -840,12 +838,21 @@ LIMIT 40000
         row = {str(key).strip().casefold(): value for key, value in source_row.items()}
         space_id = str(row.get("parking_space_id") or "")
         post_id = str(row.get("post_id") or "")
+        active_flag = str(row.get("active_meter_flag") or "").strip().upper()
+        street_type = str(row.get("on_offstreet_type") or "").strip().upper()
         try:
             lat = float(row["latitude"])
             lon = float(row["longitude"])
         except (KeyError, TypeError, ValueError):
             continue
-        if not space_id or not post_id or space_id in seen_spaces or not inside_sf(lat, lon):
+        if (
+            not space_id
+            or not post_id
+            or active_flag not in {"M", "T"}
+            or street_type != "ON"
+            or space_id in seen_spaces
+            or not inside_sf(lat, lon)
+        ):
             continue
         seen_spaces.add(space_id)
         meters.append(
