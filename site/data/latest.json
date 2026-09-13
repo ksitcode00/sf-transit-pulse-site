@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-09-13T09:39:29.713406+00:00",
+    "generated_at": "2026-09-13T09:39:53.371753+00:00",
     "status": "live",
     "pipeline_version": "1.2.0",
     "errors": [],
@@ -12,15 +12,15 @@
     "source_status": {
       "transit": {
         "status": "live",
-        "observed_at": "2026-09-13T09:39:29.713400+00:00"
+        "observed_at": "2026-09-13T09:39:47.254165+00:00"
       },
       "parking": {
-        "status": "retained",
-        "observed_at": "2026-09-11T22:00:11"
+        "status": "refreshed",
+        "observed_at": "2026-09-12T21:54:38"
       },
       "safety": {
-        "status": "retained",
-        "observed_at": "2026-09-13T04:37:43.674203+00:00"
+        "status": "refreshed",
+        "observed_at": "2026-09-13T09:39:53.371770+00:00"
       }
     },
     "request_budget": {
@@ -34,10 +34,10 @@
     "refresh_policy": "Vehicles and trip updates every 5 minutes; alerts and road context every 15 minutes via GitHub Actions"
   },
   "system": {
-    "vehicle_count": 308,
+    "vehicle_count": 307,
     "route_count": 13,
     "route_direction_count": 25,
-    "alert_count": 13,
+    "alert_count": 3,
     "road_event_count": 20
   },
   "vehicles": [
@@ -51,7 +51,7 @@
       "lon": -122.446114,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "1058",
@@ -63,7 +63,7 @@
       "lon": -122.446075,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "1070",
@@ -75,7 +75,7 @@
       "lon": -122.446014,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "1483",
@@ -87,7 +87,7 @@
       "lon": -122.386032,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "15",
@@ -95,11 +95,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.7948,
-      "lon": -122.411758,
-      "bearing": 210.0,
+      "lat": 37.794811,
+      "lon": -122.41185,
+      "bearing": 225.0,
       "speed_mps": 0.56,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "19",
@@ -108,10 +108,10 @@
       "direction_id": "",
       "direction_label": "Direction unavailable",
       "lat": 37.794811,
-      "lon": -122.411903,
+      "lon": -122.411888,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2001",
@@ -123,7 +123,7 @@
       "lon": -122.446335,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2002",
@@ -135,7 +135,7 @@
       "lon": -122.38472,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2003",
@@ -147,7 +147,7 @@
       "lon": -122.385811,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2004",
@@ -159,7 +159,7 @@
       "lon": -122.384514,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2006",
@@ -167,11 +167,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.75095,
-      "lon": -122.386238,
+      "lat": 37.750763,
+      "lon": -122.386185,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2007",
@@ -183,7 +183,7 @@
       "lon": -122.4468,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2008",
@@ -195,7 +195,7 @@
       "lon": -122.384712,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2009",
@@ -203,11 +203,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.751472,
-      "lon": -122.384583,
+      "lat": 37.751667,
+      "lon": -122.384628,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2010",
@@ -219,7 +219,7 @@
       "lon": -122.384674,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2011",
@@ -231,7 +231,7 @@
       "lon": -122.446754,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2012",
@@ -243,7 +243,7 @@
       "lon": -122.384315,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2013",
@@ -251,11 +251,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.751644,
-      "lon": -122.38591,
+      "lat": 37.751877,
+      "lon": -122.385994,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2014",
@@ -267,7 +267,7 @@
       "lon": -122.447006,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2015",
@@ -279,7 +279,7 @@
       "lon": -122.446922,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2016",
@@ -291,7 +291,7 @@
       "lon": -122.384613,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2017",
@@ -303,7 +303,7 @@
       "lon": -122.446999,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2018",
@@ -315,7 +315,7 @@
       "lon": -122.38459,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2021",
@@ -327,7 +327,7 @@
       "lon": -122.384674,
       "bearing": 195.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2022",
@@ -339,7 +339,7 @@
       "lon": -122.446899,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2023",
@@ -351,7 +351,7 @@
       "lon": -122.446671,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2024",
@@ -363,7 +363,7 @@
       "lon": -122.384636,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2025",
@@ -371,11 +371,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.721901,
-      "lon": -122.447006,
-      "bearing": 0.0,
+      "lat": 37.721863,
+      "lon": -122.447067,
+      "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2026",
@@ -387,7 +387,7 @@
       "lon": -122.384872,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2029",
@@ -399,7 +399,7 @@
       "lon": -122.447121,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2030",
@@ -411,7 +411,7 @@
       "lon": -122.384247,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2032",
@@ -423,7 +423,7 @@
       "lon": -122.384537,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2034",
@@ -435,7 +435,7 @@
       "lon": -122.384911,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2035",
@@ -447,7 +447,7 @@
       "lon": -122.447144,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2036",
@@ -459,7 +459,7 @@
       "lon": -122.384537,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2037",
@@ -471,7 +471,7 @@
       "lon": -122.384613,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2038",
@@ -479,11 +479,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.722099,
-      "lon": -122.447128,
+      "lat": 37.721905,
+      "lon": -122.447174,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2040",
@@ -495,7 +495,7 @@
       "lon": -122.446739,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2042",
@@ -507,7 +507,7 @@
       "lon": -122.446915,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2045",
@@ -515,11 +515,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.752048,
-      "lon": -122.384155,
+      "lat": 37.752068,
+      "lon": -122.384132,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2046",
@@ -531,7 +531,7 @@
       "lon": -122.384125,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2047",
@@ -543,7 +543,7 @@
       "lon": -122.386002,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2053",
@@ -555,7 +555,7 @@
       "lon": -122.446678,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2057",
@@ -567,7 +567,7 @@
       "lon": -122.384178,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2058",
@@ -579,7 +579,7 @@
       "lon": -122.384659,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2059",
@@ -587,11 +587,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.752254,
+      "lat": 37.752251,
       "lon": -122.384163,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2060",
@@ -603,7 +603,7 @@
       "lon": -122.446686,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2064",
@@ -615,7 +615,7 @@
       "lon": -122.385765,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2067",
@@ -627,7 +627,7 @@
       "lon": -122.385872,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2068",
@@ -639,7 +639,7 @@
       "lon": -122.446663,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2069",
@@ -651,7 +651,7 @@
       "lon": -122.384308,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2070",
@@ -663,7 +663,7 @@
       "lon": -122.38456,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2071",
@@ -675,7 +675,7 @@
       "lon": -122.446571,
       "bearing": 195.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2072",
@@ -687,7 +687,7 @@
       "lon": -122.447052,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2073",
@@ -699,7 +699,7 @@
       "lon": -122.384544,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2074",
@@ -711,7 +711,7 @@
       "lon": -122.384407,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2075",
@@ -723,7 +723,7 @@
       "lon": -122.446266,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2076",
@@ -735,7 +735,7 @@
       "lon": -122.384544,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2077",
@@ -747,7 +747,7 @@
       "lon": -122.446732,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2079",
@@ -759,7 +759,7 @@
       "lon": -122.384361,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2080",
@@ -771,7 +771,7 @@
       "lon": -122.446495,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2081",
@@ -783,7 +783,7 @@
       "lon": -122.44696,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2082",
@@ -795,7 +795,7 @@
       "lon": -122.386253,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2083",
@@ -807,7 +807,7 @@
       "lon": -122.38446,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2084",
@@ -819,7 +819,7 @@
       "lon": -122.446358,
       "bearing": 195.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2085",
@@ -827,11 +827,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.751728,
-      "lon": -122.384277,
+      "lat": 37.752102,
+      "lon": -122.3843,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2086",
@@ -843,7 +843,7 @@
       "lon": -122.446045,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2088",
@@ -855,7 +855,7 @@
       "lon": -122.38546,
       "bearing": 150.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2089",
@@ -863,11 +863,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.751835,
+      "lat": 37.751888,
       "lon": -122.384399,
-      "bearing": 165.0,
+      "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2090",
@@ -879,7 +879,7 @@
       "lon": -122.386101,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2091",
@@ -891,7 +891,7 @@
       "lon": -122.445656,
       "bearing": 45.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2092",
@@ -899,11 +899,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.722252,
-      "lon": -122.445358,
+      "lat": 37.722282,
+      "lon": -122.445419,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2093",
@@ -915,7 +915,7 @@
       "lon": -122.446899,
       "bearing": 240.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2094",
@@ -927,7 +927,7 @@
       "lon": -122.384514,
       "bearing": 300.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2095",
@@ -939,7 +939,7 @@
       "lon": -122.386368,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2096",
@@ -951,7 +951,7 @@
       "lon": -122.385643,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2097",
@@ -963,7 +963,7 @@
       "lon": -122.447075,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2098",
@@ -975,7 +975,7 @@
       "lon": -122.446892,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2099",
@@ -987,7 +987,7 @@
       "lon": -122.384148,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "21",
@@ -995,11 +995,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.794971,
-      "lon": -122.411797,
-      "bearing": 60.0,
-      "speed_mps": 0.56,
-      "age_seconds": 13
+      "lat": 37.794937,
+      "lon": -122.411659,
+      "bearing": 0.0,
+      "speed_mps": 0.0,
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2100",
@@ -1011,7 +1011,7 @@
       "lon": -122.384293,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2101",
@@ -1023,7 +1023,7 @@
       "lon": -122.446739,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2102",
@@ -1035,7 +1035,7 @@
       "lon": -122.447128,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2103",
@@ -1047,7 +1047,7 @@
       "lon": -122.446968,
       "bearing": 75.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2104",
@@ -1059,7 +1059,7 @@
       "lon": -122.445786,
       "bearing": 195.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2105",
@@ -1071,7 +1071,7 @@
       "lon": -122.44706,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2106",
@@ -1083,7 +1083,7 @@
       "lon": -122.446281,
       "bearing": 210.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2108",
@@ -1095,7 +1095,7 @@
       "lon": -122.446747,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2109",
@@ -1107,7 +1107,7 @@
       "lon": -122.38623,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2110",
@@ -1119,7 +1119,7 @@
       "lon": -122.447083,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2111",
@@ -1131,7 +1131,7 @@
       "lon": -122.38443,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2113",
@@ -1143,7 +1143,7 @@
       "lon": -122.384193,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2115",
@@ -1155,7 +1155,7 @@
       "lon": -122.385704,
       "bearing": 330.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2116",
@@ -1167,7 +1167,7 @@
       "lon": -122.445221,
       "bearing": 45.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2117",
@@ -1179,7 +1179,7 @@
       "lon": -122.384239,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2118",
@@ -1191,7 +1191,7 @@
       "lon": -122.386253,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2119",
@@ -1203,7 +1203,7 @@
       "lon": -122.445923,
       "bearing": 225.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2120",
@@ -1215,7 +1215,7 @@
       "lon": -122.386398,
       "bearing": 75.0,
       "speed_mps": 1.39,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2121",
@@ -1227,7 +1227,7 @@
       "lon": -122.385788,
       "bearing": 330.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2122",
@@ -1239,7 +1239,7 @@
       "lon": -122.386284,
       "bearing": 315.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2123",
@@ -1251,7 +1251,7 @@
       "lon": -122.446579,
       "bearing": 15.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2124",
@@ -1263,7 +1263,7 @@
       "lon": -122.446823,
       "bearing": 135.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2125",
@@ -1275,7 +1275,7 @@
       "lon": -122.447037,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2126",
@@ -1287,7 +1287,7 @@
       "lon": -122.384789,
       "bearing": 30.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2130",
@@ -1299,7 +1299,7 @@
       "lon": -122.384438,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2131",
@@ -1311,7 +1311,7 @@
       "lon": -122.386276,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2132",
@@ -1323,7 +1323,7 @@
       "lon": -122.446953,
       "bearing": 75.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2134",
@@ -1335,7 +1335,7 @@
       "lon": -122.446632,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2137",
@@ -1347,7 +1347,7 @@
       "lon": -122.446022,
       "bearing": 150.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2142",
@@ -1359,7 +1359,7 @@
       "lon": -122.38443,
       "bearing": 120.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2143",
@@ -1367,11 +1367,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.751976,
-      "lon": -122.385559,
+      "lat": 37.751884,
+      "lon": -122.385635,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2144",
@@ -1383,7 +1383,7 @@
       "lon": -122.386383,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2145",
@@ -1395,7 +1395,7 @@
       "lon": -122.446968,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2147",
@@ -1407,7 +1407,7 @@
       "lon": -122.446663,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2148",
@@ -1419,7 +1419,7 @@
       "lon": -122.384232,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2149",
@@ -1431,7 +1431,7 @@
       "lon": -122.384354,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2151",
@@ -1443,7 +1443,7 @@
       "lon": -122.385941,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2152",
@@ -1455,7 +1455,7 @@
       "lon": -122.446671,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2153",
@@ -1467,7 +1467,7 @@
       "lon": -122.384499,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2155",
@@ -1479,7 +1479,7 @@
       "lon": -122.386406,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2156",
@@ -1491,7 +1491,7 @@
       "lon": -122.446289,
       "bearing": 15.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2157",
@@ -1503,7 +1503,7 @@
       "lon": -122.446678,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2158",
@@ -1515,7 +1515,7 @@
       "lon": -122.446823,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2161",
@@ -1527,7 +1527,7 @@
       "lon": -122.384315,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2162",
@@ -1539,7 +1539,7 @@
       "lon": -122.446815,
       "bearing": 210.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2164",
@@ -1551,7 +1551,7 @@
       "lon": -122.38485,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2165",
@@ -1563,7 +1563,7 @@
       "lon": -122.446426,
       "bearing": 45.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2167",
@@ -1575,7 +1575,7 @@
       "lon": -122.384216,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2168",
@@ -1587,7 +1587,7 @@
       "lon": -122.445488,
       "bearing": 45.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2169",
@@ -1599,7 +1599,7 @@
       "lon": -122.384331,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2171",
@@ -1611,7 +1611,7 @@
       "lon": -122.384407,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2172",
@@ -1623,7 +1623,7 @@
       "lon": -122.384079,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2174",
@@ -1635,7 +1635,7 @@
       "lon": -122.384117,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2176",
@@ -1647,7 +1647,7 @@
       "lon": -122.384438,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2178",
@@ -1659,7 +1659,7 @@
       "lon": -122.4468,
       "bearing": 195.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2183",
@@ -1671,7 +1671,7 @@
       "lon": -122.446861,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2184",
@@ -1679,11 +1679,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.751366,
+      "lat": 37.751411,
       "lon": -122.38588,
-      "bearing": 0.0,
+      "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2187",
@@ -1695,7 +1695,7 @@
       "lon": -122.385681,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2188",
@@ -1707,7 +1707,7 @@
       "lon": -122.384697,
       "bearing": 150.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2191",
@@ -1719,7 +1719,7 @@
       "lon": -122.446884,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2192",
@@ -1731,7 +1731,7 @@
       "lon": -122.384735,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2196",
@@ -1743,7 +1743,7 @@
       "lon": -122.384789,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2197",
@@ -1755,7 +1755,7 @@
       "lon": -122.445488,
       "bearing": 210.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2198",
@@ -1767,7 +1767,7 @@
       "lon": -122.385757,
       "bearing": 150.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "22",
@@ -1779,7 +1779,7 @@
       "lon": -122.412086,
       "bearing": 255.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2201",
@@ -1791,7 +1791,7 @@
       "lon": -122.384323,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2203",
@@ -1803,7 +1803,7 @@
       "lon": -122.446358,
       "bearing": 15.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2206",
@@ -1815,7 +1815,7 @@
       "lon": -122.38607,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2209",
@@ -1827,7 +1827,7 @@
       "lon": -122.386322,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2213",
@@ -1839,7 +1839,7 @@
       "lon": -122.384895,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2214",
@@ -1851,7 +1851,7 @@
       "lon": -122.386162,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2215",
@@ -1863,7 +1863,7 @@
       "lon": -122.385948,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "2216",
@@ -1875,7 +1875,7 @@
       "lon": -122.384834,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "26",
@@ -1883,11 +1883,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.794788,
+      "lat": 37.7948,
       "lon": -122.41198,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "3",
@@ -1895,11 +1895,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.794651,
-      "lon": -122.412079,
-      "bearing": 240.0,
-      "speed_mps": 0.0,
-      "age_seconds": 13
+      "lat": 37.794682,
+      "lon": -122.41217,
+      "bearing": 195.0,
+      "speed_mps": 0.56,
+      "age_seconds": 15
     },
     {
       "vehicle_id": "52",
@@ -1907,11 +1907,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.794949,
-      "lon": -122.411697,
-      "bearing": 0.0,
-      "speed_mps": 0.0,
-      "age_seconds": 13
+      "lat": 37.794785,
+      "lon": -122.411659,
+      "bearing": 165.0,
+      "speed_mps": 0.56,
+      "age_seconds": 15
     },
     {
       "vehicle_id": "57",
@@ -1923,7 +1923,7 @@
       "lon": -122.412048,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5738",
@@ -1935,7 +1935,7 @@
       "lon": -122.393852,
       "bearing": 135.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5739",
@@ -1947,7 +1947,7 @@
       "lon": -122.447136,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5740",
@@ -1955,11 +1955,11 @@
       "route_id": "22",
       "direction_id": "1",
       "direction_label": "Direction 1",
-      "lat": 37.767105,
-      "lon": -122.42894,
+      "lat": 37.767178,
+      "lon": -122.428947,
       "bearing": 345.0,
-      "speed_mps": 1.39,
-      "age_seconds": 13
+      "speed_mps": 0.0,
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5745",
@@ -1971,7 +1971,7 @@
       "lon": -122.445816,
       "bearing": 60.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5746",
@@ -1983,7 +1983,7 @@
       "lon": -122.446915,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5747",
@@ -1995,7 +1995,7 @@
       "lon": -122.446709,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5749",
@@ -2007,7 +2007,7 @@
       "lon": -122.447197,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5750",
@@ -2019,7 +2019,7 @@
       "lon": -122.390373,
       "bearing": 255.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5752",
@@ -2028,10 +2028,10 @@
       "direction_id": "",
       "direction_label": "Direction unavailable",
       "lat": 37.784172,
-      "lon": -122.446739,
+      "lon": -122.446724,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5753",
@@ -2043,7 +2043,7 @@
       "lon": -122.446671,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5754",
@@ -2055,7 +2055,7 @@
       "lon": -122.441727,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5755",
@@ -2067,7 +2067,7 @@
       "lon": -122.446854,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5756",
@@ -2079,7 +2079,7 @@
       "lon": -122.446556,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5761",
@@ -2091,7 +2091,7 @@
       "lon": -122.447128,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5763",
@@ -2103,7 +2103,7 @@
       "lon": -122.446716,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5764",
@@ -2115,7 +2115,7 @@
       "lon": -122.446587,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5766",
@@ -2127,7 +2127,7 @@
       "lon": -122.446449,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5768",
@@ -2139,7 +2139,7 @@
       "lon": -122.446831,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5769",
@@ -2151,7 +2151,7 @@
       "lon": -122.446976,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5772",
@@ -2163,7 +2163,7 @@
       "lon": -122.40834,
       "bearing": 45.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5773",
@@ -2175,7 +2175,7 @@
       "lon": -122.447136,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5774",
@@ -2187,7 +2187,7 @@
       "lon": -122.435631,
       "bearing": 165.0,
       "speed_mps": 3.89,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5775",
@@ -2199,7 +2199,7 @@
       "lon": -122.446663,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5776",
@@ -2211,7 +2211,7 @@
       "lon": -122.446739,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5777",
@@ -2223,7 +2223,7 @@
       "lon": -122.446358,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5779",
@@ -2235,7 +2235,7 @@
       "lon": -122.446663,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5780",
@@ -2247,7 +2247,7 @@
       "lon": -122.446838,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5783",
@@ -2259,7 +2259,7 @@
       "lon": -122.447113,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5784",
@@ -2271,7 +2271,7 @@
       "lon": -122.446526,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5785",
@@ -2283,7 +2283,7 @@
       "lon": -122.406021,
       "bearing": 30.0,
       "speed_mps": 5.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5786",
@@ -2295,7 +2295,7 @@
       "lon": -122.446709,
       "bearing": 90.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5787",
@@ -2307,7 +2307,7 @@
       "lon": -122.446861,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5788",
@@ -2319,7 +2319,7 @@
       "lon": -122.446983,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5790",
@@ -2327,11 +2327,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.784378,
-      "lon": -122.447083,
+      "lat": 37.784389,
+      "lon": -122.447075,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5791",
@@ -2343,7 +2343,7 @@
       "lon": -122.447067,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5792",
@@ -2352,10 +2352,10 @@
       "direction_id": "",
       "direction_label": "Direction unavailable",
       "lat": 37.78355,
-      "lon": -122.446388,
+      "lon": -122.446396,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5793",
@@ -2367,7 +2367,7 @@
       "lon": -122.446976,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5798",
@@ -2379,7 +2379,7 @@
       "lon": -122.446709,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "58",
@@ -2389,9 +2389,9 @@
       "direction_label": "Direction unavailable",
       "lat": 37.794991,
       "lon": -122.411751,
-      "bearing": 285.0,
-      "speed_mps": 0.0,
-      "age_seconds": 13
+      "bearing": 345.0,
+      "speed_mps": 0.56,
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5800",
@@ -2403,7 +2403,7 @@
       "lon": -122.446686,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5801",
@@ -2415,7 +2415,7 @@
       "lon": -122.424095,
       "bearing": 180.0,
       "speed_mps": 12.5,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5802",
@@ -2423,11 +2423,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.784161,
-      "lon": -122.446884,
+      "lat": 37.784168,
+      "lon": -122.446892,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5803",
@@ -2439,7 +2439,7 @@
       "lon": -122.446991,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5804",
@@ -2451,7 +2451,7 @@
       "lon": -122.446747,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5805",
@@ -2463,7 +2463,7 @@
       "lon": -122.446976,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5806",
@@ -2475,7 +2475,7 @@
       "lon": -122.447166,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5808",
@@ -2487,7 +2487,7 @@
       "lon": -122.446945,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5812",
@@ -2499,7 +2499,7 @@
       "lon": -122.446587,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5815",
@@ -2511,7 +2511,7 @@
       "lon": -122.447021,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5817",
@@ -2523,7 +2523,7 @@
       "lon": -122.447113,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5820",
@@ -2535,7 +2535,7 @@
       "lon": -122.417267,
       "bearing": 30.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5823",
@@ -2547,7 +2547,7 @@
       "lon": -122.446808,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5826",
@@ -2559,7 +2559,7 @@
       "lon": -122.446648,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5828",
@@ -2571,7 +2571,7 @@
       "lon": -122.446655,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5830",
@@ -2583,7 +2583,7 @@
       "lon": -122.460098,
       "bearing": 60.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5836",
@@ -2595,7 +2595,7 @@
       "lon": -122.447052,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5837",
@@ -2607,7 +2607,7 @@
       "lon": -122.437553,
       "bearing": 180.0,
       "speed_mps": 1.67,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5839",
@@ -2619,7 +2619,7 @@
       "lon": -122.446625,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5840",
@@ -2631,7 +2631,7 @@
       "lon": -122.447121,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5841",
@@ -2643,7 +2643,7 @@
       "lon": -122.406845,
       "bearing": 225.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5842",
@@ -2655,7 +2655,7 @@
       "lon": -122.446899,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5843",
@@ -2667,7 +2667,7 @@
       "lon": -122.446823,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5844",
@@ -2679,7 +2679,7 @@
       "lon": -122.447044,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5845",
@@ -2691,7 +2691,7 @@
       "lon": -122.446999,
       "bearing": 60.0,
       "speed_mps": 1.39,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5847",
@@ -2699,11 +2699,11 @@
       "route_id": "14",
       "direction_id": "1",
       "direction_label": "Direction 1",
-      "lat": 37.758446,
-      "lon": -122.419052,
+      "lat": 37.760059,
+      "lon": -122.41922,
       "bearing": 345.0,
-      "speed_mps": 0.0,
-      "age_seconds": 13
+      "speed_mps": 1.39,
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5848",
@@ -2715,7 +2715,7 @@
       "lon": -122.446701,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5854",
@@ -2727,7 +2727,7 @@
       "lon": -122.447113,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5856",
@@ -2739,7 +2739,7 @@
       "lon": -122.446907,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5858",
@@ -2751,7 +2751,7 @@
       "lon": -122.447205,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5860",
@@ -2763,7 +2763,7 @@
       "lon": -122.435242,
       "bearing": 165.0,
       "speed_mps": 5.28,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5861",
@@ -2775,7 +2775,7 @@
       "lon": -122.446991,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5862",
@@ -2783,11 +2783,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.78384,
-      "lon": -122.446205,
+      "lat": 37.783794,
+      "lon": -122.446175,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5864",
@@ -2795,11 +2795,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.784557,
-      "lon": -122.446922,
+      "lat": 37.78455,
+      "lon": -122.446938,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5865",
@@ -2811,7 +2811,7 @@
       "lon": -122.447067,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5866",
@@ -2819,11 +2819,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.784016,
-      "lon": -122.446999,
+      "lat": 37.784027,
+      "lon": -122.446976,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5868",
@@ -2831,11 +2831,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.784626,
-      "lon": -122.447083,
+      "lat": 37.784645,
+      "lon": -122.44709,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5869",
@@ -2847,7 +2847,7 @@
       "lon": -122.446571,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5871",
@@ -2859,7 +2859,7 @@
       "lon": -122.498398,
       "bearing": 75.0,
       "speed_mps": 10.83,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5873",
@@ -2871,7 +2871,7 @@
       "lon": -122.447151,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5875",
@@ -2883,7 +2883,7 @@
       "lon": -122.443436,
       "bearing": 255.0,
       "speed_mps": 2.22,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5876",
@@ -2895,7 +2895,7 @@
       "lon": -122.446953,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5877",
@@ -2907,7 +2907,7 @@
       "lon": -122.436081,
       "bearing": 30.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5878",
@@ -2919,7 +2919,7 @@
       "lon": -122.447021,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5879",
@@ -2931,7 +2931,7 @@
       "lon": -122.44664,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5881",
@@ -2943,7 +2943,7 @@
       "lon": -122.446793,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5882",
@@ -2955,7 +2955,7 @@
       "lon": -122.423996,
       "bearing": 255.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5883",
@@ -2967,7 +2967,7 @@
       "lon": -122.447014,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5884",
@@ -2979,7 +2979,7 @@
       "lon": -122.446823,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "5885",
@@ -2991,7 +2991,7 @@
       "lon": -122.447189,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "6508",
@@ -3003,7 +3003,7 @@
       "lon": -122.391586,
       "bearing": 195.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "6523",
@@ -3015,7 +3015,7 @@
       "lon": -122.39257,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "6528",
@@ -3027,7 +3027,7 @@
       "lon": -122.392471,
       "bearing": 195.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "6545",
@@ -3039,7 +3039,7 @@
       "lon": -122.391624,
       "bearing": 195.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "6583",
@@ -3051,7 +3051,7 @@
       "lon": -122.391754,
       "bearing": 195.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "6584",
@@ -3063,7 +3063,7 @@
       "lon": -122.391647,
       "bearing": 195.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "6589",
@@ -3075,7 +3075,7 @@
       "lon": -122.391663,
       "bearing": 195.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "6633",
@@ -3087,7 +3087,7 @@
       "lon": -122.415001,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "6664",
@@ -3099,7 +3099,7 @@
       "lon": -122.413643,
       "bearing": 345.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "6700",
@@ -3111,7 +3111,7 @@
       "lon": -122.415359,
       "bearing": 180.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "6701",
@@ -3123,7 +3123,7 @@
       "lon": -122.414642,
       "bearing": 255.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "6705",
@@ -3135,7 +3135,7 @@
       "lon": -122.414925,
       "bearing": 255.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8",
@@ -3143,11 +3143,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.794849,
-      "lon": -122.412354,
-      "bearing": 240.0,
-      "speed_mps": 1.39,
-      "age_seconds": 13
+      "lat": 37.79491,
+      "lon": -122.41227,
+      "bearing": 75.0,
+      "speed_mps": 0.0,
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8602",
@@ -3159,7 +3159,7 @@
       "lon": -122.37944,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8604",
@@ -3171,7 +3171,7 @@
       "lon": -122.391594,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8607",
@@ -3183,7 +3183,7 @@
       "lon": -122.395218,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8627",
@@ -3195,7 +3195,7 @@
       "lon": -122.399864,
       "bearing": 45.0,
       "speed_mps": 8.06,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8629",
@@ -3207,7 +3207,7 @@
       "lon": -122.446587,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8632",
@@ -3219,7 +3219,7 @@
       "lon": -122.391449,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8635",
@@ -3231,7 +3231,7 @@
       "lon": -122.39138,
       "bearing": 75.0,
       "speed_mps": 1.67,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8636",
@@ -3243,7 +3243,7 @@
       "lon": -122.391457,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8637",
@@ -3255,7 +3255,7 @@
       "lon": -122.482529,
       "bearing": 255.0,
       "speed_mps": 8.06,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8638",
@@ -3267,7 +3267,7 @@
       "lon": -122.396782,
       "bearing": 225.0,
       "speed_mps": 13.06,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8641",
@@ -3279,7 +3279,7 @@
       "lon": -122.391312,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8644",
@@ -3291,7 +3291,7 @@
       "lon": -122.413132,
       "bearing": 195.0,
       "speed_mps": 7.22,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8649",
@@ -3303,7 +3303,7 @@
       "lon": -122.417427,
       "bearing": 150.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8651",
@@ -3315,7 +3315,7 @@
       "lon": -122.446632,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8652",
@@ -3327,7 +3327,7 @@
       "lon": -122.469597,
       "bearing": 0.0,
       "speed_mps": 14.72,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8653",
@@ -3335,11 +3335,11 @@
       "route_id": "38",
       "direction_id": "0",
       "direction_label": "Direction 0",
-      "lat": 37.781116,
-      "lon": -122.464699,
+      "lat": 37.780983,
+      "lon": -122.467361,
       "bearing": 255.0,
-      "speed_mps": 0.0,
-      "age_seconds": 13
+      "speed_mps": 0.56,
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8657",
@@ -3351,7 +3351,7 @@
       "lon": -122.391411,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8659",
@@ -3363,7 +3363,7 @@
       "lon": -122.391495,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8660",
@@ -3375,7 +3375,7 @@
       "lon": -122.446625,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8705",
@@ -3387,7 +3387,7 @@
       "lon": -122.38726,
       "bearing": 300.0,
       "speed_mps": 9.72,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8708",
@@ -3399,19 +3399,7 @@
       "lon": -122.391533,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
-    },
-    {
-      "vehicle_id": "8709",
-      "trip_id": "",
-      "route_id": "UNKNOWN",
-      "direction_id": "",
-      "direction_label": "Direction unavailable",
-      "lat": 37.757133,
-      "lon": -122.391678,
-      "bearing": 150.0,
-      "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8713",
@@ -3419,11 +3407,11 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "lat": 37.756046,
+      "lat": 37.756054,
       "lon": -122.391319,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8734",
@@ -3435,7 +3423,7 @@
       "lon": -122.420845,
       "bearing": 105.0,
       "speed_mps": 12.5,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8735",
@@ -3447,7 +3435,7 @@
       "lon": -122.401146,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8738",
@@ -3459,7 +3447,7 @@
       "lon": -122.391518,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8745",
@@ -3471,7 +3459,7 @@
       "lon": -122.391586,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8747",
@@ -3483,7 +3471,7 @@
       "lon": -122.371185,
       "bearing": 30.0,
       "speed_mps": 13.33,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8750",
@@ -3495,7 +3483,7 @@
       "lon": -122.475807,
       "bearing": 75.0,
       "speed_mps": 3.06,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8755",
@@ -3507,7 +3495,7 @@
       "lon": -122.391586,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8760",
@@ -3515,11 +3503,11 @@
       "route_id": "LOWL",
       "direction_id": "1",
       "direction_label": "Direction 1",
-      "lat": 37.775921,
-      "lon": -122.418388,
+      "lat": 37.778473,
+      "lon": -122.415024,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8768",
@@ -3531,7 +3519,7 @@
       "lon": -122.418762,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8801",
@@ -3543,7 +3531,7 @@
       "lon": -122.391899,
       "bearing": 45.0,
       "speed_mps": 2.22,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8804",
@@ -3555,7 +3543,7 @@
       "lon": -122.391396,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8807",
@@ -3567,7 +3555,7 @@
       "lon": -122.415199,
       "bearing": 75.0,
       "speed_mps": 11.11,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8812",
@@ -3579,7 +3567,7 @@
       "lon": -122.391441,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8820",
@@ -3591,7 +3579,7 @@
       "lon": -122.428802,
       "bearing": 75.0,
       "speed_mps": 11.11,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8823",
@@ -3603,7 +3591,7 @@
       "lon": -122.476784,
       "bearing": 255.0,
       "speed_mps": 0.56,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8825",
@@ -3615,7 +3603,7 @@
       "lon": -122.472466,
       "bearing": 75.0,
       "speed_mps": 11.94,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8833",
@@ -3627,7 +3615,7 @@
       "lon": -122.394196,
       "bearing": 300.0,
       "speed_mps": 7.5,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8837",
@@ -3639,7 +3627,7 @@
       "lon": -122.3955,
       "bearing": 210.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8844",
@@ -3651,7 +3639,7 @@
       "lon": -122.391716,
       "bearing": 150.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8859",
@@ -3663,7 +3651,7 @@
       "lon": -122.474739,
       "bearing": 0.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8871",
@@ -3671,11 +3659,11 @@
       "route_id": "90",
       "direction_id": "1",
       "direction_label": "Direction 1",
-      "lat": 37.802467,
-      "lon": -122.424629,
+      "lat": 37.804188,
+      "lon": -122.425018,
       "bearing": 345.0,
-      "speed_mps": 0.0,
-      "age_seconds": 13
+      "speed_mps": 7.22,
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8875",
@@ -3687,7 +3675,7 @@
       "lon": -122.466301,
       "bearing": 120.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8879",
@@ -3699,7 +3687,7 @@
       "lon": -122.391487,
       "bearing": 150.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8881",
@@ -3711,7 +3699,7 @@
       "lon": -122.391533,
       "bearing": 165.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8894",
@@ -3723,7 +3711,7 @@
       "lon": -122.394478,
       "bearing": 255.0,
       "speed_mps": 1.39,
-      "age_seconds": 13
+      "age_seconds": 15
     },
     {
       "vehicle_id": "8944",
@@ -3735,7 +3723,7 @@
       "lon": -122.411667,
       "bearing": 60.0,
       "speed_mps": 0.0,
-      "age_seconds": 13
+      "age_seconds": 15
     }
   ],
   "routes": [
@@ -3743,7 +3731,7 @@
       "route_id": "UNKNOWN",
       "direction_id": "",
       "direction_label": "Direction unavailable",
-      "vehicle_count": 264,
+      "vehicle_count": 263,
       "health": "LIMITED_REALTIME_DATA",
       "median_headway_min": null,
       "predictions_observed": 0,
@@ -3828,10 +3816,10 @@
       "direction_label": "Direction 0",
       "vehicle_count": 3,
       "health": "STABLE",
-      "median_headway_min": 30.0,
+      "median_headway_min": 32.3,
       "predictions_observed": 5,
-      "reference_stop_id": "16491",
-      "reference_stop_name": "Steiner St & Union St",
+      "reference_stop_id": "17765",
+      "reference_stop_name": "Mission Bay North & 4th St",
       "bunching_events": 0,
       "large_gap_events": 0,
       "severe_gap_events": 0,
@@ -3920,7 +3908,7 @@
       "direction_label": "Direction 0",
       "vehicle_count": 2,
       "health": "STABLE",
-      "median_headway_min": 29.7,
+      "median_headway_min": 28.9,
       "predictions_observed": 4,
       "reference_stop_id": "14755",
       "reference_stop_name": "Geary Blvd & Park Presidio Blvd",
@@ -3938,8 +3926,8 @@
       "health": "STABLE",
       "median_headway_min": 30.0,
       "predictions_observed": 4,
-      "reference_stop_id": "14212",
-      "reference_stop_name": "Fulton St & 33rd Ave",
+      "reference_stop_id": "14753",
+      "reference_stop_name": "Fulton St & 30th Ave",
       "bunching_events": 0,
       "large_gap_events": 0,
       "severe_gap_events": 0,
@@ -4076,7 +4064,7 @@
       "direction_label": "Direction 1",
       "vehicle_count": 1,
       "health": "STABLE",
-      "median_headway_min": 29.8,
+      "median_headway_min": 29.9,
       "predictions_observed": 3,
       "reference_stop_id": "16425",
       "reference_stop_name": "Starr King Way & Gough St",
@@ -4126,8 +4114,8 @@
       "health": "STABLE",
       "median_headway_min": 30.0,
       "predictions_observed": 4,
-      "reference_stop_id": "13504",
-      "reference_stop_name": "25th St & Connecticut St",
+      "reference_stop_id": "13512",
+      "reference_stop_name": "25th St & Wisconsin St",
       "bunching_events": 0,
       "large_gap_events": 0,
       "severe_gap_events": 0,
@@ -4201,76 +4189,6 @@
   ],
   "alerts": [
     {
-      "id": "SF_14214",
-      "route_ids": [
-        "6"
-      ],
-      "direction_id": null,
-      "route_match_status": "MATCHED",
-      "title": "6 RRT STOP CLOSED Board at Van Ness, Webster or on Grove",
-      "description": "6 RRT STOP CLOSED Board at Van Ness, Webster or on Grove"
-    },
-    {
-      "id": "SF_15519",
-      "route_ids": [
-        "12"
-      ],
-      "direction_id": null,
-      "route_match_status": "MATCHED",
-      "title": "12 STOP TEMP. MOVED Board at Folsom & Mabini",
-      "description": "12 STOP TEMP. MOVED Board at Folsom & Mabini"
-    },
-    {
-      "id": "SF_15520",
-      "route_ids": [
-        "12"
-      ],
-      "direction_id": null,
-      "route_match_status": "MATCHED",
-      "title": "12 STOP TEMP. MOVED Board at Folsom/2nd OR Folsom/4th",
-      "description": "12 STOP TEMP. MOVED Board at Folsom/2nd OR Folsom/4th"
-    },
-    {
-      "id": "SF_15655",
-      "route_ids": [
-        "19"
-      ],
-      "direction_id": null,
-      "route_match_status": "MATCHED",
-      "title": "19 RRT STOP CLOSED Board at 26th/De Haro",
-      "description": "19 RRT STOP CLOSED Board at 26th/De Haro"
-    },
-    {
-      "id": "SF_15656",
-      "route_ids": [
-        "19"
-      ],
-      "direction_id": null,
-      "route_match_status": "MATCHED",
-      "title": "19 RRT STOP CLOSED Board at Connecticut/26th",
-      "description": "19 RRT STOP CLOSED Board at Connecticut/26th"
-    },
-    {
-      "id": "SF_15657",
-      "route_ids": [
-        "19"
-      ],
-      "direction_id": null,
-      "route_match_status": "MATCHED",
-      "title": "19 RRT STOP CLOSED Board: 25th/Connecticut (NE corner)",
-      "description": "19 RRT STOP CLOSED Board: 25th/Connecticut (NE corner)"
-    },
-    {
-      "id": "SF_15658",
-      "route_ids": [
-        "19"
-      ],
-      "direction_id": null,
-      "route_match_status": "MATCHED",
-      "title": "19 RRT STOP CLOSED Board: Evans/Cesar Chavez",
-      "description": "19 RRT STOP CLOSED Board: Evans/Cesar Chavez"
-    },
-    {
       "id": "SF_15660",
       "route_ids": [
         "14",
@@ -4280,36 +4198,6 @@
       "route_match_status": "MATCHED",
       "title": "14 & 49 STOP TEMP. MOVED Board at Mission & Plum",
       "description": "14 & 49 STOP TEMP. MOVED Board at Mission & Plum"
-    },
-    {
-      "id": "SF_15549",
-      "route_ids": [
-        "28"
-      ],
-      "direction_id": null,
-      "route_match_status": "MATCHED",
-      "title": "28 STOP TEMP. MOVED Board at North Point/Taylor",
-      "description": "28 STOP TEMP. MOVED Board at North Point/Taylor"
-    },
-    {
-      "id": "SF_15550",
-      "route_ids": [
-        "28"
-      ],
-      "direction_id": null,
-      "route_match_status": "MATCHED",
-      "title": "28 STOP TEMP. MOVED Board on other side of Jones",
-      "description": "28 STOP TEMP. MOVED Board on other side of Jones"
-    },
-    {
-      "id": "SF_15679",
-      "route_ids": [
-        "PM"
-      ],
-      "direction_id": null,
-      "route_match_status": "MATCHED",
-      "title": "Cable Car STOP TEMP. MOVED Board: other side of Broadway",
-      "description": "Cable Car STOP TEMP. MOVED Board: other side of Broadway"
     },
     {
       "id": "SF_13513",
@@ -4373,22 +4261,6 @@
       "route_match_status": "UNAVAILABLE",
       "title": "Caltrans : Roadwork on CA-82 Southbound between Trousdale Dr (Burlingame) and Hillside Dr (Burlingame). Lane closed until 6 PM. From 11:30 AM Friday, August 21, 2026 to 6:00 PM Fri",
       "description": "CA-82 S · ACTIVE",
-      "lat": null,
-      "lon": null
-    },
-    {
-      "route_ids": [],
-      "route_match_status": "UNAVAILABLE",
-      "title": "TIC : Soccer game at Oakland-Alameda County Coliseum. Expect delays. From 6:30 PM Saturday, September 12, 2026 to 10:00 PM Saturday, September 12, 2026.",
-      "description": "Oakland-Alameda County Coliseum · ACTIVE",
-      "lat": null,
-      "lon": null
-    },
-    {
-      "route_ids": [],
-      "route_match_status": "UNAVAILABLE",
-      "title": "TIC : Concert at SAP Center. Expect delays. From 7:30 PM Saturday, September 12, 2026 to 11:00 PM Saturday, September 12, 2026.",
-      "description": "SAP Center · ACTIVE",
       "lat": null,
       "lon": null
     },
@@ -4467,14 +4339,6 @@
     {
       "route_ids": [],
       "route_match_status": "UNAVAILABLE",
-      "title": "CHP : Traffic Collision on I-80 Eastbound west of Treasure Island Rd (San Francisco). Right lane blocked. Expect delays.",
-      "description": "I-80 E · ACTIVE",
-      "lat": null,
-      "lon": null
-    },
-    {
-      "route_ids": [],
-      "route_match_status": "UNAVAILABLE",
       "title": "Caltrans : Bridge work on I-580 Westbound between Richmond San Rafael Bridge - Toll Plaza (Richmond) and Richmond San Rafael Bridge (Richmond). Right lane and shoulder closed until",
       "description": "I-580 W · ACTIVE",
       "lat": null,
@@ -4483,62 +4347,86 @@
     {
       "route_ids": [],
       "route_match_status": "UNAVAILABLE",
-      "title": "CHP : Traffic Collision on CA-85 Northbound at Cottle Rd (San Jose). Lane affected. Expect delays.",
-      "description": "CA-85 N · ACTIVE",
+      "title": "CHP : Traffic Collision on CA-12 Westbound west of CA-113 N (Rio Vista). Lane affected. Expect delays.",
+      "description": "CA-12 W · ACTIVE",
       "lat": null,
       "lon": null
     },
     {
       "route_ids": [],
       "route_match_status": "UNAVAILABLE",
-      "title": "CHP : Traffic Hazard on CA-12 Westbound east of Red Top Rd (Vallejo). Lane blocked. Expect delays.",
-      "description": "CA-12 W · ACTIVE",
+      "title": "CHP : Traffic Collision on CA-35 Northbound at La Honda Rd (Redwood City). Lane affected. Expect delays.",
+      "description": "CA-35 N · ACTIVE",
+      "lat": null,
+      "lon": null
+    },
+    {
+      "route_ids": [],
+      "route_match_status": "UNAVAILABLE",
+      "title": "CHP : Traffic Collision on US-101 Northbound south of Baker Ave (Santa Rosa). Lane blocked. Expect delays.",
+      "description": "US-101 N · ACTIVE",
+      "lat": null,
+      "lon": null
+    },
+    {
+      "route_ids": [],
+      "route_match_status": "UNAVAILABLE",
+      "title": "CHP : Traffic Collision on US-101 Northbound north of E Todd Rd (Santa Rosa). Lane affected. Expect delays.",
+      "description": "US-101 N · ACTIVE",
+      "lat": null,
+      "lon": null
+    },
+    {
+      "route_ids": [],
+      "route_match_status": "UNAVAILABLE",
+      "title": "Caltrans : Roadwork on CA-17 Northbound between Summit Rd (Los Gatos) and Hebard Rd (Los Gatos). Various lanes closed until 9 AM. From 10:00 PM Saturday, September 12, 2026 to 9:00",
+      "description": "CA-17 N · ACTIVE",
       "lat": null,
       "lon": null
     }
   ],
   "parking": {
     "status": "Recent demand snapshot",
-    "detail": "568 paid-session starts in the latest three-hour feed window. Demand proxy only; not physical occupancy.",
-    "source_snapshot_time": "2026-09-11T22:00:11",
+    "detail": "428 paid-session starts in the latest three-hour feed window. Demand proxy only; not physical occupancy.",
+    "source_snapshot_time": "2026-09-12T21:54:38",
     "busiest_blocks": [
       {
-        "street_block": "BLUXOME ST 0",
-        "payments_3h": 40
-      },
-      {
-        "street_block": "BRANNAN ST 500",
-        "payments_3h": 28
-      },
-      {
-        "street_block": "TERRY A FRANCOIS BLVD 500",
-        "payments_3h": 19
-      },
-      {
-        "street_block": "BRANNAN ST 100",
-        "payments_3h": 17
-      },
-      {
-        "street_block": "BRANNAN ST 400",
-        "payments_3h": 16
-      },
-      {
-        "street_block": "EMBARCADERO SOUTH 400",
+        "street_block": "CHANNEL ST 200",
         "payments_3h": 15
       },
       {
-        "street_block": "BERRY ST 300",
-        "payments_3h": 14
+        "street_block": "EMBARCADERO SOUTH 200",
+        "payments_3h": 13
       },
       {
-        "street_block": "BRANNAN ST 300",
-        "payments_3h": 14
+        "street_block": "BERRY ST 200",
+        "payments_3h": 12
+      },
+      {
+        "street_block": "BRANNAN ST 500",
+        "payments_3h": 11
+      },
+      {
+        "street_block": "BEALE ST 500",
+        "payments_3h": 10
+      },
+      {
+        "street_block": "BERRY ST 300",
+        "payments_3h": 10
+      },
+      {
+        "street_block": "TERRY A FRANCOIS BLVD 800",
+        "payments_3h": 9
+      },
+      {
+        "street_block": "HARRISON ST 0",
+        "payments_3h": 8
       }
     ]
   },
   "safety": {
     "status": "365-day relative context",
-    "detail": "91,886 city incident rows summarized for context. This is not a crime forecast or a safe/unsafe label.",
+    "detail": "91,864 city incident rows summarized for context. This is not a crime forecast or a safe/unsafe label.",
     "category_count": 50
   },
   "journey": {
