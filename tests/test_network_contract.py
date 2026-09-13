@@ -218,6 +218,7 @@ def test_workflow_runs_core_every_five_minutes_and_context_every_fifteen() -> No
     assert 'cron: "8,13,23,28,38,43,53,58 * * * *"' in workflow
     assert "SF_TRANSIT_REFRESH_CONTEXT" in workflow
     assert "site/data/parking-inventory.json" in workflow
+    assert 'github.event_name == \'push\'' in workflow
 
 
 def test_public_beta_removes_misleading_planner_fallbacks() -> None:
