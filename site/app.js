@@ -2,8 +2,8 @@ const I18N = {
   en: {
     navNetwork: "Network", navJourney: "Journey", navContext: "City context", refresh: "Reload latest snapshot",
     eyebrow: "San Francisco · right now", heroTitle: "Know your next move.",
-    heroLead: "Live Muni movement, service spacing, street disruptions, and city context—distilled into one calm view.",
-    viewNetwork: "View the network", howWorks: "How it works", vehiclesReporting: "vehicles reporting",
+    heroLead: "See what is happening now, compare feasible journeys, and understand what to take—and why.",
+    planJourney: "Plan a journey", viewNetwork: "View the network", howWorks: "How it works", vehiclesReporting: "vehicles reporting",
     routesObserved: "routes available", activeNotices: "active notices", liveNetwork: "Live network",
     seeCityMove: "See the city move.", focusRoute: "Focus a route", focusDirection: "Direction", mapHint: "Route shape, stops, and vehicles follow your selection.",
     routePulse: "Route pulse", vehicles: "Vehicles", medianGap: "Median predicted gap", bunching: "Bunching", serviceGaps: "Service gaps", currentSpeed: "Current speed", evidence: "Evidence",
@@ -19,18 +19,21 @@ const I18N = {
     tradeoffs: "The trade-offs stay visible.", route: "Route", eta: "ETA", walk: "Walk", reliability: "Reliability",
     exposure: "Exposure context", cityContext: "City context", moreThanBus: "More than the bus.",
     parkingDemand: "Parking demand", safetyContext: "Safety context", dataQuality: "Data quality",
-    methodEyebrow: "Method", evidenceTitle: "Evidence before confidence.",
-    evidenceBody: "Travel time remains an estimate and is never altered by preference penalties. Public Beta exposes FASTEST and BALANCED; SAFETY-FIRST stays hidden until stop-level evidence can genuinely affect ranking.",
-    collect: "Collect", collectBody: "Fetch official transit and city feeds on a controlled schedule.",
-    normalize: "Normalize", normalizeBody: "Align identifiers, directions, timestamps, units, and freshness.",
-    explain: "Explain", explainBody: "Publish observations, limitations, and decision reasons together.",
+    methodEyebrow: "How SF Transit Pulse works", evidenceTitle: "From live service evidence to a decision.",
+    northStarBody: "SF Transit Pulse is designed around one question: What should I do right now, and why?", evidenceBody: "Evidence before confidence.",
+    observe: "Observe", observeBody: "Read current vehicles, trip predictions, alerts, route geometry, and relevant context—with freshness attached.",
+    diagnose: "Diagnose", diagnoseBody: "Evaluate headways, bunching, gaps, movement, and evidence separately for every route and direction.",
+    build: "Build feasible journeys", buildBody: "Compare direct and one-transfer options, including access walking and transfer feasibility—not just lines that meet on a map.",
+    compare: "Compare trade-offs", compareBody: "FASTEST prioritizes estimated time. BALANCED also weighs reliability, walking, and transfers. SAFETY-FIRST waits for journey-level exposure evidence.",
+    boundariesTitle: "What the system does not claim", boundarySafety: "Historical incident exposure predicts personal safety.", boundaryRoad: "Road overlap by itself proves the cause of a transit delay.", boundaryMissing: "Missing realtime evidence means a route is not operating.", boundaryCost: "A preference cost is the same thing as an ETA.", boundaryTransfer: "A theoretical transfer is always catchable.",
+    explain: "Explain the decision", explainBody: "Show why one option wins while keeping alternatives, assumptions, and evidence limits visible.",
     footerNote: "An independent research prototype. Not an official SFMTA service.", reportIssue: "Report an issue"
   },
   zh: {
     navNetwork: "实时路网", navJourney: "行程选择", navContext: "城市背景", refresh: "重新载入最新快照",
     eyebrow: "旧金山 · 此时此刻", heroTitle: "清楚知道下一步怎么走。",
-    heroLead: "把 Muni 实时移动、发车间隔、道路影响和城市背景，整理成一个安静、清楚的画面。",
-    viewNetwork: "查看实时路网", howWorks: "了解计算方法", vehiclesReporting: "辆车正在回报",
+    heroLead: "看清现在发生什么、比较真正可行的行程，并知道此刻该坐什么，以及为什么。",
+    planJourney: "规划行程", viewNetwork: "查看实时路网", howWorks: "了解计算方法", vehiclesReporting: "辆车正在回报",
     routesObserved: "条线路可选择", activeNotices: "条当前提示", liveNetwork: "实时路网",
     seeCityMove: "看见城市如何移动。", focusRoute: "聚焦一条线路", focusDirection: "方向", mapHint: "路线、站点和车辆都会跟随你的选择更新。",
     routePulse: "线路脉搏", vehicles: "车辆", medianGap: "预测班距中位数", bunching: "车辆聚集", serviceGaps: "服务缺口", currentSpeed: "当前速度", evidence: "证据量",
@@ -46,11 +49,14 @@ const I18N = {
     tradeoffs: "把每个取舍清清楚楚地摆出来。", route: "线路", eta: "到达时间", walk: "步行", reliability: "稳定度",
     exposure: "相对暴露背景", cityContext: "城市背景", moreThanBus: "不只看公交。",
     parkingDemand: "停车需求", safetyContext: "安全背景", dataQuality: "数据质量",
-    methodEyebrow: "计算方法", evidenceTitle: "先看证据，再谈信心。",
-    evidenceBody: "行程时间始终明确标为估算值，也不会被偏好惩罚修改。Public Beta 只开放 FASTEST 与 BALANCED；在站点级安全证据真正参与排序前，SAFETY-FIRST 暂不展示。",
-    collect: "获取", collectBody: "按照受控频率获取官方交通与城市数据。",
-    normalize: "标准化", normalizeBody: "统一 ID、方向、时区、单位和数据新鲜度。",
-    explain: "解释", explainBody: "把观测结果、限制条件和推荐原因一起发布。",
+    methodEyebrow: "SF Transit Pulse 如何工作", evidenceTitle: "从实时服务证据，到一个可以解释的决定。",
+    northStarBody: "SF Transit Pulse 围绕一个问题设计：我现在应该怎么坐车？为什么？", evidenceBody: "先看证据，再谈信心。",
+    observe: "观察现状", observeBody: "读取当前车辆、到站预测、服务提示、线路形状和相关背景，并为每个来源标记新鲜度。",
+    diagnose: "诊断服务", diagnoseBody: "按线路和方向分别判断班距、车辆聚集、服务缺口、移动速度和证据量。",
+    build: "建立可行行程", buildBody: "比较直达和一次换乘，同时计算接驳步行和换乘可行性，而不只是看地图上的线路是否相交。",
+    compare: "比较取舍", compareBody: "FASTEST 优先估算时间；BALANCED 同时考虑可靠性、步行和换乘；SAFETY-FIRST 等待行程级暴露证据接入。",
+    boundariesTitle: "系统不会声称", boundarySafety: "历史事件暴露可以预测个人安全。", boundaryRoad: "道路重叠本身足以证明公交延误原因。", boundaryMissing: "缺少实时证据就代表线路没有运营。", boundaryCost: "偏好成本等于真实 ETA。", boundaryTransfer: "理论上可换乘就一定赶得上。",
+    explain: "解释决定", explainBody: "说明一个方案为什么胜出，同时保留备选方案、计算假设和证据边界。",
     footerNote: "独立研究原型，并非 SFMTA 官方服务。", reportIssue: "报告问题"
   }
 };
@@ -658,21 +664,27 @@ function selectedJourney() {
 function renderModeCards(modes) {
   const grid = document.getElementById("mode-grid");
   const safetyReady = appState.plannerResult?.meta?.safety_status === "STOP_LEVEL_LIVE";
-  const visibleModes = modes.filter(mode => mode.mode !== "SAFETY_FIRST" || safetyReady);
-  grid.dataset.modeCount = String(visibleModes.length);
-  grid.innerHTML = visibleModes.map(mode => `
-    <button type="button" class="mode-card" data-mode="${escapeHtml(mode.mode)}" aria-pressed="${mode.mode === appState.selectedMode}">
-      <span class="mode-label">${escapeHtml(mode.mode.replaceAll("_", "-"))}${mode.mode === "BALANCED" ? (language === "zh" ? " · 默认" : " · Default") : ""}</span>
-      <p class="mode-route">${escapeHtml(mode.route || "—")}</p>
-      <p class="mode-eta">${fmt(mode.eta_min,1)} min</p>
-      <p>${escapeHtml(mode.explanation || "")}</p>
+  grid.dataset.modeCount = String(modes.length);
+  grid.innerHTML = modes.map(mode => {
+    const unavailable = mode.mode === "SAFETY_FIRST" && !safetyReady;
+    const availability = unavailable ? (language === "zh" ? " · 开发中" : " · Coming soon") : "";
+    const explanation = unavailable
+      ? (language === "zh" ? "等待行程级历史事件暴露真正接入排序；当前不会假装这是安全推荐。" : "Waiting for journey-level historical exposure to genuinely affect ranking; no safety recommendation is implied yet.")
+      : mode.explanation || "";
+    return `
+    <button type="button" class="mode-card ${unavailable ? "unavailable" : ""}" data-mode="${escapeHtml(mode.mode)}" aria-pressed="${!unavailable && mode.mode === appState.selectedMode}" ${unavailable ? "disabled aria-disabled=\"true\"" : ""}>
+      <span class="mode-label">${escapeHtml(mode.mode.replaceAll("_", "-"))}${mode.mode === "BALANCED" ? (language === "zh" ? " · 默认" : " · Default") : ""}${availability}</span>
+      <p class="mode-route">${unavailable ? (language === "zh" ? "等待安全模型" : "Safety model pending") : escapeHtml(mode.route || "—")}</p>
+      <p class="mode-eta">${unavailable ? "—" : `${fmt(mode.eta_min,1)} min`}</p>
+      <p>${escapeHtml(explanation)}</p>
       <dl>
-        <div><dt>${language === "zh" ? "步行" : "Walking"}</dt><dd>${fmt(mode.walking_min,1)} min</dd></div>
-        <div><dt>${language === "zh" ? "换乘" : "Transfers"}</dt><dd>${fmt(mode.transfer_count)}</dd></div>
-        <div><dt>${language === "zh" ? "稳定度" : "Reliability"}</dt><dd>${escapeHtml(healthCopy(mode.reliability_label))}</dd></div>
+        <div><dt>${language === "zh" ? "步行" : "Walking"}</dt><dd>${unavailable ? "—" : `${fmt(mode.walking_min,1)} min`}</dd></div>
+        <div><dt>${language === "zh" ? "换乘" : "Transfers"}</dt><dd>${unavailable ? "—" : fmt(mode.transfer_count)}</dd></div>
+        <div><dt>${language === "zh" ? "稳定度" : "Reliability"}</dt><dd>${unavailable ? "—" : escapeHtml(healthCopy(mode.reliability_label))}</dd></div>
       </dl>
-    </button>`).join("");
-  grid.querySelectorAll(".mode-card").forEach(card => card.addEventListener("click", () => {
+    </button>`;
+  }).join("");
+  grid.querySelectorAll(".mode-card:not([disabled])").forEach(card => card.addEventListener("click", () => {
     const mode = card.dataset.mode;
     const winner = (appState.plannerResult?.modes || []).find(row => row.mode === mode);
     appState.selectedMode = mode;
@@ -788,8 +800,13 @@ function renderAlternatives(alternatives) {
 
 function renderPlannerEmpty() {
   document.getElementById("journey-od").textContent = language === "zh" ? "选择起点和终点后开始规划。" : "Choose an origin and destination to begin.";
-  document.getElementById("mode-grid").innerHTML = `<div class="planner-empty">${language === "zh" ? "这里不会显示与用户输入无关的固定示例结果。" : "No fixed example result will be substituted for your trip."}</div>`;
-  document.getElementById("alternatives-list").innerHTML = `<p class="planner-empty-inline">${language === "zh" ? "提交行程后，备选方案会显示在这里。" : "Alternatives will appear here after you submit a trip."}</p>`;
+  document.getElementById("mode-grid").dataset.modeCount = "3";
+  document.getElementById("mode-grid").innerHTML = [
+    ["FASTEST", language === "zh" ? "优先当前估算的门到门时间" : "Prioritizes current estimated door-to-door time"],
+    ["BALANCED", language === "zh" ? "综合时间、可靠性、步行与换乘" : "Balances time, reliability, walking, and transfers"],
+    ["SAFETY-FIRST", language === "zh" ? "等待行程级安全证据接入 · 开发中" : "Waiting for journey-level safety evidence · Coming soon"]
+  ].map(([name, detail], index) => `<div class="mode-card mode-preview ${index === 2 ? "unavailable" : ""}"><span class="mode-label">${name}${index === 1 ? (language === "zh" ? " · 默认" : " · Default") : ""}</span><p>${detail}</p></div>`).join("");
+  document.getElementById("alternatives-list").innerHTML = `<p class="planner-empty-inline">${language === "zh" ? "提交行程后，备选方案会显示在这里；API 失败时不会替换成固定 QA 行程。" : "Alternatives will appear here after you submit a trip; an API failure will never substitute a fixed QA journey."}</p>`;
   document.getElementById("journey-workspace").hidden = true;
   document.getElementById("journey-evidence").hidden = true;
 }

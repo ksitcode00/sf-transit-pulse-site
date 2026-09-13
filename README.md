@@ -14,9 +14,9 @@ After deployment, verify the service URL in `site/config.js`. The frontend expec
 
 部署后请确认 `site/config.js` 中的服务网址。默认预期地址是 `https://sf-transit-planner-api-ksitcode00.onrender.com`。
 
-The Public Beta planner supports stop search, direct and one-transfer candidates, clickable FASTEST/BALANCED modes, clickable alternatives, a journey map, a timeline, estimated transfer buffer, reliability details, and explicit evidence limitations. SAFETY-FIRST stays hidden until stop-level safety evidence genuinely changes ranking.
+The Public Beta planner supports stop search, direct and one-transfer candidates, clickable FASTEST/BALANCED modes, clickable alternatives, a journey map, a timeline, estimated transfer buffer, reliability details, and explicit evidence limitations. SAFETY-FIRST remains visibly part of the product but is disabled until stop-level safety evidence genuinely changes ranking.
 
-Public Beta 规划器支持站点搜索、直达与一次换乘、FASTEST/BALANCED 两种可点击模式、可点击备选方案、Journey 地图、时间线、估算换乘余量、可靠性明细和明确的证据限制。在站点级安全证据真正改变排序前，SAFETY-FIRST 会保持隐藏。
+Public Beta 规划器支持站点搜索、直达与一次换乘、FASTEST/BALANCED 两种可点击模式、可点击备选方案、Journey 地图、时间线、估算换乘余量、可靠性明细和明确的证据限制。SAFETY-FIRST 会一直作为核心产品模式显示，但在站点级安全证据真正改变排序前保持不可用。
 
 ## Public Beta truth contract / Public Beta 真实性约定
 

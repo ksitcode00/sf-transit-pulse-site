@@ -46,9 +46,10 @@
       <div class="hero-copy">
         <p class="eyebrow" data-i18n="eyebrow">San Francisco · right now</p>
         <h1 data-i18n="heroTitle">Know your next move.</h1>
-        <p class="hero-lead" data-i18n="heroLead">Live Muni movement, service spacing, street disruptions, and city context—distilled into one calm view.</p>
+        <p class="hero-lead" data-i18n="heroLead">See what is happening now, compare feasible journeys, and understand what to take—and why.</p>
         <div class="hero-actions">
-          <a class="primary-button large" href="#network" data-i18n="viewNetwork">View the network</a>
+          <a class="primary-button large" href="#journey" data-i18n="planJourney">Plan a journey</a>
+          <a class="secondary-button large" href="#network" data-i18n="viewNetwork">View the network</a>
           <a class="secondary-button large" href="#method" data-i18n="howWorks">How it works</a>
         </div>
       </div>
@@ -239,15 +240,28 @@
 
     <section class="section method" id="method">
       <div class="method-copy">
-        <p class="eyebrow" data-i18n="methodEyebrow">Method</p>
-        <h2 data-i18n="evidenceTitle">Evidence before confidence.</h2>
-        <p data-i18n="evidenceBody">Travel time remains an estimate and is never altered by preference penalties. Public Beta exposes FASTEST and BALANCED; SAFETY-FIRST stays hidden until stop-level evidence can genuinely affect ranking.</p>
+        <p class="eyebrow" data-i18n="methodEyebrow">How SF Transit Pulse works</p>
+        <h2 data-i18n="evidenceTitle">From live service evidence to a decision.</h2>
+        <p data-i18n="northStarBody">SF Transit Pulse is designed around one question: What should I do right now, and why?</p>
+        <p class="method-principle" data-i18n="evidenceBody">Evidence before confidence.</p>
       </div>
       <ol class="method-steps">
-        <li><span>1</span><div><strong data-i18n="collect">Collect</strong><p data-i18n="collectBody">Fetch official transit and city feeds on a controlled schedule.</p></div></li>
-        <li><span>2</span><div><strong data-i18n="normalize">Normalize</strong><p data-i18n="normalizeBody">Align identifiers, directions, timestamps, units, and freshness.</p></div></li>
-        <li><span>3</span><div><strong data-i18n="explain">Explain</strong><p data-i18n="explainBody">Publish observations, limitations, and decision reasons together.</p></div></li>
+        <li><span>1</span><div><strong data-i18n="observe">Observe</strong><p data-i18n="observeBody">Read current vehicles, trip predictions, alerts, route geometry, and relevant context—with freshness attached.</p></div></li>
+        <li><span>2</span><div><strong data-i18n="diagnose">Diagnose</strong><p data-i18n="diagnoseBody">Evaluate headways, bunching, gaps, movement, and evidence separately for every route and direction.</p></div></li>
+        <li><span>3</span><div><strong data-i18n="build">Build feasible journeys</strong><p data-i18n="buildBody">Compare direct and one-transfer options, including access walking and transfer feasibility—not just lines that meet on a map.</p></div></li>
+        <li><span>4</span><div><strong data-i18n="compare">Compare trade-offs</strong><p data-i18n="compareBody">FASTEST prioritizes estimated time. BALANCED also weighs reliability, walking, and transfers. SAFETY-FIRST waits for journey-level exposure evidence.</p></div></li>
+        <li><span>5</span><div><strong data-i18n="explain">Explain the decision</strong><p data-i18n="explainBody">Show why one option wins while keeping alternatives, assumptions, and evidence limits visible.</p></div></li>
       </ol>
+      <div class="method-boundaries">
+        <p class="eyebrow" data-i18n="boundariesTitle">What the system does not claim</p>
+        <ul>
+          <li data-i18n="boundarySafety">Historical incident exposure predicts personal safety.</li>
+          <li data-i18n="boundaryRoad">Road overlap by itself proves the cause of a transit delay.</li>
+          <li data-i18n="boundaryMissing">Missing realtime evidence means a route is not operating.</li>
+          <li data-i18n="boundaryCost">A preference cost is the same thing as an ETA.</li>
+          <li data-i18n="boundaryTransfer">A theoretical transfer is always catchable.</li>
+        </ul>
+      </div>
     </section>
   </main>
 
