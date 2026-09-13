@@ -6,6 +6,12 @@ on:
     paths:
       - "site/**"
       - ".github/workflows/pages.yml"
+  # Commits created with the repository GITHUB_TOKEN do not emit another
+  # push workflow event. Listen for the refresh workflow itself so every
+  # successful scheduled snapshot is published to Pages.
+  workflow_run:
+    workflows: ["Refresh transit snapshot"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -19,6 +25,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
