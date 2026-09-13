@@ -834,7 +834,10 @@ LIMIT 40000
     rows = datasf_records("8vzz-qzz9", query, 5000, max_pages=8)
     meters = []
     seen_spaces = set()
-    for row in rows:
+    for source_row in rows:
+        # DataSF v3 may preserve display-name casing for this older inventory.
+        # Normalize keys once so both POST_ID and post_id satisfy the same contract.
+        row = {str(key).strip().casefold(): value for key, value in source_row.items()}
         space_id = str(row.get("parking_space_id") or "")
         post_id = str(row.get("post_id") or "")
         try:
@@ -860,7 +863,11 @@ LIMIT 40000
             }
         )
     if not meters:
-        raise ValueError("Parking meter inventory returned no usable on-street spaces.")
+        first_keys = sorted(rows[0].keys()) if rows else []
+        raise ValueError(
+            "Parking meter inventory returned no usable on-street spaces "
+            f"from {len(rows)} rows; first-row fields: {first_keys}."
+        )
     write_json(
         {
             "generated_at": datetime.now(timezone.utc).isoformat(),
