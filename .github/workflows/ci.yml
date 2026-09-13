@@ -7,14 +7,12 @@ on:
       - "backend/**"
       - "site/**"
       - "tests/**"
-      - "render.yaml"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
       - "backend/**"
       - "site/**"
       - "tests/**"
-      - "render.yaml"
 
 permissions:
   contents: read
@@ -39,7 +37,13 @@ jobs:
         run: python -m pytest -q tests
 
       - name: Verify browser JavaScript
-        run: node --check site/app.js
+        run: |
+          node --check site/app.js
+          node --check site/planner-worker.js
+          node --check site/planner-engine.mjs
+
+      - name: Verify Scheme B browser planner contracts
+        run: node --test tests/browser-planner.test.mjs
 
       - name: Verify public JSON caches
         run: |

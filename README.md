@@ -2,17 +2,23 @@
 
 [Open the live web interface](https://ksitcode00.github.io/sf-transit-pulse-site/)
 
-This public repository contains only the browser application, credential-free data snapshots, the scheduled refresh worker, and the Scheme A FastAPI planning service. The private analytical Notebook is intentionally excluded.
+This public repository contains the browser application, credential-free data snapshots, and the scheduled refresh worker. Feature 25B runs trip planning in a Web Worker inside each visitor's browser, so no Render account or separately hosted API is required. The private analytical Notebook is intentionally excluded.
 
-这个公开仓库只包含网页、无密钥数据快照、自动刷新程序和方案 A 的 FastAPI 行程规划服务。私有分析 Notebook 不在这里。
+这个公开仓库包含网页、无密钥数据快照和自动刷新程序。Feature 25B 会在每位访客浏览器的 Web Worker 中计算路线，因此不需要 Render 账户、信用卡或单独部署 API。私有分析 Notebook 不在这里。
 
-## Deploy the Scheme A planning API / 部署方案 A 后端
+## Scheme B architecture / 方案 B 架构
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/ksitcode00/sf-transit-pulse-site)
+```text
+511 + public city data
+        ↓  GitHub Actions (the API key stays in an encrypted Secret)
+credential-free JSON snapshots
+        ↓  GitHub Pages CDN
+visitor's browser → Web Worker route calculation → interactive result
+```
 
-After deployment, verify the service URL in `site/config.js`. The frontend expects `https://sf-transit-planner-api-ksitcode00.onrender.com` unless you change that file.
+The page loads the static network once, refreshes the public realtime snapshot, and sends both objects to `planner-worker.js`. The worker returns the same result contract used by the UI without blocking map interaction. No credential or third-party compute service is required at request time.
 
-部署后请确认 `site/config.js` 中的服务网址。默认预期地址是 `https://sf-transit-planner-api-ksitcode00.onrender.com`。
+网页只加载一次静态线路网络，并定期获取公开实时快照，然后把两份数据交给 `planner-worker.js`。Worker 使用与 UI 相同的数据格式返回结果，不会阻塞地图操作。用户查询时不需要密钥，也不依赖任何第三方计算服务。
 
 The Public Beta planner supports stop search, direct and one-transfer candidates, three working comparison modes, clickable alternatives, a journey map, and trip-level evidence. Feature 20 retains concrete trips from the existing GTFS-RT Trip Updates request. When both required stop predictions exist, the planner shows the specific trip, predicted boarding and arrival times, and a transfer catch-slack calculation. Missing or incomplete predictions fall back to a clearly labeled estimate. Feature 23 makes SAFETY-FIRST a real ranking mode by comparing location-level historical incident-report counts along each candidate journey. Feature 24 adds paid-parking activity near the destination.
 
@@ -22,17 +28,17 @@ Public Beta 规划器支持站点搜索、直达与一次换乘、三种可用�
 
 - A journey uses trip-level arrival predictions only when one concrete trip has valid predictions at both the boarding and alighting stops. Otherwise that leg is labeled estimated.
 - A realtime transfer requires complete predictions for both trips. Catch slack equals the second departure minus the first arrival, transfer walk, and a one-minute boarding buffer. Incomplete evidence falls back to an estimated headway buffer.
-- If the planning API is unavailable, the page shows an error and Retry action. It never substitutes the fixed QA journey for a visitor's request.
+- If the browser cannot initialize its local planning worker, the page shows an error and Retry action. It never substitutes the fixed QA journey for a visitor's request.
 - The browser reloads `latest.json` every five minutes but loads the static GTFS network only once per visit.
-- The Network view is live. The Journey view needs the Scheme A API deployment; without that service, the page reports that planning is unavailable instead of showing a fake result.
+- Network and Journey both use the latest credential-free snapshot. Journey calculations happen locally and have no hosted-server cold start.
 - SAFETY-FIRST compares nearby incident reports from the past 365 days. It is a relative historical-data preference, not a crime forecast, a safe/unsafe label, or a personal-safety guarantee. Missing evidence never becomes a zero-risk score.
 - Destination parking compares recent paid sessions with the nearby on-street meter inventory. A paid session does not prove a vehicle is present, and this feature never claims to show occupancy or available spaces.
 
 - 只有同一个具体班次在上下车站都有有效预测时，该路段才标为班次级实时预测；否则会明确标成估算。
 - 实时换乘必须同时有两趟具体班次的完整预测。换乘余量等于第二趟预计离开时间，减去第一趟预计到达、换乘步行和一分钟上车余量；证据不完整时才使用班距估算。
-- 行程 API 不可用时，网页只显示错误与“重试”，绝不会拿固定 QA 行程冒充用户查询结果。
+- 如果浏览器无法启动本地规划线程，网页只显示错误与“重试”，绝不会拿固定 QA 行程冒充用户查询结果。
 - 浏览器每五分钟重新读取 `latest.json`，静态 GTFS 路网每次访问只载入一次。
-- Network 页面使用实时快照。Journey 页面仍需要部署 Scheme A 后端；后端不可用时，页面会直接说明无法规划，不会显示假结果。
+- Network 与 Journey 都读取最新的无密钥快照；Journey 在浏览器本地计算，不存在托管服务器休眠后的冷启动。
 - SAFETY-FIRST 比较过去 365 天附近的历史报案数量。它只是一种相对历史数据偏好，不是犯罪预测、地点安全标签或个人安全保证；缺少数据时也不会被当成“零风险”。
 - 目的地停车功能会把近期停车付费记录与附近路边收费车位清单放在一起比较。付费记录不代表车辆仍在现场，页面也绝不会把它写成占用率或实时空位。
 

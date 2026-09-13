@@ -12,7 +12,7 @@ const I18N = {
     causalityNote: "A street event near a route may affect service, but it does not prove what caused a delay.",
     serviceNotices: "Muni service updates", roadEvents: "Nearby street work", journeyDecision: "Plan your trip",
     whereGoing: "Where do you want to go?", plannerLead: "Choose two Muni stops. We'll compare direct trips and trips with one transfer using the latest available data.",
-    dynamicPlanner: "Live predictions + estimates · Public Beta", fromStop: "Starting stop", toStop: "Destination stop", findRoute: "Compare routes", tryExample: "Try a sample trip",
+    dynamicPlanner: "Live predictions + on-device planning · Public Beta", fromStop: "Starting stop", toStop: "Destination stop", findRoute: "Compare routes", tryExample: "Try a sample trip",
     journeyMapHint: "Transit legs are solid; walking connections are dotted.", journeyTimeline: "Your trip",
     journeyReliability: "How steady is this trip?", journeySafety: "Historical incident context", journeyParking: "Parking near your destination",
     threeWays: "Choose what matters most.", referenceCase: "Reference trip", alternatives: "Other routes",
@@ -42,7 +42,7 @@ const I18N = {
     causalityNote: "线路附近的道路事件可能影响公交，但不能单凭位置接近就认定它造成了延误。",
     serviceNotices: "Muni 服务更新", roadEvents: "附近道路施工与事件", journeyDecision: "规划行程",
     whereGoing: "你想从哪里去哪里？", plannerLead: "选择两个 Muni 站点。我们会用最新数据比较直达和一次换乘的路线。",
-    dynamicPlanner: "实时预测与估算 · 测试版", fromStop: "起点站", toStop: "终点站", findRoute: "比较路线", tryExample: "试试示例行程",
+    dynamicPlanner: "实时预测与本机计算 · 测试版", fromStop: "起点站", toStop: "终点站", findRoute: "比较路线", tryExample: "试试示例行程",
     journeyMapHint: "实线是公交路段，虚线是步行连接。", journeyTimeline: "行程步骤",
     journeyReliability: "这趟行程稳不稳定？", journeySafety: "历史事件参考", journeyParking: "目的地附近停车情况",
     threeWays: "按你最在意的事情来选。", referenceCase: "参考行程", alternatives: "其他路线",
@@ -70,9 +70,15 @@ let journeyMap = null;
 let journeyLayer = null;
 let stopSearchIndex = new Map();
 let plannerStops = [];
-const stopSearchTimers = new Map();
-const stopSearchTokens = new Map();
-const PLANNER_API_BASE = String(window.SF_TRANSIT_API_BASE || "").replace(/\/$/, "");
+// Feature 25B · Scheme B worker bridge / 方案 B 浏览器线程连接
+// 中文：旧版在这里保存 Render 地址；现在主页面只和本地 Web Worker 通信。
+// 每次实时快照更新后，Worker 会收到新的无密钥数据并重新建立查询索引。
+// English: The old boundary stored a Render URL. The page now talks only to a
+// local Web Worker, which rebuilds its indexes whenever the public snapshot changes.
+let plannerWorker = null;
+let plannerWorkerSequence = 0;
+let plannerEngineReady = null;
+const plannerWorkerRequests = new Map();
 const appState = {
   selectedRoute: "all",
   selectedDirection: "all",
@@ -83,6 +89,41 @@ const appState = {
   plannerResult: null,
   plannerRequestKey: null
 };
+
+function plannerWorkerCall(type, payload = {}) {
+  if (!window.Worker) return Promise.reject(new Error("This browser does not support background route planning."));
+  if (!plannerWorker) {
+    plannerWorker = new Worker("planner-worker.js", {type: "module"});
+    plannerWorker.addEventListener("message", event => {
+      const request = plannerWorkerRequests.get(event.data?.id);
+      if (!request) return;
+      plannerWorkerRequests.delete(event.data.id);
+      if (event.data.ok) request.resolve(event.data.result);
+      else request.reject(new Error(event.data.error || "Browser planning failed."));
+    });
+    plannerWorker.addEventListener("error", event => {
+      const error = new Error(event.message || "The browser planner could not start.");
+      for (const request of plannerWorkerRequests.values()) request.reject(error);
+      plannerWorkerRequests.clear();
+      plannerWorker?.terminate();
+      plannerWorker = null;
+    });
+  }
+  const id = ++plannerWorkerSequence;
+  return new Promise((resolve, reject) => {
+    plannerWorkerRequests.set(id, {resolve, reject});
+    plannerWorker.postMessage({id, type, payload});
+  });
+}
+
+function syncPlannerEngine() {
+  if (!network || !snapshot) return null;
+  plannerEngineReady = plannerWorkerCall("initialize", {network, realtime: snapshot});
+  // A click on Compare routes reports initialization errors in plain language.
+  // This handler prevents a background refresh from creating an unhandled rejection.
+  plannerEngineReady.catch(() => {});
+  return plannerEngineReady;
+}
 
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[ch]));
 const hasNumber = (value) => value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value));
@@ -631,10 +672,16 @@ function allPlannerStops() {
   const patterns = network?.patterns || network?.route_directions || {};
   Object.values(patterns).forEach(direction => {
     (direction.stops || []).forEach(stop => {
-      if (!stop.stop_id || unique.has(String(stop.stop_id))) return;
-      unique.set(String(stop.stop_id), {...stop, stop_id: String(stop.stop_id)});
+      if (!stop.stop_id) return;
+      const stopId = String(stop.stop_id);
+      const current = unique.get(stopId) || {...stop, stop_id: stopId, route_ids: []};
+      if (direction.route_id && !current.route_ids.includes(String(direction.route_id))) {
+        current.route_ids.push(String(direction.route_id));
+      }
+      unique.set(stopId, current);
     });
   });
+  unique.forEach(stop => stop.route_ids.sort((a, b) => a.localeCompare(b, undefined, {numeric:true})));
   return [...unique.values()].sort((a,b) => String(a.name).localeCompare(String(b.name)) || String(a.stop_id).localeCompare(String(b.stop_id)));
 }
 
@@ -687,29 +734,12 @@ function renderStopSuggestions(input, list, rows) {
 
 function scheduleStopSearch(input, list) {
   const query = input.value.trim();
-  const timer = stopSearchTimers.get(input.id);
-  if (timer) clearTimeout(timer);
   if (query.length < 2) {
     list.hidden = true;
     input.setAttribute("aria-expanded", "false");
     return;
   }
   renderStopSuggestions(input, list, localStopMatches(query));
-  const token = (stopSearchTokens.get(input.id) || 0) + 1;
-  stopSearchTokens.set(input.id, token);
-  stopSearchTimers.set(input.id, setTimeout(async () => {
-    if (!PLANNER_API_BASE) return;
-    try {
-      const response = await fetch(`${PLANNER_API_BASE}/stops?q=${encodeURIComponent(query)}&limit=12`);
-      if (!response.ok) return;
-      const payload = await response.json();
-      if (stopSearchTokens.get(input.id) === token && input.value.trim() === query) {
-        renderStopSuggestions(input, list, payload.stops || []);
-      }
-    } catch (_) {
-      // Local GTFS search remains available while the free beta API wakes up.
-    }
-  }, 300));
 }
 
 function resolveStopInput(value) {
@@ -1012,12 +1042,14 @@ function renderAlternatives(alternatives) {
 }
 
 function renderPlannerEmpty() {
+  const safetyAvailable = snapshot?.safety?.status === "JOURNEY_RELATIVE_CONTEXT"
+    || (snapshot?.safety?.cells || []).length > 0;
   document.getElementById("journey-od").textContent = language === "zh" ? "选择起点和终点后开始规划。" : "Choose an origin and destination to begin.";
   document.getElementById("mode-grid").dataset.modeCount = "3";
   document.getElementById("mode-grid").innerHTML = [
     ["FASTEST", true],
     ["BALANCED", true],
-    ["SAFETY_FIRST", false]
+    ["SAFETY_FIRST", safetyAvailable]
   ].map(([mode, available], index) => `<div class="mode-card mode-preview ${available ? "" : "unavailable"}"><span class="mode-label">${modeName(mode)}${index === 1 ? (language === "zh" ? " · 默认" : " · Default") : ""}${available ? "" : (language === "zh" ? " · 暂不可用" : " · Not available yet")}</span><p>${modeExplanation(mode, available)}</p></div>`).join("");
   document.getElementById("alternatives-list").innerHTML = `<p class="planner-empty-inline">${language === "zh" ? "比较这趟行程后，其他可选路线会显示在这里。如果规划服务暂时不可用，我们会直接告诉你。" : "Other routes will appear here after you compare this trip. If trip planning is unavailable, we'll tell you directly."}</p>`;
   document.getElementById("journey-workspace").hidden = true;
@@ -1053,27 +1085,26 @@ async function planTrip() {
     setPlannerStatus(language === "zh" ? "起点和终点不能相同。" : "Origin and destination must be different.", true);
     return;
   }
-  if (!PLANNER_API_BASE) {
+  if (!plannerEngineReady) {
     appState.plannerResult = null;
     renderPlannerEmpty();
-    setPlannerError(language === "zh" ? "行程规划暂时不可用。你仍然可以在上方查看线路和实时车辆位置。" : "Trip planning is not available yet. You can still check routes and live vehicle locations above.");
+    setPlannerError(language === "zh" ? "路线数据仍在加载，请稍后重试。" : "Route data is still loading. Try again in a moment.");
     return;
   }
   const requestKey = `${originId}|${destinationId}|${appState.selectedMode}`;
   const button = document.getElementById("plan-trip-button");
   button.disabled = true;
   setPlannerStatus(language === "zh" ? "正在比较直达和一次换乘路线…" : "Comparing direct trips and trips with one transfer…");
-  const coldStartMessage = setTimeout(() => setPlannerStatus(
-    language === "zh" ? "行程规划正在启动。长时间没人使用后，第一次查询可能需要约一分钟…" : "Trip planning is starting. The first search after a quiet period may take about a minute…"
-  ), 7000);
+  const longerCalculationMessage = setTimeout(() => setPlannerStatus(
+    language === "zh" ? "正在你的设备上继续比较路线，页面仍可正常操作…" : "Still comparing routes on your device. You can keep using the page…"
+  ), 2500);
   try {
-    const response = await fetch(`${PLANNER_API_BASE}/plan-trip`, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({origin_stop_id: originId, destination_stop_id: destinationId, mode: appState.selectedMode})
+    await plannerEngineReady;
+    const payload = await plannerWorkerCall("plan", {
+      origin_stop_id: originId,
+      destination_stop_id: destinationId,
+      mode: appState.selectedMode
     });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.detail || `Planner returned HTTP ${response.status}`);
     appState.plannerResult = payload;
     appState.plannerRequestKey = requestKey;
     appState.selectedMode = payload.selected_mode || appState.selectedMode;
@@ -1087,9 +1118,12 @@ async function planTrip() {
     appState.plannerResult = null;
     appState.selectedJourneyId = null;
     renderPlannerEmpty();
-    setPlannerError(language === "zh" ? "暂时无法比较路线。规划服务可能正在启动或短暂不可用，请一分钟后再试。" : "We couldn't compare routes. The trip service may be starting or temporarily unavailable. Try again in a minute.");
+    const noJourney = String(error?.message || "").includes("No direct or one-transfer journey");
+    setPlannerError(noJourney
+      ? (language === "zh" ? "目前没有找到直达或只换乘一次的路线，请换一个邻近站点再试。" : "No direct or one-transfer route was found. Try a nearby stop instead.")
+      : (language === "zh" ? "暂时无法在你的浏览器中比较路线。请刷新页面后重试。" : "We couldn't compare routes in this browser. Refresh the page and try again."));
   } finally {
-    clearTimeout(coldStartMessage);
+    clearTimeout(longerCalculationMessage);
     button.disabled = false;
   }
 }
@@ -1158,6 +1192,7 @@ async function loadData({includeNetwork = false} = {}) {
     if (networkResponse && !networkResponse.ok) throw new Error(`Network catalog request returned HTTP ${networkResponse.status}`);
     snapshot = await snapshotResponse.json();
     if (networkResponse) network = await networkResponse.json();
+    syncPlannerEngine();
     renderAll({networkChanged: Boolean(networkResponse)});
     document.getElementById("error-banner").hidden = true;
   } catch (error) {
