@@ -149,6 +149,19 @@ def test_rider_facing_copy_uses_plain_language_in_both_languages() -> None:
     assert "advice.label, advice.code" not in app
 
 
+def test_unknown_vehicle_positions_are_separated_from_route_results() -> None:
+    app = (ROOT / "site/app.js").read_text(encoding="utf-8")
+    page = (ROOT / "site/index.html").read_text(encoding="utf-8")
+
+    assert 'routeId !== "UNKNOWN" && knownRouteIds.has(routeId)' in app
+    assert "vehicleCoverage().mapped.filter" in app
+    assert 'id="unassigned-count"' in page
+    assert "live positions not assigned to a route" in page
+    assert "leave them off the map and out of route analysis" in app
+    assert "Know your next move." in app and "Know your next move." in page
+    assert 'journeyTimeline: "Your trip"' in app
+
+
 def test_static_gtfs_keeps_multiple_patterns_per_route_direction() -> None:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:

@@ -1,7 +1,7 @@
 const I18N = {
   en: {
     navNetwork: "Muni now", navJourney: "Plan a trip", navContext: "More travel info", refresh: "Get latest update", skipToMuni: "Skip to Muni updates",
-    eyebrow: "San Francisco Muni · Live updates", heroTitle: "Choose your next ride with confidence.",
+    eyebrow: "San Francisco Muni · Live updates", heroTitle: "Know your next move.",
     heroLead: "See where vehicles are, spot longer waits, and compare routes before you leave.",
     planJourney: "Plan a trip", viewNetwork: "Check Muni now", howWorks: "See how results are made", vehiclesReporting: "vehicle locations found",
     routesObserved: "routes with live updates", activeNotices: "service updates", liveNetwork: "Muni right now",
@@ -13,7 +13,7 @@ const I18N = {
     serviceNotices: "Muni service updates", roadEvents: "Nearby street work", journeyDecision: "Plan your trip",
     whereGoing: "Where do you want to go?", plannerLead: "Choose two Muni stops. We'll compare direct trips and trips with one transfer using the latest available data.",
     dynamicPlanner: "Trip estimates · Public Beta", fromStop: "Starting stop", toStop: "Destination stop", findRoute: "Compare routes", tryExample: "Try a sample trip",
-    journeyMapHint: "Transit legs are solid; walking connections are dotted.", journeyTimeline: "Journey timeline",
+    journeyMapHint: "Transit legs are solid; walking connections are dotted.", journeyTimeline: "Your trip",
     journeyReliability: "How steady is this trip?", journeySafety: "Historical incident context",
     threeWays: "Choose what matters most.", referenceCase: "Reference trip", alternatives: "Other routes",
     tradeoffs: "Compare time, walking, and transfers.", route: "Route", eta: "Estimated trip time", walk: "Walking", reliability: "Current service",
@@ -192,6 +192,19 @@ function transitSource() {
   return {status, observed_at: declared.observed_at || null, isLive: status === "live", isSample: status === "retained_sample" || containsDemoIds};
 }
 
+function vehicleCoverage() {
+  const knownRouteIds = new Set((network?.routes || []).map(route => String(route.route_id)));
+  const all = snapshot?.vehicles || [];
+  const mapped = [];
+  const unassigned = [];
+  all.forEach(vehicle => {
+    const routeId = String(vehicle.route_id || "").trim();
+    if (routeId && routeId !== "UNKNOWN" && knownRouteIds.has(routeId)) mapped.push(vehicle);
+    else unassigned.push(vehicle);
+  });
+  return {mapped, unassigned, total: all.length};
+}
+
 function coverageSummary() {
   const rows = snapshot?.routes || [];
   const uniqueDirections = new Map();
@@ -225,9 +238,14 @@ function renderMeta() {
   document.getElementById("generated-at").textContent = generated ? `${language === "zh" ? "页面更新时间" : "Page updated"}: ${generated.toLocaleString()}` : (language === "zh" ? "页面更新时间不明" : "Page update time unavailable");
   document.getElementById("quality-status").textContent = sourceLabel;
   const failures = meta.errors || [];
-  document.getElementById("quality-detail").textContent = failures.length ?
+  const sourceCheckMessage = failures.length ?
     (language === "zh" ? `${failures.length} 项数据暂时无法更新。页面会明确标出旧数据或演示数据。` : `${failures.length} data source${failures.length === 1 ? " is" : "s are"} temporarily unavailable. Older or demo data is clearly labeled.`) :
     (language === "zh" ? "本次更新已成功检查所有已连接的数据。" : "All connected data sources were checked successfully.");
+  const unassignedCount = vehicleCoverage().unassigned.length;
+  const unassignedMessage = unassignedCount ? (language === "zh"
+    ? `${unassignedCount} 个实时车辆位置暂时无法对应到乘客线路，因此不会显示在地图或用于线路分析。`
+    : `${unassignedCount} live vehicle location${unassignedCount === 1 ? "" : "s"} cannot be matched to a passenger route, so we leave them off the map and out of route analysis.`) : "";
+  document.getElementById("quality-detail").textContent = [sourceCheckMessage, unassignedMessage].filter(Boolean).join(" ");
   const transitFreshness = transit.observed_at ? timeAgo(transit.observed_at) : (transit.isSample ? (language === "zh" ? "演示数据 · 时间不明" : "Demo data · time unavailable") : (language === "zh" ? "更新时间不明" : "Update time unavailable"));
   const freshnessRows = [
     [language === "zh" ? "车辆与到站时间" : "Vehicles and arrivals", transitFreshness],
@@ -241,13 +259,14 @@ function renderMeta() {
 function renderHero() {
   const coverage = coverageSummary();
   const transit = transitSource();
-  document.getElementById("vehicle-count").textContent = fmt((snapshot.vehicles || []).length);
+  const vehicles = vehicleCoverage();
+  document.getElementById("vehicle-count").textContent = fmt(vehicles.mapped.length);
+  document.getElementById("unassigned-count").textContent = fmt(vehicles.unassigned.length);
   document.getElementById("route-count").textContent = `${coverage.routesWithEvidence} / ${coverage.totalRoutes || "—"}`;
-  document.getElementById("direction-count").textContent = `${coverage.directionsWithEvidence} / ${coverage.totalDirections || "—"}`;
   document.getElementById("issue-count").textContent = fmt(coverage.issues);
-  document.getElementById("vehicle-count-label").textContent = transit.isLive ? (language === "zh" ? "个实时车辆位置" : "live vehicle locations") : (language === "zh" ? "个演示车辆位置" : "demo vehicle locations");
-  document.getElementById("route-count-label").textContent = transit.isLive ? (language === "zh" ? "条线路有实时信息" : "routes with live updates") : (language === "zh" ? "条线路有演示信息" : "routes shown in demo data");
-  document.getElementById("direction-count-label").textContent = language === "zh" ? "个方向已检查" : "directions checked";
+  document.getElementById("vehicle-count-label").textContent = transit.isLive ? (language === "zh" ? "个已匹配线路的实时车辆" : "live vehicles matched to a route") : (language === "zh" ? "个已匹配线路的演示车辆" : "demo vehicles matched to a route");
+  document.getElementById("unassigned-count-label").textContent = transit.isLive ? (language === "zh" ? "个暂时无法归属线路的位置" : "live positions not assigned to a route") : (language === "zh" ? "个无法归属线路的演示位置" : "demo positions not assigned to a route");
+  document.getElementById("route-count-label").textContent = transit.isLive ? (language === "zh" ? "条线路当前有实时回报" : "routes reporting right now") : (language === "zh" ? "条线路出现在演示数据中" : "routes shown in demo data");
   document.getElementById("issue-count-label").textContent = language === "zh" ? "个方向可能需要多等" : "directions with possible longer waits";
   const overviewTitle = document.querySelector('[data-i18n="routeOverview"]');
   if (overviewTitle) overviewTitle.textContent = transit.isLive ? (language === "zh" ? "实时信息最完整的线路" : "Routes with the clearest live picture") : (language === "zh" ? "演示数据中的线路" : "Routes in the demo data");
@@ -361,7 +380,7 @@ function renderMap(routeId = appState.selectedRoute, directionId = appState.sele
       .addTo(mapLayers.stops);
   }));
 
-  const vehicles = (snapshot.vehicles || []).filter(vehicle => selectionMatches(vehicle, routeId, directionId));
+  const vehicles = vehicleCoverage().mapped.filter(vehicle => selectionMatches(vehicle, routeId, directionId));
   vehicles.forEach(vehicle => {
     if (!hasNumber(vehicle.lat) || !hasNumber(vehicle.lon)) return;
     const point = [Number(vehicle.lat), Number(vehicle.lon)];
@@ -402,7 +421,7 @@ function renderMap(routeId = appState.selectedRoute, directionId = appState.sele
   const direction = routeCatalogEntry(routeId)?.directions?.find(item => String(item.direction_id) === String(directionId));
   const directionLabel = direction ? ` · ${directionLabelCopy(direction.direction_label, direction.direction_id)}${direction.headsign ? ` → ${direction.headsign}` : ""}` : "";
   document.getElementById("map-label").textContent = routeId === "all" ?
-    (language === "zh" ? "全部有实时位置的车辆" : "All vehicles with current locations") :
+    (language === "zh" ? "全部已匹配到线路的车辆" : "All vehicles matched to a route") :
     `${language === "zh" ? "线路" : "Route"} ${routeId}${directionLabel}`;
 }
 
@@ -415,7 +434,7 @@ function median(values) {
 
 function combinedRoute(routeId = appState.selectedRoute, directionId = appState.selectedDirection) {
   const rows = (snapshot.routes || []).filter(row => selectionMatches(row, routeId, directionId));
-  const vehicles = (snapshot.vehicles || []).filter(vehicle => selectionMatches(vehicle, routeId, directionId));
+  const vehicles = vehicleCoverage().mapped.filter(vehicle => selectionMatches(vehicle, routeId, directionId));
   const severity = {UNSTABLE:3, WATCH:2, LIMITED_REALTIME_DATA:1, NO_DATA:0, STABLE:0};
   const qualityScore = {GOOD:3, MODERATE:2, LIMITED:1};
   const evidenceQuality = rows.map(row => row.evidence_quality).filter(Boolean).sort((a,b)=>(qualityScore[b]||0)-(qualityScore[a]||0))[0] || "LIMITED";
@@ -482,11 +501,13 @@ function renderRouteFocus(routeId = appState.selectedRoute, directionId = appSta
 
   if (routeId === "all") {
     const coverage = coverageSummary();
+    const vehicles = vehicleCoverage();
     const sampleNote = transitSource().isLive ? "" : (language === "zh" ? "（目前显示演示数据）" : " (demo data shown)");
     document.getElementById("focus-route-status").textContent = language === "zh" ? `每个方向分开查看，不会因为一条线路有问题就说整个 Muni 都不稳定${sampleNote}` : `We check each direction separately, so one troubled route does not label all of Muni as unstable${sampleNote}`;
     metrics.innerHTML = [
-      metricRow(language === "zh" ? "地图上的车辆位置" : "Vehicle locations on the map", fmt((snapshot.vehicles || []).length), transitSource().isSample ? (language === "zh" ? "演示数据" : "demo data") : ""),
-      metricRow(language === "zh" ? "有实时信息的线路" : "Routes with live updates", `${coverage.routesWithEvidence} / ${coverage.totalRoutes}`),
+      metricRow(language === "zh" ? "地图上的车辆" : "Vehicles on the map", fmt(vehicles.mapped.length), transitSource().isSample ? (language === "zh" ? "演示数据" : "demo data") : ""),
+      metricRow(language === "zh" ? "未归属线路的位置" : "Positions without a route", fmt(vehicles.unassigned.length), language === "zh" ? "已从地图和线路分析中排除" : "left off the map and out of route analysis"),
+      metricRow(language === "zh" ? "当前有实时回报的线路" : "Routes reporting right now", `${coverage.routesWithEvidence} / ${coverage.totalRoutes}`),
       metricRow(language === "zh" ? "已检查的方向" : "Directions checked", `${coverage.directionsWithEvidence} / ${coverage.totalDirections}`),
       metricRow(language === "zh" ? "车辆间隔较稳定" : "Steady vehicle spacing", fmt(coverage.healthCounts.STABLE)),
       metricRow(language === "zh" ? "部分等待可能较久" : "Some waits may be longer", fmt(coverage.healthCounts.WATCH)),
@@ -495,8 +516,8 @@ function renderRouteFocus(routeId = appState.selectedRoute, directionId = appSta
     ].join("");
     document.getElementById("focus-issues").innerHTML = "";
     document.getElementById("focus-explanation").textContent = language === "zh" ?
-      "这里告诉你目前能看到多少线路，以及不同方向的运行情况。没有实时信息的线路可能仍在正常运营。" :
-      "This shows how much of Muni has live updates and how each direction is running. A route without live data may still be operating.";
+      "这里只显示能对应到乘客线路的车辆。暂时无法归属线路的位置不会被猜测，也不会参与线路判断。没有实时信息的线路可能仍在正常运营。" :
+      "We only show vehicles matched to a passenger route. We do not guess where unassigned positions belong or use them in route results. A route without live data may still be operating.";
     return;
   }
 
@@ -524,7 +545,7 @@ function renderRouteGrid() {
   const grid = document.getElementById("route-grid");
   const note = transitSource().isLive ? "" : `<p class="coverage-note">${language === "zh" ? "下面显示的是演示数据，不代表现在的车辆或服务。" : "The cards below show demo data, not current vehicles or service."}</p>`;
   grid.innerHTML = note + (rows.length ? rows.map(row => {
-    const positions = (snapshot.vehicles || []).filter(vehicle => selectionMatches(vehicle, row.route_id, row.direction_id)).length;
+    const positions = vehicleCoverage().mapped.filter(vehicle => selectionMatches(vehicle, row.route_id, row.direction_id)).length;
     return `
     <article class="route-card" tabindex="0" role="button" data-route="${escapeHtml(row.route_id)}" data-direction="${escapeHtml(row.direction_id)}" aria-pressed="${String(row.route_id) === String(appState.selectedRoute) && String(row.direction_id) === String(appState.selectedDirection)}" aria-label="${language === "zh" ? `查看线路 ${escapeHtml(row.route_id)} 的方向 ${escapeHtml(row.direction_id)}` : `View route ${escapeHtml(row.route_id)} direction ${escapeHtml(row.direction_id)}`}">
       <span class="route-number">${escapeHtml(row.route_id)}</span>

@@ -45,7 +45,7 @@
     <section class="hero" id="top">
       <div class="hero-copy">
         <p class="eyebrow" data-i18n="eyebrow">San Francisco Muni · Live updates</p>
-        <h1 data-i18n="heroTitle">Choose your next ride with confidence.</h1>
+        <h1 data-i18n="heroTitle">Know your next move.</h1>
         <p class="hero-lead" data-i18n="heroLead">See where vehicles are, spot longer waits, and compare routes before you leave.</p>
         <div class="hero-actions">
           <a class="primary-button large" href="#journey" data-i18n="planJourney">Plan a trip</a>
@@ -54,9 +54,9 @@
         </div>
       </div>
       <div class="hero-metrics" aria-live="polite">
-        <article><span id="vehicle-count">—</span><small id="vehicle-count-label">vehicle positions</small></article>
-        <article><span id="route-count">—</span><small id="route-count-label">routes with live updates</small></article>
-        <article><span id="direction-count">—</span><small id="direction-count-label">directions checked</small></article>
+        <article><span id="vehicle-count">—</span><small id="vehicle-count-label">live vehicles matched to a route</small></article>
+        <article><span id="unassigned-count">—</span><small id="unassigned-count-label">live positions not assigned to a route</small></article>
+        <article><span id="route-count">—</span><small id="route-count-label">routes reporting right now</small></article>
         <article><span id="issue-count">—</span><small id="issue-count-label">directions with possible longer waits</small></article>
       </div>
     </section>
@@ -179,7 +179,7 @@
           </div>
         </div>
         <article class="journey-detail-card">
-          <p class="eyebrow" data-i18n="journeyTimeline">Journey timeline</p>
+          <p class="eyebrow" data-i18n="journeyTimeline">Your trip</p>
           <h3 id="selected-journey-title">Choose an option</h3>
           <p class="selected-journey-summary" id="selected-journey-summary"></p>
           <ol class="journey-timeline" id="journey-timeline"></ol>
@@ -272,6 +272,7 @@
     </div>
     <div class="footer-meta">
       <span id="generated-at">Page update time unavailable</span>
+      <span>v0.8 · Public Beta</span>
       <span>Data: 511 SF Bay · DataSF · SFMTA</span>
       <span>Map © OpenStreetMap contributors</span>
       <a href="https://github.com/ksitcode00/sf-transit-pulse-site/issues/new" target="_blank" rel="noreferrer" data-i18n="reportIssue">Report an issue</a>
