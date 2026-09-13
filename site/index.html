@@ -53,9 +53,10 @@
         </div>
       </div>
       <div class="hero-metrics" aria-live="polite">
-        <article><span id="vehicle-count">—</span><small data-i18n="vehiclesReporting">vehicles reporting</small></article>
-        <article><span id="route-count">—</span><small data-i18n="routesObserved">routes observed</small></article>
-        <article><span id="alert-count">—</span><small data-i18n="activeNotices">active notices</small></article>
+        <article><span id="vehicle-count">—</span><small id="vehicle-count-label">vehicle positions</small></article>
+        <article><span id="route-count">—</span><small id="route-count-label">routes with evidence</small></article>
+        <article><span id="direction-count">—</span><small id="direction-count-label">directions monitored</small></article>
+        <article><span id="issue-count">—</span><small id="issue-count-label">directions to watch</small></article>
       </div>
     </section>
 
@@ -66,6 +67,10 @@
           <h2 data-i18n="seeCityMove">See the city move.</h2>
         </div>
         <div class="route-controls">
+          <div class="route-scope" role="group" aria-label="Choose route catalog scope">
+            <button class="scope-button" id="evidence-routes-button" type="button" data-scope="evidence" aria-pressed="true">With realtime evidence</button>
+            <button class="scope-button" id="all-routes-button" type="button" data-scope="all" aria-pressed="false">All Muni routes</button>
+          </div>
           <label class="route-control">
             <span data-i18n="focusRoute">Focus a route</span>
             <select id="route-select" aria-label="Choose a Muni route">
@@ -83,7 +88,17 @@
 
       <div class="network-grid">
         <div class="map-shell">
-          <div id="map" role="application" aria-label="Map of current Muni vehicle positions"></div>
+          <div class="map-stage">
+            <div id="map" role="application" aria-label="Map of current Muni vehicle positions"></div>
+            <fieldset class="map-layer-control" id="map-layer-control">
+              <legend>Layers</legend>
+              <label><input type="checkbox" data-layer="vehicles" checked> <span>Vehicles</span></label>
+              <label><input type="checkbox" data-layer="route" checked> <span>Route shape</span></label>
+              <label><input type="checkbox" data-layer="stops"> <span>Stops</span></label>
+              <label><input type="checkbox" data-layer="issues" checked> <span>Spacing issues</span></label>
+              <label><input type="checkbox" data-layer="roads"> <span>Road events</span></label>
+            </fieldset>
+          </div>
           <div class="map-caption">
             <span id="map-label">All reporting vehicles</span>
             <span data-i18n="mapHint">Select a route to focus the map.</span>
@@ -93,14 +108,8 @@
           <p class="eyebrow" data-i18n="routePulse">Route pulse</p>
           <h3 id="focus-route-name">Network overview</h3>
           <p class="focus-status" id="focus-route-status">Waiting for the latest snapshot.</p>
-          <dl class="metric-list">
-            <div><dt data-i18n="vehicles">Vehicles</dt><dd id="focus-vehicles">—</dd></div>
-            <div><dt data-i18n="medianGap">Median predicted gap</dt><dd id="focus-headway">—</dd></div>
-            <div><dt data-i18n="bunching">Bunching</dt><dd id="focus-bunching">—</dd></div>
-            <div><dt data-i18n="serviceGaps">Service gaps</dt><dd id="focus-gaps">—</dd></div>
-            <div><dt data-i18n="currentSpeed">Median vehicle speed</dt><dd id="focus-speed">—</dd></div>
-            <div><dt data-i18n="evidence">Evidence</dt><dd id="focus-evidence">—</dd></div>
-          </dl>
+          <dl class="metric-list" id="focus-metrics"></dl>
+          <div class="issue-details" id="focus-issues"></div>
           <p class="fine-print" id="focus-explanation">Health is computed by route and direction; limited observations remain explicitly limited.</p>
         </aside>
       </div>

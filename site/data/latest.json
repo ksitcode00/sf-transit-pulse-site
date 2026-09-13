@@ -2,7 +2,7 @@
   "meta": {
     "generated_at": "2026-09-13T00:16:08.832586+00:00",
     "status": "partial_live",
-    "pipeline_version": "1.0.0",
+    "pipeline_version": "1.1.0",
     "errors": [
       "511_API_KEY is not configured; the last transit snapshot is retained."
     ],
@@ -11,6 +11,20 @@
       "DataSF",
       "SFMTA"
     ],
+    "source_status": {
+      "transit": {
+        "status": "retained_sample",
+        "observed_at": null
+      },
+      "parking": {
+        "status": "refreshed",
+        "observed_at": "2026-09-11T22:00:11"
+      },
+      "safety": {
+        "status": "refreshed",
+        "observed_at": "2026-09-13T00:16:08.832586+00:00"
+      }
+    },
     "refresh_policy": "Every 10 minutes via GitHub Actions"
   },
   "system": {
@@ -81,97 +95,141 @@
       "route_id": "38R",
       "direction_id": "0",
       "direction_label": "Outbound",
-      "vehicle_count": 12,
+      "vehicle_count": 1,
       "health": "STABLE",
       "median_headway_min": 7.1,
       "predictions_observed": 8,
-      "evidence_quality": "GOOD"
+      "evidence_quality": "GOOD",
+      "bunching_events": 0,
+      "large_gap_events": 0,
+      "severe_gap_events": 0,
+      "spacing_events": []
     },
     {
       "route_id": "38R",
       "direction_id": "1",
       "direction_label": "Inbound",
-      "vehicle_count": 11,
+      "vehicle_count": 1,
       "health": "WATCH",
       "median_headway_min": 11.8,
       "predictions_observed": 7,
-      "evidence_quality": "GOOD"
+      "evidence_quality": "GOOD",
+      "bunching_events": 0,
+      "large_gap_events": 1,
+      "severe_gap_events": 0,
+      "spacing_events": []
     },
     {
       "route_id": "14R",
       "direction_id": "0",
       "direction_label": "Outbound",
-      "vehicle_count": 9,
+      "vehicle_count": 1,
       "health": "STABLE",
       "median_headway_min": 8.4,
       "predictions_observed": 6,
-      "evidence_quality": "MODERATE"
+      "evidence_quality": "MODERATE",
+      "bunching_events": 0,
+      "large_gap_events": 0,
+      "severe_gap_events": 0,
+      "spacing_events": []
     },
     {
       "route_id": "14R",
       "direction_id": "1",
       "direction_label": "Inbound",
-      "vehicle_count": 8,
+      "vehicle_count": 0,
       "health": "STABLE",
       "median_headway_min": 8.8,
       "predictions_observed": 6,
-      "evidence_quality": "MODERATE"
+      "evidence_quality": "MODERATE",
+      "bunching_events": 0,
+      "large_gap_events": 0,
+      "severe_gap_events": 0,
+      "spacing_events": []
     },
     {
       "route_id": "N",
       "direction_id": "0",
       "direction_label": "Outbound",
-      "vehicle_count": 10,
+      "vehicle_count": 1,
       "health": "WATCH",
       "median_headway_min": 12.2,
       "predictions_observed": 5,
-      "evidence_quality": "MODERATE"
+      "evidence_quality": "MODERATE",
+      "bunching_events": 1,
+      "large_gap_events": 0,
+      "severe_gap_events": 0,
+      "spacing_events": []
     },
     {
       "route_id": "N",
       "direction_id": "1",
       "direction_label": "Inbound",
-      "vehicle_count": 9,
+      "vehicle_count": 1,
       "health": "STABLE",
       "median_headway_min": 9.2,
       "predictions_observed": 6,
-      "evidence_quality": "MODERATE"
+      "evidence_quality": "MODERATE",
+      "bunching_events": 0,
+      "large_gap_events": 0,
+      "severe_gap_events": 0,
+      "spacing_events": []
     },
     {
       "route_id": "5",
       "direction_id": "0",
       "direction_label": "Outbound",
-      "vehicle_count": 7,
+      "vehicle_count": 0,
       "health": "STABLE",
       "median_headway_min": 10.0,
       "predictions_observed": 5,
-      "evidence_quality": "MODERATE"
+      "evidence_quality": "MODERATE",
+      "bunching_events": 0,
+      "large_gap_events": 0,
+      "severe_gap_events": 0,
+      "spacing_events": []
     },
     {
       "route_id": "5",
       "direction_id": "1",
       "direction_label": "Inbound",
-      "vehicle_count": 7,
+      "vehicle_count": 1,
       "health": "UNSTABLE",
       "median_headway_min": 20.5,
       "predictions_observed": 5,
-      "evidence_quality": "MODERATE"
+      "evidence_quality": "MODERATE",
+      "bunching_events": 0,
+      "large_gap_events": 1,
+      "severe_gap_events": 1,
+      "spacing_events": []
     }
   ],
   "alerts": [
     {
+      "route_ids": [],
+      "direction_id": null,
+      "route_match_status": "NETWORK_WIDE",
       "title": "Muni service alert",
       "description": "Demo service notice. The scheduled refresh replaces this with the official feed."
     },
     {
+      "route_ids": [
+        "5"
+      ],
+      "direction_id": "1",
+      "route_match_status": "MATCHED",
       "title": "Route 5 · inbound",
       "description": "Service spacing needs attention in the Golden Reference snapshot."
     }
   ],
   "road_events": [
     {
+      "route_ids": [],
+      "route_match_status": "UNAVAILABLE",
       "title": "Road-event context",
-      "description": "Road events are matched to route + direction before any impact explanation is published."
+      "description": "This sample lacks a route match, so it is shown only as network-wide context.",
+      "lat": null,
+      "lon": null
     }
   ],
   "parking": {

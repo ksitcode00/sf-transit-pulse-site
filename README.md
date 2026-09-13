@@ -17,3 +17,13 @@ After deployment, verify the service URL in `site/config.js`. The frontend expec
 The planner supports stop search, direct and one-transfer candidates, clickable FASTEST/BALANCED/SAFETY_FIRST modes, clickable alternatives, a journey map, a timeline, transfer catchability, reliability details, and explicit evidence limitations.
 
 规划器支持站点搜索、直达与一次换乘、三种可点击模式、可点击备选方案、Journey 地图、时间线、换乘余量、可靠性明细和明确的证据限制。
+
+## Network evidence contract / 路网证据契约
+
+The Network page separates three different concepts: all routes in static GTFS, routes/directions represented in the current snapshot, and vehicle positions actually available on the map. The overview shows coverage and a direction-level health distribution instead of labeling the whole network from its worst route. Alerts and road events without a route match stay visible as clearly labeled network context.
+
+Network 页面把三个概念分开：静态 GTFS 中的全部线路、当前快照中有证据的线路／方向，以及地图中实际存在的车辆位置。全网概览显示覆盖率和方向级状态分布，不再用最差一条线路代表整个路网。没有 route match 的提示与道路事件仍会保留，但会明确标成全网背景。
+
+Until `SF_TRANSIT_511_API_KEY` is configured, the six checked-in `demo-*` records are labeled as a retained sample and are not presented as the current Muni fleet.
+
+在配置 `SF_TRANSIT_511_API_KEY` 之前，仓库中的 6 条 `demo-*` 记录会明确标为保留样本，不会冒充当前 Muni 车队。

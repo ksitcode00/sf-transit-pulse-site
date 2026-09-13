@@ -29,7 +29,7 @@ from google.transit import gtfs_realtime_pb2
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = ROOT / "site" / "data" / "latest.json"
 NETWORK_PATH = ROOT / "site" / "data" / "network.json"
-PIPELINE_VERSION = "1.0.0"
+PIPELINE_VERSION = "1.1.0"
 USER_AGENT = "SF-Transit-Pulse/1.0 (+https://github.com/ksitcode00/sf-transit-pulse)"
 SF_BOUNDS = {"south": 37.68, "north": 37.84, "west": -122.55, "east": -122.33}
 
@@ -348,10 +348,60 @@ def health_label(predictions: list[int]) -> tuple[str, float | None, int, int, i
     return health, round(median_gap, 1), bunching, large, severe, quality
 
 
+def build_spacing_events(
+    predictions: list[int],
+    reference_stop_id: str | None,
+    stop_lookup: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Return explainable bunching/gap observations at the reference stop.
+
+    These are prediction-spacing events at one stop, not inferred vehicle
+    locations. Publishing that distinction prevents the map from pretending
+    to know where an anomaly physically began.
+    """
+
+    times = sorted(set(predictions))
+    gaps = [
+        ((later - earlier) / 60, later)
+        for earlier, later in zip(times, times[1:])
+        if 0 < later - earlier <= 7200
+    ]
+    if len(gaps) < 2:
+        return []
+    typical_gap = statistics.median(gap for gap, _ in gaps)
+    stop = stop_lookup.get(str(reference_stop_id or ""), {})
+    events = []
+    for gap_min, observed_for in gaps:
+        event_type = None
+        if gap_min > max(25, typical_gap * 2.5):
+            event_type = "SEVERE_GAP"
+        elif gap_min > max(15, typical_gap * 1.8):
+            event_type = "SERVICE_GAP"
+        elif gap_min < 4:
+            event_type = "BUNCHING"
+        if event_type is None:
+            continue
+        events.append(
+            {
+                "type": event_type,
+                "gap_min": round(gap_min, 1),
+                "typical_gap_min": round(typical_gap, 1),
+                "reference_stop_id": reference_stop_id,
+                "location_name": stop.get("name") or None,
+                "lat": stop.get("lat"),
+                "lon": stop.get("lon"),
+                "observation_scope": "PREDICTION_REFERENCE_STOP",
+                "prediction_time": datetime.fromtimestamp(observed_for, timezone.utc).isoformat(),
+            }
+        )
+    return events
+
+
 def parse_route_health(
     feed: gtfs_realtime_pb2.FeedMessage,
     trip_lookup: dict[str, Any],
     vehicles: list[dict[str, Any]],
+    stop_lookup: dict[str, Any],
 ) -> list[dict[str, Any]]:
     now_epoch = int(datetime.now(timezone.utc).timestamp())
     horizon = now_epoch + 2 * 3600
@@ -384,6 +434,7 @@ def parse_route_health(
     for route_id, direction_id in keys:
         reference_stop, predictions = selected.get((route_id, direction_id), (None, []))
         health, median_gap, bunching, large, severe, quality = health_label(predictions)
+        reference_stop_detail = stop_lookup.get(str(reference_stop or ""), {})
         rows.append(
             {
                 "route_id": route_id,
@@ -394,10 +445,12 @@ def parse_route_health(
                 "median_headway_min": median_gap,
                 "predictions_observed": len(set(predictions)),
                 "reference_stop_id": reference_stop,
+                "reference_stop_name": reference_stop_detail.get("name") or None,
                 "bunching_events": bunching,
                 "large_gap_events": large,
                 "severe_gap_events": severe,
                 "evidence_quality": quality,
+                "spacing_events": build_spacing_events(predictions, reference_stop, stop_lookup),
             }
         )
     return sorted(rows, key=lambda row: (-row["vehicle_count"], row["route_id"], row["direction_id"]))
@@ -423,9 +476,25 @@ def parse_alerts(feed: gtfs_realtime_pb2.FeedMessage) -> list[dict[str, Any]]:
             continue
         alert = entity.alert
         route_ids = sorted({str(item.route_id) for item in alert.informed_entity if item.route_id})
+        direction_ids = sorted(
+            {
+                str(item.direction_id)
+                for item in alert.informed_entity
+                if item.HasField("direction_id")
+            }
+        )
         title = message_text(alert.header_text) or "Muni service notice"
         description = message_text(alert.description_text) or "See the official service alert for details."
-        alerts.append({"id": str(entity.id), "route_ids": route_ids, "title": title[:180], "description": description[:600]})
+        alerts.append(
+            {
+                "id": str(entity.id),
+                "route_ids": route_ids,
+                "direction_id": direction_ids[0] if len(direction_ids) == 1 else None,
+                "route_match_status": "MATCHED" if route_ids else "NETWORK_WIDE",
+                "title": title[:180],
+                "description": description[:600],
+            }
+        )
     return alerts[:20]
 
 
@@ -448,6 +517,48 @@ def first_value(item: dict[str, Any], keys: Iterable[str]) -> Any:
     return None
 
 
+def identifier_list(value: Any) -> list[str]:
+    if isinstance(value, list):
+        values = []
+        for item in value:
+            if isinstance(item, dict):
+                values.extend(identifier_list(first_value(item, ("route_id", "route", "id", "name"))))
+            else:
+                values.extend(identifier_list(item))
+        return sorted(set(values))
+    if value in (None, ""):
+        return []
+    return sorted({part.strip() for part in re.split(r"[,;/|]", str(value)) if part.strip()})
+
+
+def geometry_center(raw: dict[str, Any]) -> tuple[float | None, float | None]:
+    geometry = raw.get("geometry") if isinstance(raw.get("geometry"), dict) else {}
+    coordinates = geometry.get("coordinates")
+    points: list[tuple[float, float]] = []
+
+    def collect(value: Any) -> None:
+        if isinstance(value, (list, tuple)) and len(value) >= 2 and all(isinstance(item, (int, float)) for item in value[:2]):
+            lon, lat = float(value[0]), float(value[1])
+            if inside_sf(lat, lon):
+                points.append((lat, lon))
+            return
+        if isinstance(value, (list, tuple)):
+            for child in value:
+                collect(child)
+
+    collect(coordinates)
+    if points:
+        return statistics.median(point[0] for point in points), statistics.median(point[1] for point in points)
+    properties = raw.get("properties") if isinstance(raw.get("properties"), dict) else raw
+    lat = first_value(properties, ("lat", "latitude", "y"))
+    lon = first_value(properties, ("lon", "lng", "longitude", "x"))
+    try:
+        lat_number, lon_number = float(lat), float(lon)
+    except (TypeError, ValueError):
+        return None, None
+    return (lat_number, lon_number) if inside_sf(lat_number, lon_number) else (None, None)
+
+
 def parse_road_events(payload: Any) -> list[dict[str, Any]]:
     rows = []
     for raw in flatten_events(payload):
@@ -465,7 +576,20 @@ def parse_road_events(payload: Any) -> list[dict[str, Any]]:
             road_label = ", ".join(filter(None, names))
         else:
             road_label = str(roads or "")
-        rows.append({"title": str(title)[:180], "description": (f"{road_label} · " if road_label else "") + str(description)[:500]})
+        route_ids = identifier_list(
+            first_value(properties, ("route_ids", "affected_route_ids", "affected_transit_routes", "transit_routes"))
+        )
+        lat, lon = geometry_center(raw)
+        rows.append(
+            {
+                "route_ids": route_ids,
+                "route_match_status": "MATCHED" if route_ids else "UNAVAILABLE",
+                "title": str(title)[:180],
+                "description": (f"{road_label} · " if road_label else "") + str(description)[:500],
+                "lat": round(lat, 6) if lat is not None else None,
+                "lon": round(lon, 6) if lon is not None else None,
+            }
+        )
     return rows[:20]
 
 
@@ -540,8 +664,16 @@ def main() -> int:
     payload = previous or {"system": {}, "vehicles": [], "routes": [], "alerts": [], "road_events": [], "journey": {}}
     errors: list[str] = []
     configured_sources = 0
+    parking_refreshed = False
+    safety_refreshed = False
     api_key = os.environ.get("SF_TRANSIT_511_API_KEY", "").strip()
     local_gtfs_path = os.environ.get("SF_TRANSIT_GTFS_PATH", "").strip()
+    previous_transit = previous.get("meta", {}).get("source_status", {}).get("transit", {})
+    contains_demo = any(str(row.get("vehicle_id", "")).startswith("demo-") for row in payload.get("vehicles", []))
+    transit_source = {
+        "status": "retained_sample" if contains_demo else "retained",
+        "observed_at": previous_transit.get("observed_at"),
+    }
 
     if api_key:
         try:
@@ -560,7 +692,7 @@ def main() -> int:
                 },
             ).json()
             vehicles = parse_vehicles(vehicle_feed, static["trip_lookup"])
-            routes = parse_route_health(trip_feed, static["trip_lookup"], vehicles)
+            routes = parse_route_health(trip_feed, static["trip_lookup"], vehicles, static["stop_lookup"])
             alerts = parse_alerts(alert_feed)
             road_events = parse_road_events(road_payload)
             payload.update({"vehicles": vehicles, "routes": routes, "alerts": alerts, "road_events": road_events})
@@ -570,6 +702,10 @@ def main() -> int:
                 "route_direction_count": len(routes),
                 "alert_count": len(alerts),
                 "road_event_count": len(road_events),
+            }
+            transit_source = {
+                "status": "live",
+                "observed_at": datetime.now(timezone.utc).isoformat(),
             }
             configured_sources += 1
         except Exception as exc:  # Preserve last valid public snapshot on source failure.
@@ -597,12 +733,14 @@ def main() -> int:
 
     try:
         payload["parking"] = refresh_parking()
+        parking_refreshed = True
         configured_sources += 1
     except Exception as exc:
         errors.append(f"Parking refresh failed: {type(exc).__name__}: {exc}")
 
     try:
         payload["safety"] = refresh_safety()
+        safety_refreshed = True
         configured_sources += 1
     except Exception as exc:
         errors.append(f"Safety refresh failed: {type(exc).__name__}: {exc}")
@@ -614,6 +752,20 @@ def main() -> int:
         "pipeline_version": PIPELINE_VERSION,
         "errors": errors,
         "sources": ["511 SF Bay", "DataSF", "SFMTA"],
+        "source_status": {
+            "transit": transit_source,
+            "parking": {
+                "status": "refreshed" if parking_refreshed else "retained" if payload.get("parking") else "unavailable",
+                "observed_at": payload.get("parking", {}).get("source_snapshot_time")
+                or previous.get("meta", {}).get("source_status", {}).get("parking", {}).get("observed_at"),
+            },
+            "safety": {
+                "status": "refreshed" if safety_refreshed else "retained" if payload.get("safety") else "unavailable",
+                "observed_at": datetime.now(timezone.utc).isoformat()
+                if safety_refreshed
+                else previous.get("meta", {}).get("source_status", {}).get("safety", {}).get("observed_at"),
+            },
+        },
         "refresh_policy": "Every 10 minutes via GitHub Actions",
     }
     write_snapshot(payload)

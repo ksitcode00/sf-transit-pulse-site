@@ -59,7 +59,7 @@ let language = localStorage.getItem("sf-transit-language") || "en";
 let snapshot = null;
 let network = null;
 let map = null;
-let featureLayer = null;
+let mapLayers = {};
 let journeyMap = null;
 let journeyLayer = null;
 let stopSearchIndex = new Map();
@@ -67,6 +67,8 @@ const PLANNER_API_BASE = String(window.SF_TRANSIT_API_BASE || "").replace(/\/$/,
 const appState = {
   selectedRoute: "all",
   selectedDirection: "all",
+  routeScope: "evidence",
+  layers: {vehicles:true, route:true, stops:false, issues:true, roads:false},
   selectedMode: "BALANCED",
   selectedJourneyId: null,
   plannerResult: null,
@@ -107,7 +109,23 @@ function initMap() {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap contributors"
   }).addTo(map);
-  featureLayer = L.layerGroup().addTo(map);
+  mapLayers = {
+    route: L.layerGroup(),
+    stops: L.layerGroup(),
+    vehicles: L.layerGroup(),
+    issues: L.layerGroup(),
+    roads: L.layerGroup()
+  };
+  syncMapLayers();
+}
+
+function syncMapLayers() {
+  if (!map) return;
+  Object.entries(mapLayers).forEach(([name, layer]) => {
+    const visible = Boolean(appState.layers[name]);
+    if (visible && !map.hasLayer(layer)) layer.addTo(map);
+    if (!visible && map.hasLayer(layer)) map.removeLayer(layer);
+  });
 }
 
 function initJourneyMap() {
@@ -134,21 +152,52 @@ function qualityCopy(value) {
   return (language === "zh" ? zh : en)[key] || key;
 }
 
+function transitSource() {
+  const declared = snapshot?.meta?.source_status?.transit || {};
+  const containsDemoIds = (snapshot?.vehicles || []).some(row => String(row.vehicle_id || "").startsWith("demo-"));
+  const status = declared.status || (containsDemoIds ? "retained_sample" : snapshot?.meta?.status === "live" ? "live" : "retained");
+  return {status, observed_at: declared.observed_at || null, isLive: status === "live", isSample: status === "retained_sample" || containsDemoIds};
+}
+
+function coverageSummary() {
+  const rows = snapshot?.routes || [];
+  const uniqueDirections = new Map();
+  rows.forEach(row => uniqueDirections.set(`${row.route_id}|${row.direction_id}`, row));
+  const directions = [...uniqueDirections.values()];
+  const totalRoutes = Number(network?.meta?.route_count || 0);
+  const totalDirections = Number(network?.meta?.route_direction_count || 0);
+  const routesWithEvidence = new Set(directions.map(row => String(row.route_id))).size;
+  const healthCounts = {STABLE:0, WATCH:0, UNSTABLE:0, LIMITED_REALTIME_DATA:0, NO_DATA:0};
+  directions.forEach(row => { healthCounts[row.health] = Number(healthCounts[row.health] || 0) + 1; });
+  return {
+    totalRoutes,
+    totalDirections,
+    routesWithEvidence,
+    directionsWithEvidence: directions.length,
+    noData: Math.max(0, totalDirections - directions.length),
+    healthCounts,
+    issues: healthCounts.WATCH + healthCounts.UNSTABLE
+  };
+}
+
 function renderMeta() {
   const meta = snapshot.meta || {};
   const generated = meta.generated_at ? new Date(meta.generated_at) : null;
-  const ageMin = generated ? Math.max(0, (Date.now() - generated.getTime()) / 60000) : null;
-  const sourceLabel = meta.status === "live" ? (language === "zh" ? "自动实时快照" : "Automatic live snapshot") :
-    meta.status === "partial_live" ? (language === "zh" ? "部分实时 · 交通密钥待配置" : "Partially live · transit secret pending") :
-    (language === "zh" ? "演示快照" : "Demonstration snapshot");
-  const ageLabel = ageMin == null ? "" : ` · ${Math.round(ageMin)} ${language === "zh" ? "分钟前" : "min ago"}`;
-  document.getElementById("freshness-label").textContent = sourceLabel + ageLabel;
+  const transit = transitSource();
+  const sourceLabel = transit.isLive ? (language === "zh" ? "511 实时交通快照" : "Live 511 transit snapshot") :
+    transit.isSample ? (language === "zh" ? "保留的演示交通样本 · 非当前车队" : "Retained transit sample · not the current fleet") :
+    (language === "zh" ? "保留的交通快照 · 当前未刷新" : "Retained transit snapshot · not freshly updated");
+  const transitAge = transit.observed_at ? ` · ${timeAgo(transit.observed_at)}` : "";
+  document.getElementById("freshness-label").textContent = sourceLabel + transitAge;
   document.getElementById("generated-at").textContent = generated ? `${language === "zh" ? "生成时间" : "Generated"}: ${generated.toLocaleString()}` : "Snapshot time unavailable";
   document.getElementById("quality-status").textContent = sourceLabel;
   const failures = meta.errors || [];
-  document.getElementById("quality-detail").textContent = failures.length ? `${failures.length} source warning${failures.length === 1 ? "" : "s"}. The last valid values remain labeled.` : "All configured source checks completed for this snapshot.";
+  document.getElementById("quality-detail").textContent = failures.length ?
+    (language === "zh" ? `${failures.length} 个数据源警告。保留值和演示样本均明确标注，不会冒充实时数据。` : `${failures.length} source warning${failures.length === 1 ? "" : "s"}. Retained values and samples are labeled instead of presented as live.`) :
+    (language === "zh" ? "本次快照的所有已配置数据源均完成检查。" : "All configured source checks completed for this snapshot.");
+  const transitFreshness = transit.observed_at ? timeAgo(transit.observed_at) : (transit.isSample ? (language === "zh" ? "演示样本 · 时间不可用" : "sample · source time unavailable") : (language === "zh" ? "来源时间不可用" : "source time unavailable"));
   const freshnessRows = [
-    [language === "zh" ? "车辆与班距" : "Vehicles + headways", timeAgo(meta.generated_at)],
+    [language === "zh" ? "车辆与班距" : "Vehicles + headways", transitFreshness],
     [language === "zh" ? "静态路网" : "Static network", network?.meta?.feed_version ? `${language === "zh" ? "版本" : "version"} ${network.meta.feed_version}` : "—"],
     [language === "zh" ? "停车数据" : "Parking", timeAgo(snapshot.parking?.source_snapshot_time)],
     [language === "zh" ? "安全背景" : "Safety context", snapshot.safety?.status || "—"]
@@ -157,16 +206,27 @@ function renderMeta() {
 }
 
 function renderHero() {
-  const system = snapshot.system || {};
-  document.getElementById("vehicle-count").textContent = fmt(system.vehicle_count);
-  document.getElementById("route-count").textContent = fmt(network?.meta?.route_count ?? system.route_count);
-  document.getElementById("alert-count").textContent = fmt(system.alert_count);
+  const coverage = coverageSummary();
+  const transit = transitSource();
+  document.getElementById("vehicle-count").textContent = fmt((snapshot.vehicles || []).length);
+  document.getElementById("route-count").textContent = `${coverage.routesWithEvidence} / ${coverage.totalRoutes || "—"}`;
+  document.getElementById("direction-count").textContent = `${coverage.directionsWithEvidence} / ${coverage.totalDirections || "—"}`;
+  document.getElementById("issue-count").textContent = fmt(coverage.issues);
+  document.getElementById("vehicle-count-label").textContent = transit.isLive ? (language === "zh" ? "个实时车辆位置" : "live vehicle positions") : (language === "zh" ? "个样本车辆位置" : "sample vehicle positions");
+  document.getElementById("route-count-label").textContent = transit.isLive ? (language === "zh" ? "条线路有实时证据" : "routes with realtime evidence") : (language === "zh" ? "条线路有样本证据" : "routes represented in sample");
+  document.getElementById("direction-count-label").textContent = language === "zh" ? "个方向有证据" : "directions with evidence";
+  document.getElementById("issue-count-label").textContent = language === "zh" ? "个方向需要留意" : "directions to watch";
+  const overviewTitle = document.querySelector('[data-i18n="routeOverview"]');
+  if (overviewTitle) overviewTitle.textContent = transit.isLive ? (language === "zh" ? "实时重点线路" : "Realtime highlights") : (language === "zh" ? "样本线路明细" : "Sample route details");
 }
 
 function renderRouteSelector() {
   const select = document.getElementById("route-select");
-  const routes = network?.routes || [];
-  select.innerHTML = `<option value="all">${language === "zh" ? "全部线路" : "All routes"}</option>` + routes.map(route => {
+  const evidenceRouteIds = new Set((snapshot.routes || []).map(row => String(row.route_id)));
+  const allRoutes = network?.routes || [];
+  const routes = appState.routeScope === "evidence" ? allRoutes.filter(route => evidenceRouteIds.has(String(route.route_id))) : allRoutes;
+  const overviewLabel = language === "zh" ? "全网概览" : "Network overview";
+  select.innerHTML = `<option value="all">${overviewLabel}</option>` + routes.map(route => {
     const shortName = route.route_short_name || route.route_id;
     const longName = route.route_long_name ? ` — ${route.route_long_name}` : "";
     return `<option value="${escapeHtml(route.route_id)}">${escapeHtml(shortName + longName)}</option>`;
@@ -175,6 +235,22 @@ function renderRouteSelector() {
     appState.selectedRoute = "all";
   }
   select.value = appState.selectedRoute;
+  document.querySelectorAll(".scope-button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.scope === appState.routeScope)));
+  document.getElementById("evidence-routes-button").textContent = transitSource().isLive ? (language === "zh" ? "当前有回报" : "Reporting now") : (language === "zh" ? "有快照证据" : "With snapshot evidence");
+  document.getElementById("all-routes-button").textContent = language === "zh" ? "全部 Muni 线路" : "All Muni routes";
+  const layerLabels = {
+    vehicles: language === "zh" ? "车辆" : "Vehicles",
+    route: language === "zh" ? "路线轨迹" : "Route shape",
+    stops: language === "zh" ? "站点" : "Stops",
+    issues: language === "zh" ? "班距异常" : "Spacing issues",
+    roads: language === "zh" ? "道路事件" : "Road events"
+  };
+  const legend = document.querySelector("#map-layer-control legend");
+  if (legend) legend.textContent = language === "zh" ? "地图图层" : "Layers";
+  document.querySelectorAll("#map-layer-control input[data-layer]").forEach(input => {
+    const label = input.parentElement?.querySelector("span");
+    if (label) label.textContent = layerLabels[input.dataset.layer] || input.dataset.layer;
+  });
 }
 
 function routeCatalogEntry(routeId) {
@@ -209,8 +285,8 @@ function selectionMatches(row, routeId = appState.selectedRoute, directionId = a
 }
 
 function renderMap(routeId = appState.selectedRoute, directionId = appState.selectedDirection) {
-  if (!map || !featureLayer) return;
-  featureLayer.clearLayers();
+  if (!map || !Object.keys(mapLayers).length) return;
+  Object.values(mapLayers).forEach(layer => layer.clearLayers());
   const bounds = [];
 
   const details = directionEntries(routeId, directionId);
@@ -222,7 +298,7 @@ function renderMap(routeId = appState.selectedRoute, directionId = appState.sele
         weight: 5,
         opacity: .88,
         lineJoin: "round"
-      }).addTo(featureLayer);
+      }).addTo(mapLayers.route);
       bounds.push(...shape);
     }
   });
@@ -241,7 +317,7 @@ function renderMap(routeId = appState.selectedRoute, directionId = appState.sele
       fillOpacity: 1
     })
       .bindPopup(`<strong>${escapeHtml(stop.name || "Muni stop")}</strong><br>${escapeHtml(stop.stop_id || "")}`)
-      .addTo(featureLayer);
+      .addTo(mapLayers.stops);
   }));
 
   const vehicles = (snapshot.vehicles || []).filter(vehicle => selectionMatches(vehicle, routeId, directionId));
@@ -249,10 +325,34 @@ function renderMap(routeId = appState.selectedRoute, directionId = appState.sele
     if (!hasNumber(vehicle.lat) || !hasNumber(vehicle.lon)) return;
     const point = [Number(vehicle.lat), Number(vehicle.lon)];
     bounds.push(point);
+    const routeDetail = directionEntries(String(vehicle.route_id), String(vehicle.direction_id))[0];
+    const routeHealth = (snapshot.routes || []).find(row => selectionMatches(row, String(vehicle.route_id), String(vehicle.direction_id)))?.health || "NO_DATA";
+    const destination = vehicle.destination || routeDetail?.headsign || (language === "zh" ? "终点信息不可用" : "destination unavailable");
+    const speed = hasNumber(vehicle.speed_mps) ? `${fmt(Number(vehicle.speed_mps) * 2.23694, 1)} mph` : (language === "zh" ? "未回报" : "not reported");
+    const sampleLabel = transitSource().isSample ? `<br><span class="event-scope">${language === "zh" ? "演示样本" : "sample record"}</span>` : "";
     L.circleMarker(point, {radius: 6, color: "#ffffff", weight: 2, fillColor: "#0066cc", fillOpacity: .98})
-      .bindPopup(`<div class="vehicle-popup"><strong>Route ${escapeHtml(vehicle.route_id || "—")}</strong><br>${escapeHtml(vehicle.direction_label || `Direction ${vehicle.direction_id ?? "—"}`)}<br>${fmt(vehicle.age_seconds)} sec since report</div>`)
-      .addTo(featureLayer);
+      .bindPopup(`<div class="vehicle-popup"><strong>${language === "zh" ? "线路" : "Route"} ${escapeHtml(vehicle.route_id || "—")}</strong>${sampleLabel}<br>→ ${escapeHtml(destination)}<br>${language === "zh" ? "车辆" : "Vehicle"} ${escapeHtml(vehicle.vehicle_id || "—")}<br>${language === "zh" ? "速度" : "Speed"}: ${escapeHtml(speed)}<br>${language === "zh" ? "上次回报" : "Last report"}: ${hasNumber(vehicle.age_seconds) ? `${fmt(vehicle.age_seconds)} sec ago` : "—"}<br>${language === "zh" ? "线路状态" : "Route health"}: ${escapeHtml(healthCopy(routeHealth))}</div>`)
+      .addTo(mapLayers.vehicles);
   });
+
+  const issueRows = (snapshot.routes || []).filter(row => selectionMatches(row, routeId, directionId));
+  issueRows.flatMap(row => (row.spacing_events || []).map(event => ({...event, route_id:row.route_id, direction_id:row.direction_id}))).forEach(event => {
+    if (!hasNumber(event.lat) || !hasNumber(event.lon)) return;
+    const point = [Number(event.lat), Number(event.lon)];
+    const label = event.type === "BUNCHING" ? (language === "zh" ? "车辆聚集" : "Bunching") : (language === "zh" ? "服务缺口" : "Service gap");
+    L.circleMarker(point, {radius: 8, color: "#ffffff", weight: 2, fillColor: "#ff9500", fillOpacity: 1})
+      .bindPopup(`<strong>${escapeHtml(label)}</strong><br>${escapeHtml(event.location_name || event.reference_stop_id || "Observation point")}<br>${fmt(event.gap_min,1)} min ${language === "zh" ? "预测间隔" : "predicted spacing"}`)
+      .addTo(mapLayers.issues);
+  });
+
+  (snapshot.road_events || []).filter(event => routeId === "all" || !(event.route_ids || []).length || (event.route_ids || []).map(String).includes(String(routeId))).forEach(event => {
+    if (!hasNumber(event.lat) || !hasNumber(event.lon)) return;
+    L.circleMarker([Number(event.lat), Number(event.lon)], {radius: 7, color: "#ffffff", weight: 2, fillColor: "#8e44ad", fillOpacity: 1})
+      .bindPopup(`<strong>${escapeHtml(event.title || "Road event")}</strong><br>${escapeHtml(event.description || "")}`)
+      .addTo(mapLayers.roads);
+  });
+
+  syncMapLayers();
 
   if (bounds.length === 1) map.setView(bounds[0], 14);
   else if (bounds.length > 1) map.fitBounds(bounds, {padding:[34,34], maxZoom:14});
@@ -276,47 +376,108 @@ function combinedRoute(routeId = appState.selectedRoute, directionId = appState.
   const rows = (snapshot.routes || []).filter(row => selectionMatches(row, routeId, directionId));
   const vehicles = (snapshot.vehicles || []).filter(vehicle => selectionMatches(vehicle, routeId, directionId));
   const severity = {UNSTABLE:3, WATCH:2, LIMITED_REALTIME_DATA:1, NO_DATA:0, STABLE:0};
+  const qualityScore = {GOOD:3, MODERATE:2, LIMITED:1};
+  const evidenceQuality = rows.map(row => row.evidence_quality).filter(Boolean).sort((a,b)=>(qualityScore[b]||0)-(qualityScore[a]||0))[0] || "LIMITED";
   return {
     health: rows.length ? rows.slice().sort((a,b)=>(severity[b.health]||0)-(severity[a.health]||0))[0].health : "NO_DATA",
-    vehicle_count: vehicles.length || rows.reduce((sum,row)=>sum+Number(row.vehicle_count || 0),0),
+    live_position_count: vehicles.length,
     median_headway_min: median(rows.map(row => row.median_headway_min)),
     bunching_events: rows.reduce((sum,row)=>sum+Number(row.bunching_events || 0),0),
     service_gap_events: rows.reduce((sum,row)=>sum+Number(row.large_gap_events || 0),0),
     severe_gap_events: rows.reduce((sum,row)=>sum+Number(row.severe_gap_events || 0),0),
     speed_mph: median(vehicles.map(vehicle => Number(vehicle.speed_mps) * 2.23694)),
-    evidence_count: rows.reduce((sum,row)=>sum+Number(row.predictions_observed || 0),0)
+    evidence_count: rows.reduce((sum,row)=>sum+Number(row.predictions_observed || 0),0),
+    evidence_quality: evidenceQuality,
+    spacing_events: rows.flatMap(row => (row.spacing_events || []).map(event => ({...event, route_id:row.route_id, direction_id:row.direction_id})))
   };
 }
 
+function metricRow(label, value, subtext = "") {
+  return `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}${subtext ? `<span class="metric-subtext">${escapeHtml(subtext)}</span>` : ""}</dd></div>`;
+}
+
+function renderIssueDetails(events, hasIssueCount) {
+  const container = document.getElementById("focus-issues");
+  if (!events.length) {
+    container.innerHTML = hasIssueCount ? `<div class="issue-card"><strong>${language === "zh" ? "已检测到间隔异常" : "Spacing issue detected"}</strong><span>${language === "zh" ? "当前快照没有提供可定位的事件明细。" : "This snapshot does not include a locatable event record."}</span></div>` : "";
+    return;
+  }
+  container.innerHTML = events.slice(0,4).map(event => {
+    const label = event.type === "BUNCHING" ? (language === "zh" ? "车辆聚集" : "Bunching") : (language === "zh" ? "服务缺口" : "Service gap");
+    const location = event.location_name || event.reference_stop_id || (language === "zh" ? "位置尚不可用" : "location unavailable");
+    const detail = `${hasNumber(event.gap_min) ? `${fmt(event.gap_min,1)} min · ` : ""}${location}`;
+    const canLocate = hasNumber(event.lat) && hasNumber(event.lon);
+    return `<${canLocate ? "button type=\"button\"" : "div"} class="issue-card" ${canLocate ? `data-lat="${escapeHtml(event.lat)}" data-lon="${escapeHtml(event.lon)}"` : ""}><strong>${escapeHtml(label)}</strong><span>${escapeHtml(detail)}${canLocate ? ` · ${language === "zh" ? "点击定位" : "Locate on map"}` : ""}</span></${canLocate ? "button" : "div"}>`;
+  }).join("");
+  container.querySelectorAll("button[data-lat][data-lon]").forEach(button => button.addEventListener("click", () => {
+    appState.layers.issues = true;
+    const toggle = document.querySelector('[data-layer="issues"]');
+    if (toggle) toggle.checked = true;
+    syncMapLayers();
+    map.setView([Number(button.dataset.lat), Number(button.dataset.lon)], 16);
+  }));
+}
+
 function renderRouteFocus(routeId = appState.selectedRoute, directionId = appState.selectedDirection) {
-  const data = combinedRoute(routeId, directionId);
   const route = routeCatalogEntry(routeId);
   const direction = route?.directions?.find(item => String(item.direction_id) === String(directionId));
   const routeName = route ? `${route.route_short_name || route.route_id}${route.route_long_name ? ` ${route.route_long_name}` : ""}` : "";
   const directionName = direction ? ` · ${direction.direction_label}${direction.headsign ? ` → ${direction.headsign}` : ""}` : "";
-  document.getElementById("focus-route-name").textContent = routeId === "all" ? (language === "zh" ? "全网概览" : "Network overview") : `${routeName}${directionName}`;
+  const metrics = document.getElementById("focus-metrics");
+  document.getElementById("focus-route-name").textContent = routeId === "all" ? (language === "zh" ? "全网覆盖概览" : "Network coverage overview") : `${routeName}${directionName}`;
+
+  if (routeId === "all") {
+    const coverage = coverageSummary();
+    const sampleNote = transitSource().isLive ? "" : (language === "zh" ? "（当前为保留样本）" : " (retained sample)");
+    document.getElementById("focus-route-status").textContent = language === "zh" ? `分别显示各方向状态，不用最差一条线路代表全网${sampleNote}` : `Direction-by-direction status; one troubled route does not define the network${sampleNote}`;
+    metrics.innerHTML = [
+      metricRow(language === "zh" ? "地图车辆位置" : "Vehicle positions on map", fmt((snapshot.vehicles || []).length), transitSource().isSample ? (language === "zh" ? "演示记录" : "sample records") : ""),
+      metricRow(language === "zh" ? "有证据线路" : "Routes with evidence", `${coverage.routesWithEvidence} / ${coverage.totalRoutes}`),
+      metricRow(language === "zh" ? "已覆盖方向" : "Directions represented", `${coverage.directionsWithEvidence} / ${coverage.totalDirections}`),
+      metricRow(language === "zh" ? "稳定" : "Stable", fmt(coverage.healthCounts.STABLE)),
+      metricRow(language === "zh" ? "需留意" : "Watch", fmt(coverage.healthCounts.WATCH)),
+      metricRow(language === "zh" ? "不稳定" : "Unstable", fmt(coverage.healthCounts.UNSTABLE)),
+      metricRow(language === "zh" ? "无方向级快照" : "No route-direction snapshot", fmt(coverage.noData))
+    ].join("");
+    document.getElementById("focus-issues").innerHTML = "";
+    document.getElementById("focus-explanation").textContent = language === "zh" ?
+      "这里展示的是数据覆盖率和各方向分布，不是对整个 Muni 系统下一个单一健康结论。未出现的线路表示当前快照没有证据，并不表示没有运营。" :
+      "This view reports coverage and a direction-level distribution, not a single verdict on all of Muni. A missing route means no evidence in this snapshot—not no service.";
+    return;
+  }
+
+  const data = combinedRoute(routeId, directionId);
+  const positionLabel = transitSource().isSample ? (language === "zh" ? "样本位置" : "Sample positions") : (language === "zh" ? "地图实时车辆" : "Live positions on map");
   document.getElementById("focus-route-status").textContent = healthCopy(data.health);
-  document.getElementById("focus-vehicles").textContent = fmt(data.vehicle_count);
-  document.getElementById("focus-headway").textContent = Number.isFinite(data.median_headway_min) ? `${fmt(data.median_headway_min,1)} min` : "—";
-  document.getElementById("focus-bunching").textContent = fmt(data.bunching_events);
-  document.getElementById("focus-gaps").textContent = `${fmt(data.service_gap_events)}${data.severe_gap_events ? ` (${data.severe_gap_events} severe)` : ""}`;
-  document.getElementById("focus-speed").textContent = Number.isFinite(data.speed_mph) ? `${fmt(data.speed_mph,1)} mph` : "—";
-  document.getElementById("focus-evidence").textContent = fmt(data.evidence_count);
+  metrics.innerHTML = [
+    metricRow(positionLabel, fmt(data.live_position_count), transitSource().isSample ? (language === "zh" ? "不是当前车队数量" : "not a current fleet count") : ""),
+    metricRow(language === "zh" ? "预测证据" : "Predictions observed", fmt(data.evidence_count), qualityCopy(data.evidence_quality)),
+    metricRow(language === "zh" ? "预测班距中位数" : "Median predicted spacing", Number.isFinite(data.median_headway_min) ? `${fmt(data.median_headway_min,1)} min` : "—"),
+    metricRow(language === "zh" ? "车辆聚集事件" : "Bunching events", data.bunching_events ? (language === "zh" ? `检测到 ${data.bunching_events} 个` : `${data.bunching_events} detected`) : (language === "zh" ? "未检测到" : "None detected")),
+    metricRow(language === "zh" ? "服务缺口事件" : "Service-gap events", data.service_gap_events ? `${data.service_gap_events}${data.severe_gap_events ? (language === "zh" ? ` · ${data.severe_gap_events} 个严重缺口` : ` · ${data.severe_gap_events} severe`) : ""}` : (language === "zh" ? "未检测到" : "None detected")),
+    metricRow(language === "zh" ? "已回报位置速度中位数" : "Median reported position speed", Number.isFinite(data.speed_mph) ? `${fmt(data.speed_mph,1)} mph` : (language === "zh" ? "未回报" : "not reported"))
+  ].join("");
+  renderIssueDetails(data.spacing_events, data.bunching_events + data.service_gap_events > 0);
   document.getElementById("focus-explanation").textContent = language === "zh" ?
-    `当前查看 ${routeId === "all" ? "全网" : routeId}${direction ? ` 的 ${direction.direction_label}` : " 的全部方向"}。健康度按 route + direction 计算；证据不足时显示 NO DATA。` :
-    `Viewing ${routeId === "all" ? "the network" : routeId}${direction ? ` ${direction.direction_label}` : " across directions"}. Health is route + direction specific; sparse evidence remains NO DATA.`;
+    `当前查看 ${routeId}${direction ? ` 的 ${direction.direction_label}` : " 的全部方向"}。车辆位置和预测证据分开计数；健康度按 route + direction 计算。` :
+    `Viewing ${routeId}${direction ? ` ${direction.direction_label}` : " across directions"}. Vehicle positions and prediction evidence are counted separately; health remains route + direction specific.`;
 }
 
 function renderRouteGrid() {
-  const rows = (snapshot.routes || []).slice().sort((a,b) => Number(b.vehicle_count || 0)-Number(a.vehicle_count || 0)).slice(0,12);
+  const rows = (snapshot.routes || []).slice().sort((a,b) => Number(b.predictions_observed || 0)-Number(a.predictions_observed || 0)).slice(0,12);
   const grid = document.getElementById("route-grid");
-  grid.innerHTML = rows.length ? rows.map(row => `
+  const note = transitSource().isLive ? "" : `<p class="coverage-note">${language === "zh" ? "下列卡片来自保留的演示交通样本，不代表当前车队或当前服务。" : "The cards below use a retained transit sample; they do not represent the current fleet or current service."}</p>`;
+  grid.innerHTML = note + (rows.length ? rows.map(row => {
+    const positions = (snapshot.vehicles || []).filter(vehicle => selectionMatches(vehicle, row.route_id, row.direction_id)).length;
+    return `
     <article class="route-card" tabindex="0" role="button" data-route="${escapeHtml(row.route_id)}" data-direction="${escapeHtml(row.direction_id)}" aria-pressed="${String(row.route_id) === String(appState.selectedRoute) && String(row.direction_id) === String(appState.selectedDirection)}" aria-label="Focus route ${escapeHtml(row.route_id)} direction ${escapeHtml(row.direction_id)}">
       <span class="route-number">${escapeHtml(row.route_id)}</span>
       <span class="direction">${escapeHtml(row.direction_label || `direction ${row.direction_id ?? "—"}`)}</span>
       <p class="health">${escapeHtml(healthCopy(row.health))}</p>
-      <p class="detail">${fmt(row.vehicle_count)} ${language === "zh" ? "辆车" : "vehicles"} · ${hasNumber(row.median_headway_min) ? `${fmt(row.median_headway_min,1)} min ${language === "zh" ? "中位班距" : "median gap"}` : (language === "zh" ? "班距证据有限" : "limited headway evidence")}</p>
-    </article>`).join("") : `<p>${language === "zh" ? "当前没有线路级实时数据。" : "No route-level realtime data is available."}</p>`;
+      <p class="detail">${positions} ${language === "zh" ? "个地图位置" : "map positions"} · ${fmt(row.predictions_observed)} ${language === "zh" ? "条预测证据" : "predictions"}<br>${hasNumber(row.median_headway_min) ? `${fmt(row.median_headway_min,1)} min ${language === "zh" ? "中位班距" : "median spacing"}` : (language === "zh" ? "班距证据有限" : "limited spacing evidence")}</p>
+      <span class="card-action">${language === "zh" ? "查看线路 →" : "View route →"}</span>
+    </article>`;
+  }).join("") : `<p>${language === "zh" ? "当前没有线路级实时数据。" : "No route-level realtime data is available."}</p>`);
   grid.querySelectorAll(".route-card").forEach(card => {
     const select = () => selectRoute(card.dataset.route, card.dataset.direction, true);
     card.addEventListener("click", select);
@@ -324,11 +485,27 @@ function renderRouteGrid() {
   });
 }
 
-function renderEvents(routeId = appState.selectedRoute) {
+function renderEvents(routeId = appState.selectedRoute, directionId = appState.selectedDirection) {
   const list = (id, events, emptyText) => {
-    document.getElementById(id).innerHTML = events.length ? events.slice(0,5).map(item => `<article class="event-item"><strong>${escapeHtml(item.title || item.route_id || "Notice")}</strong><p>${escapeHtml(item.description || item.status || "Current context available.")}</p></article>`).join("") : `<p class="empty-state">${escapeHtml(emptyText)}</p>`;
+    document.getElementById(id).innerHTML = events.length ? events.slice(0,5).map(item => {
+      const ids = normalizedRouteIds(item);
+      const scope = ids.length ? `${language === "zh" ? "线路" : "Route"} ${ids.join(", ")}` : (item.route_match_status === "UNAVAILABLE" ? (language === "zh" ? "路线匹配不可用 · 仅作全网背景" : "Route match unavailable · network context") : (language === "zh" ? "全网提示" : "Network-wide notice"));
+      return `<article class="event-item"><span class="event-scope">${escapeHtml(scope)}</span><strong>${escapeHtml(item.title || item.route_id || "Notice")}</strong><p>${escapeHtml(item.description || item.status || "Current context available.")}</p></article>`;
+    }).join("") : `<p class="empty-state">${escapeHtml(emptyText)}</p>`;
   };
-  const matchesRoute = item => routeId === "all" || (item.route_ids || []).map(String).includes(String(routeId));
+  const normalizedRouteIds = item => {
+    const explicit = (item.route_ids || []).map(String).filter(Boolean);
+    if (explicit.length) return explicit;
+    const legacy = String(item.title || "").match(/^Route\s+([^ ·:]+)/i);
+    return legacy ? [legacy[1]] : [];
+  };
+  const matchesRoute = item => {
+    if (routeId === "all") return true;
+    const ids = normalizedRouteIds(item);
+    if (!ids.length) return true;
+    if (!ids.includes(String(routeId))) return false;
+    return directionId === "all" || item.direction_id === undefined || item.direction_id === null || String(item.direction_id) === String(directionId);
+  };
   const alerts = (snapshot.alerts || []).filter(matchesRoute);
   const roads = (snapshot.road_events || []).filter(matchesRoute);
   list(
@@ -616,6 +793,13 @@ function selectRoute(routeId, directionId = "all", shouldScroll = false) {
   if (shouldScroll) document.getElementById("network").scrollIntoView({behavior: "smooth"});
 }
 
+function setRouteScope(scope) {
+  appState.routeScope = scope === "all" ? "all" : "evidence";
+  renderRouteSelector();
+  renderDirectionSelector();
+  renderRouteView();
+}
+
 function renderAll() {
   setLanguage(language);
   renderMeta();
@@ -659,6 +843,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (snapshot && network) renderAll();
   });
   document.getElementById("refresh-button").addEventListener("click", loadData);
+  document.querySelectorAll(".scope-button").forEach(button => button.addEventListener("click", () => setRouteScope(button.dataset.scope)));
+  document.querySelectorAll("#map-layer-control input[data-layer]").forEach(input => input.addEventListener("change", () => {
+    appState.layers[input.dataset.layer] = input.checked;
+    syncMapLayers();
+  }));
   document.getElementById("route-select").addEventListener("change", event => selectRoute(event.target.value, "all"));
   document.getElementById("direction-select").addEventListener("change", event => selectRoute(appState.selectedRoute, event.target.value));
   document.getElementById("trip-planner-form").addEventListener("submit", event => {
