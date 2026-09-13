@@ -125,11 +125,28 @@ def test_public_beta_removes_misleading_planner_fallbacks() -> None:
     assert "planTrip({silent:true})" not in app
     assert 'fetch("data/network.json", {cache:"default"})' in app
     assert "https://tile.openstreetmap.org/{z}/{x}/{y}.png" in app
-    assert "Estimated planner · Public Beta" in page
+    assert "Trip estimates · Public Beta" in page
     assert "Report an issue" in page
-    assert "SAFETY-FIRST" in app and "Coming soon" in app
-    assert "From live service evidence to a decision" in page
-    assert all(step in page for step in ("Observe", "Diagnose", "Build feasible journeys", "Compare trade-offs", "Explain the decision"))
+    assert 'SAFETY_FIRST:"Safety-first"' in app and "Not available yet" in app
+    assert "What we check before recommending a trip" in page
+    assert all(step in page for step in ("Collect current updates", "Check each route direction", "Build trips you may be able to make", "Compare what matters to you", "Explain the recommendation"))
+
+
+def test_rider_facing_copy_uses_plain_language_in_both_languages() -> None:
+    app = (ROOT / "site/app.js").read_text(encoding="utf-8")
+    page = (ROOT / "site/index.html").read_text(encoding="utf-8")
+    public_copy = app + page
+
+    assert "Compare routes" in public_copy
+    assert "比较路线" in public_copy
+    assert "Vehicles close together" in public_copy
+    assert "几辆车挤在一起" in public_copy
+    assert "Arrival estimates checked" in public_copy
+    assert "已查看的到站信息" in public_copy
+    assert "Median predicted gap" not in public_copy
+    assert "线路脉搏" not in public_copy
+    assert "Pareto efficient" not in public_copy
+    assert "advice.label, advice.code" not in app
 
 
 def test_static_gtfs_keeps_multiple_patterns_per_route_direction() -> None:

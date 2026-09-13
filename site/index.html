@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f5f7">
-  <meta name="description" content="Live San Francisco Muni conditions with transparent, estimated route guidance.">
+  <meta name="description" content="Check live San Francisco Muni vehicles, longer waits, service updates, and estimated trip options.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <title>SF Transit Pulse</title>
   <link rel="preconnect" href="https://unpkg.com">
@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to live transit information</a>
+  <a class="skip-link" href="#main" data-i18n="skipToMuni">Skip to Muni updates</a>
 
   <header class="global-nav" aria-label="Global navigation">
     <div class="nav-inner">
@@ -21,9 +21,9 @@
         SF Transit Pulse
       </a>
       <nav aria-label="Page sections">
-        <a href="#network" data-i18n="navNetwork">Network</a>
-        <a href="#journey" data-i18n="navJourney">Journey</a>
-        <a href="#context" data-i18n="navContext">City context</a>
+        <a href="#network" data-i18n="navNetwork">Muni now</a>
+        <a href="#journey" data-i18n="navJourney">Plan a trip</a>
+        <a href="#context" data-i18n="navContext">More travel info</a>
       </nav>
     </div>
   </header>
@@ -32,11 +32,11 @@
     <div class="sub-nav-inner">
       <div>
         <span class="live-dot" aria-hidden="true"></span>
-        <span id="freshness-label">Loading current snapshot…</span>
+        <span id="freshness-label">Loading the latest Muni update…</span>
       </div>
       <div class="sub-actions">
         <button class="text-action" id="language-toggle" type="button" aria-label="Switch language">中文</button>
-        <button class="primary-button" id="refresh-button" type="button" data-i18n="refresh">Reload latest snapshot</button>
+        <button class="primary-button" id="refresh-button" type="button" data-i18n="refresh">Get latest update</button>
       </div>
     </div>
   </div>
@@ -44,42 +44,42 @@
   <main id="main">
     <section class="hero" id="top">
       <div class="hero-copy">
-        <p class="eyebrow" data-i18n="eyebrow">San Francisco · right now</p>
-        <h1 data-i18n="heroTitle">Know your next move.</h1>
-        <p class="hero-lead" data-i18n="heroLead">See what is happening now, compare feasible journeys, and understand what to take—and why.</p>
+        <p class="eyebrow" data-i18n="eyebrow">San Francisco Muni · Live updates</p>
+        <h1 data-i18n="heroTitle">Choose your next ride with confidence.</h1>
+        <p class="hero-lead" data-i18n="heroLead">See where vehicles are, spot longer waits, and compare routes before you leave.</p>
         <div class="hero-actions">
-          <a class="primary-button large" href="#journey" data-i18n="planJourney">Plan a journey</a>
-          <a class="secondary-button large" href="#network" data-i18n="viewNetwork">View the network</a>
-          <a class="secondary-button large" href="#method" data-i18n="howWorks">How it works</a>
+          <a class="primary-button large" href="#journey" data-i18n="planJourney">Plan a trip</a>
+          <a class="secondary-button large" href="#network" data-i18n="viewNetwork">Check Muni now</a>
+          <a class="secondary-button large" href="#method" data-i18n="howWorks">See how results are made</a>
         </div>
       </div>
       <div class="hero-metrics" aria-live="polite">
         <article><span id="vehicle-count">—</span><small id="vehicle-count-label">vehicle positions</small></article>
-        <article><span id="route-count">—</span><small id="route-count-label">routes with evidence</small></article>
-        <article><span id="direction-count">—</span><small id="direction-count-label">directions monitored</small></article>
-        <article><span id="issue-count">—</span><small id="issue-count-label">directions to watch</small></article>
+        <article><span id="route-count">—</span><small id="route-count-label">routes with live updates</small></article>
+        <article><span id="direction-count">—</span><small id="direction-count-label">directions checked</small></article>
+        <article><span id="issue-count">—</span><small id="issue-count-label">directions with possible longer waits</small></article>
       </div>
     </section>
 
     <section class="section light" id="network">
       <div class="section-heading">
         <div>
-          <p class="eyebrow" data-i18n="liveNetwork">Live network</p>
-          <h2 data-i18n="seeCityMove">See the city move.</h2>
+          <p class="eyebrow" data-i18n="liveNetwork">Muni right now</p>
+          <h2 data-i18n="seeCityMove">Check your route before you go.</h2>
         </div>
         <div class="route-controls">
           <div class="route-scope" role="group" aria-label="Choose route catalog scope">
-            <button class="scope-button" id="evidence-routes-button" type="button" data-scope="evidence" aria-pressed="true">With realtime evidence</button>
+            <button class="scope-button" id="evidence-routes-button" type="button" data-scope="evidence" aria-pressed="true">Live updates available</button>
             <button class="scope-button" id="all-routes-button" type="button" data-scope="all" aria-pressed="false">All Muni routes</button>
           </div>
           <label class="route-control">
-            <span data-i18n="focusRoute">Focus a route</span>
+            <span data-i18n="focusRoute">Choose a route</span>
             <select id="route-select" aria-label="Choose a Muni route">
               <option value="all">All routes</option>
             </select>
           </label>
           <label class="route-control">
-            <span data-i18n="focusDirection">Direction</span>
+            <span data-i18n="focusDirection">Choose a direction</span>
             <select id="direction-select" aria-label="Choose a route direction" disabled>
               <option value="all">All directions</option>
             </select>
@@ -92,49 +92,49 @@
           <div class="map-stage">
             <div id="map" role="application" aria-label="Map of current Muni vehicle positions"></div>
             <fieldset class="map-layer-control" id="map-layer-control">
-              <legend>Layers</legend>
+              <legend>Show on map</legend>
               <label><input type="checkbox" data-layer="vehicles" checked> <span>Vehicles</span></label>
-              <label><input type="checkbox" data-layer="route" checked> <span>Route shape</span></label>
+              <label><input type="checkbox" data-layer="route" checked> <span>Route path</span></label>
               <label><input type="checkbox" data-layer="stops"> <span>Stops</span></label>
-              <label><input type="checkbox" data-layer="issues" checked> <span>Spacing issues</span></label>
-              <label><input type="checkbox" data-layer="roads"> <span>Road events</span></label>
+              <label><input type="checkbox" data-layer="issues" checked> <span>Uneven or long waits</span></label>
+              <label><input type="checkbox" data-layer="roads"> <span>Street work and events</span></label>
             </fieldset>
           </div>
           <div class="map-caption">
-            <span id="map-label">All reporting vehicles</span>
-            <span data-i18n="mapHint">Select a route to focus the map.</span>
+            <span id="map-label">All vehicles with current locations</span>
+            <span data-i18n="mapHint">The map updates when you choose a route or direction.</span>
           </div>
         </div>
         <aside class="route-focus" id="route-focus" aria-live="polite">
-          <p class="eyebrow" data-i18n="routePulse">Route pulse</p>
-          <h3 id="focus-route-name">Network overview</h3>
-          <p class="focus-status" id="focus-route-status">Waiting for the latest snapshot.</p>
+          <p class="eyebrow" data-i18n="routePulse">What's happening</p>
+          <h3 id="focus-route-name">All Muni routes</h3>
+          <p class="focus-status" id="focus-route-status">Loading the latest Muni update.</p>
           <dl class="metric-list" id="focus-metrics"></dl>
           <div class="issue-details" id="focus-issues"></div>
-          <p class="fine-print" id="focus-explanation">Health is computed by route and direction; limited observations remain explicitly limited.</p>
+          <p class="fine-print" id="focus-explanation">We check each route direction separately and clearly mark missing live data.</p>
         </aside>
       </div>
 
       <div class="route-list-header">
-        <h3 data-i18n="routeOverview">Route overview</h3>
-        <p data-i18n="directionNote">Each direction is evaluated separately to avoid hiding one-sided disruption.</p>
+        <h3 data-i18n="routeOverview">Routes with the clearest live picture</h3>
+        <p data-i18n="directionNote">Each direction can run differently, so we check them separately.</p>
       </div>
       <div class="route-grid" id="route-grid" aria-live="polite"></div>
     </section>
 
     <section class="section dark" id="disruptions">
       <div class="dark-heading">
-        <p class="eyebrow" data-i18n="streetsService">Streets + service</p>
-        <h2 data-i18n="explainWhy">Explain what may be changing the ride.</h2>
-        <p data-i18n="causalityNote">Road overlap is treated as context—not proof of causation—until live transit evidence supports it.</p>
+        <p class="eyebrow" data-i18n="streetsService">What may affect your ride</p>
+        <h2 data-i18n="explainWhy">See service and street updates together.</h2>
+        <p data-i18n="causalityNote">A street event near a route may affect service, but it does not prove what caused a delay.</p>
       </div>
       <div class="dark-columns">
         <div>
-          <h3 data-i18n="serviceNotices">Service notices</h3>
+          <h3 data-i18n="serviceNotices">Muni service updates</h3>
           <div class="event-list" id="alert-list"></div>
         </div>
         <div>
-          <h3 data-i18n="roadEvents">Road events</h3>
+          <h3 data-i18n="roadEvents">Nearby street work</h3>
           <div class="event-list" id="road-list"></div>
         </div>
       </div>
@@ -143,28 +143,28 @@
     <section class="section parchment" id="journey">
       <div class="section-heading journey-heading">
         <div>
-          <p class="eyebrow" data-i18n="journeyDecision">Journey decision</p>
-          <h2 data-i18n="whereGoing">Where are you going?</h2>
-          <p class="section-lead" data-i18n="plannerLead">Choose two Muni stops. Public Beta estimates direct and one-transfer journeys from the latest cached evidence.</p>
+          <p class="eyebrow" data-i18n="journeyDecision">Plan your trip</p>
+          <h2 data-i18n="whereGoing">Where do you want to go?</h2>
+          <p class="section-lead" data-i18n="plannerLead">Choose two Muni stops. We'll compare direct trips and trips with one transfer using the latest available data.</p>
         </div>
-        <span class="prototype-chip" data-i18n="dynamicPlanner">Estimated planner · Public Beta</span>
+        <span class="prototype-chip" data-i18n="dynamicPlanner">Trip estimates · Public Beta</span>
       </div>
 
       <form class="planner-form" id="trip-planner-form">
         <label class="planner-field">
-          <span data-i18n="fromStop">From</span>
-          <input id="origin-input" autocomplete="off" placeholder="Search a Muni stop" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="origin-suggestions" required>
+          <span data-i18n="fromStop">Starting stop</span>
+          <input id="origin-input" autocomplete="off" placeholder="Enter a stop name, then choose from the list" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="origin-suggestions" required>
           <span class="stop-suggestions" id="origin-suggestions" role="listbox" hidden></span>
         </label>
         <button class="swap-button" id="swap-stops" type="button" aria-label="Swap origin and destination" title="Swap origin and destination">⇅</button>
         <label class="planner-field">
-          <span data-i18n="toStop">To</span>
-          <input id="destination-input" autocomplete="off" placeholder="Search a Muni stop" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="destination-suggestions" required>
+          <span data-i18n="toStop">Destination stop</span>
+          <input id="destination-input" autocomplete="off" placeholder="Enter a stop name, then choose from the list" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="destination-suggestions" required>
           <span class="stop-suggestions" id="destination-suggestions" role="listbox" hidden></span>
         </label>
-        <button class="primary-button planner-submit" id="plan-trip-button" type="submit" data-i18n="findRoute">Find best route</button>
+        <button class="primary-button planner-submit" id="plan-trip-button" type="submit" data-i18n="findRoute">Compare routes</button>
       </form>
-      <button class="text-action example-trip-button" id="example-trip-button" type="button" data-i18n="tryExample">Try an example trip</button>
+      <button class="text-action example-trip-button" id="example-trip-button" type="button" data-i18n="tryExample">Try a sample trip</button>
       <div class="planner-status" id="planner-status" role="status"></div>
       <p class="journey-od" id="journey-od">Select two stops to begin.</p>
 
@@ -188,12 +188,12 @@
 
       <div class="journey-evidence-grid" id="journey-evidence" hidden>
         <article class="journey-evidence-card">
-          <p class="eyebrow" data-i18n="journeyReliability">Journey reliability</p>
+          <p class="eyebrow" data-i18n="journeyReliability">How steady is this trip?</p>
           <h3 id="journey-reliability-status">—</h3>
           <div id="journey-reliability-detail"></div>
         </article>
         <article class="journey-evidence-card">
-          <p class="eyebrow" data-i18n="journeySafety">Journey safety context</p>
+          <p class="eyebrow" data-i18n="journeySafety">Historical incident context</p>
           <h3 id="journey-safety-status">—</h3>
           <div id="journey-safety-detail"></div>
         </article>
@@ -201,8 +201,8 @@
 
       <div class="alternatives-panel">
         <div>
-          <p class="eyebrow" data-i18n="alternatives">Alternatives</p>
-          <h3 data-i18n="tradeoffs">The trade-offs stay visible.</h3>
+          <p class="eyebrow" data-i18n="alternatives">Other routes</p>
+          <h3 data-i18n="tradeoffs">Compare time, walking, and transfers.</h3>
         </div>
         <div class="alternatives-list" id="alternatives-list"></div>
       </div>
@@ -211,26 +211,26 @@
     <section class="section light" id="context">
       <div class="section-heading">
         <div>
-          <p class="eyebrow" data-i18n="cityContext">City context</p>
-          <h2 data-i18n="moreThanBus">More than the bus.</h2>
+          <p class="eyebrow" data-i18n="cityContext">More travel info</p>
+          <h2 data-i18n="moreThanBus">Other things that may affect your trip.</h2>
         </div>
       </div>
       <div class="context-grid">
         <article class="context-card">
           <span class="context-index">01</span>
-          <h3 data-i18n="parkingDemand">Parking demand</h3>
+          <h3 data-i18n="parkingDemand">Recent parking activity</h3>
           <p class="context-value" id="parking-status">Loading…</p>
           <p id="parking-detail">Recent paid-session activity is compared with the feed's own timestamp.</p>
         </article>
         <article class="context-card">
           <span class="context-index">02</span>
-          <h3 data-i18n="safetyContext">Safety context</h3>
+          <h3 data-i18n="safetyContext">Historical incident context</h3>
           <p class="context-value" id="safety-status">Loading…</p>
-          <p id="safety-detail">Historical incident exposure is relative context, not a prediction of crime.</p>
+          <p id="safety-detail">Historical records only compare past conditions across areas. They do not predict crime or label a place safe or unsafe.</p>
         </article>
         <article class="context-card">
           <span class="context-index">03</span>
-          <h3 data-i18n="dataQuality">Data quality</h3>
+          <h3 data-i18n="dataQuality">How current is this data?</h3>
           <p class="context-value" id="quality-status">Checking…</p>
           <div class="freshness-list" id="source-freshness"></div>
           <p id="quality-detail">Every source publishes freshness and failure state instead of silently substituting stale data.</p>
@@ -240,26 +240,26 @@
 
     <section class="section method" id="method">
       <div class="method-copy">
-        <p class="eyebrow" data-i18n="methodEyebrow">How SF Transit Pulse works</p>
-        <h2 data-i18n="evidenceTitle">From live service evidence to a decision.</h2>
-        <p data-i18n="northStarBody">SF Transit Pulse is designed around one question: What should I do right now, and why?</p>
-        <p class="method-principle" data-i18n="evidenceBody">Evidence before confidence.</p>
+        <p class="eyebrow" data-i18n="methodEyebrow">How we build each result</p>
+        <h2 data-i18n="evidenceTitle">What we check before recommending a trip.</h2>
+        <p data-i18n="northStarBody">SF Transit Pulse answers one practical question: What should I take right now, and why?</p>
+        <p class="method-principle" data-i18n="evidenceBody">We only say what the available data supports.</p>
       </div>
       <ol class="method-steps">
-        <li><span>1</span><div><strong data-i18n="observe">Observe</strong><p data-i18n="observeBody">Read current vehicles, trip predictions, alerts, route geometry, and relevant context—with freshness attached.</p></div></li>
-        <li><span>2</span><div><strong data-i18n="diagnose">Diagnose</strong><p data-i18n="diagnoseBody">Evaluate headways, bunching, gaps, movement, and evidence separately for every route and direction.</p></div></li>
-        <li><span>3</span><div><strong data-i18n="build">Build feasible journeys</strong><p data-i18n="buildBody">Compare direct and one-transfer options, including access walking and transfer feasibility—not just lines that meet on a map.</p></div></li>
-        <li><span>4</span><div><strong data-i18n="compare">Compare trade-offs</strong><p data-i18n="compareBody">FASTEST prioritizes estimated time. BALANCED also weighs reliability, walking, and transfers. SAFETY-FIRST waits for journey-level exposure evidence.</p></div></li>
-        <li><span>5</span><div><strong data-i18n="explain">Explain the decision</strong><p data-i18n="explainBody">Show why one option wins while keeping alternatives, assumptions, and evidence limits visible.</p></div></li>
+        <li><span>1</span><div><strong data-i18n="observe">Collect current updates</strong><p data-i18n="observeBody">Check vehicle locations, arrival estimates, service notices, route paths, and when each source was updated.</p></div></li>
+        <li><span>2</span><div><strong data-i18n="diagnose">Check each route direction</strong><p data-i18n="diagnoseBody">Look for steady vehicle spacing, vehicles too close together, long waits, and limited live data in each direction.</p></div></li>
+        <li><span>3</span><div><strong data-i18n="build">Build trips you may be able to make</strong><p data-i18n="buildBody">Compare direct trips and one-transfer trips, including walking time and whether the transfer appears to leave enough time.</p></div></li>
+        <li><span>4</span><div><strong data-i18n="compare">Compare what matters to you</strong><p data-i18n="compareBody">Fastest favors time. Balanced also considers steady service, walking, and transfers. Safety-first is waiting for trip-level historical incident data.</p></div></li>
+        <li><span>5</span><div><strong data-i18n="explain">Explain the recommendation</strong><p data-i18n="explainBody">Show why one route ranks first, what the other options offer, and where the data is limited.</p></div></li>
       </ol>
       <div class="method-boundaries">
-        <p class="eyebrow" data-i18n="boundariesTitle">What the system does not claim</p>
+        <p class="eyebrow" data-i18n="boundariesTitle">Important limits</p>
         <ul>
-          <li data-i18n="boundarySafety">Historical incident exposure predicts personal safety.</li>
-          <li data-i18n="boundaryRoad">Road overlap by itself proves the cause of a transit delay.</li>
-          <li data-i18n="boundaryMissing">Missing realtime evidence means a route is not operating.</li>
-          <li data-i18n="boundaryCost">A preference cost is the same thing as an ETA.</li>
-          <li data-i18n="boundaryTransfer">A theoretical transfer is always catchable.</li>
+          <li data-i18n="boundarySafety">Historical incident data cannot tell whether you will be safe.</li>
+          <li data-i18n="boundaryRoad">A nearby street event does not prove what caused a transit delay.</li>
+          <li data-i18n="boundaryMissing">No live update does not mean a route has stopped running.</li>
+          <li data-i18n="boundaryCost">A comparison score is not an arrival time.</li>
+          <li data-i18n="boundaryTransfer">A possible transfer is not guaranteed.</li>
         </ul>
       </div>
     </section>
@@ -271,7 +271,7 @@
       <p data-i18n="footerNote">An independent research prototype. Not an official SFMTA service.</p>
     </div>
     <div class="footer-meta">
-      <span id="generated-at">Snapshot time unavailable</span>
+      <span id="generated-at">Page update time unavailable</span>
       <span>Data: 511 SF Bay · DataSF · SFMTA</span>
       <span>Map © OpenStreetMap contributors</span>
       <a href="https://github.com/ksitcode00/sf-transit-pulse-site/issues/new" target="_blank" rel="noreferrer" data-i18n="reportIssue">Report an issue</a>
