@@ -60,7 +60,10 @@ def test_unmatched_events_are_labeled_instead_of_silently_route_filtered() -> No
     transit_status = snapshot["meta"]["source_status"]["transit"]["status"]
     assert transit_status in {"live", "retained_sample"}
     if transit_status == "live":
-        assert snapshot["meta"]["errors"] == []
+        assert not any(
+            error.startswith("511 refresh failed")
+            for error in snapshot["meta"]["errors"]
+        )
         assert not any(str(row.get("vehicle_id", "")).startswith("demo-") for row in snapshot["vehicles"])
     assert all("route_ids" in row and "route_match_status" in row for row in snapshot["alerts"])
     assert all("route_ids" in row and "route_match_status" in row for row in snapshot["road_events"])

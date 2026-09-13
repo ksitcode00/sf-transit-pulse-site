@@ -764,20 +764,45 @@ def parse_road_events(payload: Any) -> list[dict[str, Any]]:
     return rows[:20]
 
 
-def datasf_records(dataset_id: str, query: str, page_size: int) -> list[dict[str, Any]]:
-    response = request(
-        f"https://data.sf.gov/api/v3/views/{dataset_id}/query.json",
-        params={"pageNumber": 1, "pageSize": page_size, "query": query},
-        timeout=75,
-    )
-    payload = response.json()
-    if isinstance(payload, list):
-        return payload
-    if isinstance(payload, dict):
-        for key in ("data", "results", "rows"):
-            if isinstance(payload.get(key), list):
-                return payload[key]
-    return []
+def datasf_records(
+    dataset_id: str,
+    query: str,
+    page_size: int,
+    *,
+    max_pages: int = 1,
+) -> list[dict[str, Any]]:
+    """Read one or more DataSF v3 pages and surface silent API errors.
+
+    中文：DataSF 对单页过大的查询有时不会返回标准 HTTP 错误，而是给一个没有
+    rows 的说明对象。Feature 23/24 改成 5,000 行一页，并在响应结构异常时直接
+    报错，避免把“查询失败”误判为“城市里没有数据”。
+
+    English: DataSF can return a message object instead of rows for oversized or
+    invalid queries. Small pages plus explicit payload validation keep a source
+    failure from being misread as an empty city dataset.
+    """
+
+    records: list[dict[str, Any]] = []
+    for page_number in range(1, max_pages + 1):
+        response = request(
+            f"https://data.sf.gov/api/v3/views/{dataset_id}/query.json",
+            params={"pageNumber": page_number, "pageSize": page_size, "query": query},
+            timeout=75,
+        )
+        payload = response.json()
+        page_rows: list[dict[str, Any]] | None = payload if isinstance(payload, list) else None
+        if isinstance(payload, dict):
+            for key in ("data", "results", "rows"):
+                if isinstance(payload.get(key), list):
+                    page_rows = payload[key]
+                    break
+        if page_rows is None:
+            detail = payload.get("message") if isinstance(payload, dict) else None
+            raise ValueError(f"DataSF {dataset_id} returned no row collection: {detail or type(payload).__name__}")
+        records.extend(row for row in page_rows if isinstance(row, dict))
+        if len(page_rows) < page_size:
+            break
+    return records
 
 
 def load_parking_inventory() -> list[dict[str, Any]]:
@@ -804,9 +829,9 @@ WHERE post_id IS NOT NULL
   AND longitude IS NOT NULL
   AND active_meter_flag IN ('M', 'T')
   AND on_offstreet_type = 'ON'
-LIMIT 50000
+LIMIT 40000
 """.strip()
-    rows = datasf_records("8vzz-qzz9", query, 50000)
+    rows = datasf_records("8vzz-qzz9", query, 5000, max_pages=8)
     meters = []
     seen_spaces = set()
     for row in rows:
@@ -1081,17 +1106,19 @@ def refresh_safety() -> dict[str, Any]:
     since = (datetime.now(timezone.utc) - timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%S")
     query = f"""
 SELECT
-  round(latitude, 3) AS latitude,
-  round(longitude, 3) AS longitude,
+  latitude,
+  longitude,
   count(*) AS incident_count,
   max(incident_datetime) AS latest_incident_datetime
 WHERE incident_datetime >= '{since}'
   AND latitude IS NOT NULL
   AND longitude IS NOT NULL
-GROUP BY round(latitude, 3), round(longitude, 3)
+GROUP BY latitude, longitude
 LIMIT 20000
 """.strip()
-    return build_safety_context(datasf_records("wg3w-h783", query, 20000))
+    return build_safety_context(
+        datasf_records("wg3w-h783", query, 5000, max_pages=4)
+    )
 
 
 def main() -> int:

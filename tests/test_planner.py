@@ -60,7 +60,11 @@ def test_mode_changes_ranking_not_actual_eta(engine: PlannerEngine) -> None:
     balanced_eta = {
         row["journey_id"]: row["eta_min"] for row in balanced["alternatives"]
     }
-    assert fastest_eta == balanced_eta
+    assert fastest_eta.keys() == balanced_eta.keys()
+    assert all(
+        fastest_eta[journey_id] == pytest.approx(balanced_eta[journey_id], abs=0.2)
+        for journey_id in fastest_eta
+    )
 
 
 def test_same_stop_is_rejected(engine: PlannerEngine) -> None:

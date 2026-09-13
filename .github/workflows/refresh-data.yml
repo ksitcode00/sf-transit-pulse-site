@@ -5,6 +5,7 @@ on:
     # Run one full integration refresh whenever this workflow's data contract changes.
     paths:
       - ".github/workflows/refresh-data.yml"
+      - "scripts/refresh_data.py"
   schedule:
     # Context run: vehicles + trip updates + alerts + road events.
     - cron: "3,18,33,48 * * * *"
