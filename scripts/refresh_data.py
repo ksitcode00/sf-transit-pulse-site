@@ -29,9 +29,16 @@ from google.transit import gtfs_realtime_pb2
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = ROOT / "site" / "data" / "latest.json"
 NETWORK_PATH = ROOT / "site" / "data" / "network.json"
-PIPELINE_VERSION = "1.1.0"
+PIPELINE_VERSION = "1.2.0"
 USER_AGENT = "SF-Transit-Pulse/1.0 (+https://github.com/ksitcode00/sf-transit-pulse)"
 SF_BOUNDS = {"south": 37.68, "north": 37.84, "west": -122.55, "east": -122.33}
+REQUEST_BUDGET = {
+    "default_limit_per_hour": 60,
+    "core_runs_per_hour": 12,
+    "core_requests_per_run": 3,
+    "context_runs_per_hour": 4,
+    "context_extra_requests_per_run": 2,
+}
 
 
 def load_previous() -> dict[str, Any]:
@@ -668,6 +675,7 @@ def main() -> int:
     safety_refreshed = False
     api_key = os.environ.get("SF_TRANSIT_511_API_KEY", "").strip()
     local_gtfs_path = os.environ.get("SF_TRANSIT_GTFS_PATH", "").strip()
+    refresh_context = os.environ.get("SF_TRANSIT_REFRESH_CONTEXT", "true").strip().lower() in {"1", "true", "yes"}
     previous_transit = previous.get("meta", {}).get("source_status", {}).get("transit", {})
     contains_demo = any(str(row.get("vehicle_id", "")).startswith("demo-") for row in payload.get("vehicles", []))
     transit_source = {
@@ -681,27 +689,28 @@ def main() -> int:
             write_json(static["network"], NETWORK_PATH, compact=True)
             vehicle_feed = fetch_gtfs_rt("https://api.511.org/transit/vehiclepositions", api_key)
             trip_feed = fetch_gtfs_rt("https://api.511.org/transit/tripupdates", api_key)
-            alert_feed = fetch_gtfs_rt("https://api.511.org/transit/servicealerts", api_key)
-            road_payload = request(
-                "https://api.511.org/traffic/events",
-                params={
-                    "api_key": api_key,
-                    "Bbox": "-122.52,37.70,-122.35,37.83",
-                    "in_effect_on": "now",
-                    "limit": 100,
-                },
-            ).json()
             vehicles = parse_vehicles(vehicle_feed, static["trip_lookup"])
             routes = parse_route_health(trip_feed, static["trip_lookup"], vehicles, static["stop_lookup"])
-            alerts = parse_alerts(alert_feed)
-            road_events = parse_road_events(road_payload)
-            payload.update({"vehicles": vehicles, "routes": routes, "alerts": alerts, "road_events": road_events})
+            payload.update({"vehicles": vehicles, "routes": routes})
+            if refresh_context:
+                alert_feed = fetch_gtfs_rt("https://api.511.org/transit/servicealerts", api_key)
+                road_payload = request(
+                    "https://api.511.org/traffic/events",
+                    params={
+                        "api_key": api_key,
+                        "Bbox": "-122.52,37.70,-122.35,37.83",
+                        "in_effect_on": "now",
+                        "limit": 100,
+                    },
+                ).json()
+                payload["alerts"] = parse_alerts(alert_feed)
+                payload["road_events"] = parse_road_events(road_payload)
             payload["system"] = {
                 "vehicle_count": len(vehicles),
                 "route_count": len({row["route_id"] for row in routes}),
                 "route_direction_count": len(routes),
-                "alert_count": len(alerts),
-                "road_event_count": len(road_events),
+                "alert_count": len(payload.get("alerts", [])),
+                "road_event_count": len(payload.get("road_events", [])),
             }
             transit_source = {
                 "status": "live",
@@ -731,19 +740,20 @@ def main() -> int:
             "road_event_count": len(payload.get("road_events", [])),
         }
 
-    try:
-        payload["parking"] = refresh_parking()
-        parking_refreshed = True
-        configured_sources += 1
-    except Exception as exc:
-        errors.append(f"Parking refresh failed: {type(exc).__name__}: {exc}")
+    if refresh_context:
+        try:
+            payload["parking"] = refresh_parking()
+            parking_refreshed = True
+            configured_sources += 1
+        except Exception as exc:
+            errors.append(f"Parking refresh failed: {type(exc).__name__}: {exc}")
 
-    try:
-        payload["safety"] = refresh_safety()
-        safety_refreshed = True
-        configured_sources += 1
-    except Exception as exc:
-        errors.append(f"Safety refresh failed: {type(exc).__name__}: {exc}")
+        try:
+            payload["safety"] = refresh_safety()
+            safety_refreshed = True
+            configured_sources += 1
+        except Exception as exc:
+            errors.append(f"Safety refresh failed: {type(exc).__name__}: {exc}")
 
     status = "live" if api_key and not errors else "partial_live" if configured_sources else "demo"
     payload["meta"] = {
@@ -766,7 +776,14 @@ def main() -> int:
                 else previous.get("meta", {}).get("source_status", {}).get("safety", {}).get("observed_at"),
             },
         },
-        "refresh_policy": "Every 10 minutes via GitHub Actions",
+        "request_budget": {
+            **REQUEST_BUDGET,
+            "planned_requests_per_hour": (
+                REQUEST_BUDGET["core_runs_per_hour"] * REQUEST_BUDGET["core_requests_per_run"]
+                + REQUEST_BUDGET["context_runs_per_hour"] * REQUEST_BUDGET["context_extra_requests_per_run"]
+            ),
+        },
+        "refresh_policy": "Vehicles and trip updates every 5 minutes; alerts and road context every 15 minutes via GitHub Actions",
     }
     write_snapshot(payload)
     print(json.dumps({"status": status, "errors": len(errors), "vehicles": len(payload.get("vehicles", [])), "routes": len(payload.get("routes", []))}))

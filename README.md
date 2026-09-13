@@ -27,3 +27,11 @@ Network 页面把三个概念分开：静态 GTFS 中的全部线路、当前快
 Until `SF_TRANSIT_511_API_KEY` is configured, the six checked-in `demo-*` records are labeled as a retained sample and are not presented as the current Muni fleet.
 
 在配置 `SF_TRANSIT_511_API_KEY` 之前，仓库中的 6 条 `demo-*` 记录会明确标为保留样本，不会冒充当前 Muni 车队。
+
+The default 511 limit is 60 requests per hour. The workflow refreshes vehicle positions and trip updates every 5 minutes, while alerts and road events refresh every 15 minutes. This plans 44 requests per hour and keeps a 16-request margin for safe operation.
+
+511 默认限制为每小时 60 次。工作流每 5 分钟刷新车辆位置与班次预测，每 15 分钟刷新服务提示和道路事件；预计每小时 44 次，保留 16 次安全余量。
+
+The token belongs only in the repository's encrypted Actions secret named `SF_TRANSIT_511_API_KEY`. It must never be placed in this public repository, the website, browser storage, or a Notebook output.
+
+Token 只能保存在仓库名为 `SF_TRANSIT_511_API_KEY` 的 Actions 加密 Secret 中，禁止写入公开仓库、网页、浏览器存储或 Notebook 输出。

@@ -84,3 +84,23 @@ def test_road_event_without_transit_match_remains_explicit_context() -> None:
     assert event["route_ids"] == []
     assert event["route_match_status"] == "UNAVAILABLE"
     assert (event["lat"], event["lon"]) == (37.77, -122.42)
+
+
+def test_refresh_plan_stays_below_default_511_rate_limit() -> None:
+    snapshot = json.loads((ROOT / "site/data/latest.json").read_text(encoding="utf-8"))
+    budget = snapshot["meta"]["request_budget"]
+
+    calculated = (
+        budget["core_runs_per_hour"] * budget["core_requests_per_run"]
+        + budget["context_runs_per_hour"] * budget["context_extra_requests_per_run"]
+    )
+    assert calculated == budget["planned_requests_per_hour"] == 44
+    assert calculated < budget["default_limit_per_hour"] == 60
+
+
+def test_workflow_runs_core_every_five_minutes_and_context_every_fifteen() -> None:
+    workflow = (ROOT / ".github/workflows/refresh-data.yml").read_text(encoding="utf-8")
+
+    assert 'cron: "3,18,33,48 * * * *"' in workflow
+    assert 'cron: "8,13,23,28,38,43,53,58 * * * *"' in workflow
+    assert "SF_TRANSIT_REFRESH_CONTEXT" in workflow
