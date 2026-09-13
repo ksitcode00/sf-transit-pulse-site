@@ -836,7 +836,11 @@ LIMIT 40000
         # DataSF v3 may preserve display-name casing for this older inventory.
         # Normalize keys once so both POST_ID and post_id satisfy the same contract.
         row = {str(key).strip().casefold(): value for key, value in source_row.items()}
-        space_id = str(row.get("parking_space_id") or "")
+        # Some DataSF v3 responses currently omit PARKING_SPACE_ID even though
+        # the field remains in the published schema. The stable Socrata row id
+        # still identifies one inventory record, so it is a safe fallback for
+        # deduplicating spaces; POST_ID remains the transaction join key.
+        space_id = str(row.get("parking_space_id") or row.get(":id") or "")
         post_id = str(row.get("post_id") or "")
         active_flag = str(row.get("active_meter_flag") or "").strip().upper()
         street_type = str(row.get("on_offstreet_type") or "").strip().upper()

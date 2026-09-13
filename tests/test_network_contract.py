@@ -183,6 +183,13 @@ def test_parking_pressure_uses_paid_sessions_without_claiming_open_spaces() -> N
     assert "does not measure physical occupancy or open spaces" in context["detail"]
 
 
+def test_parking_inventory_contract_allows_stable_row_id_fallback() -> None:
+    script = (ROOT / "scripts/refresh_data.py").read_text(encoding="utf-8")
+
+    assert 'row.get("parking_space_id") or row.get(":id")' in script
+    assert "POST_ID remains the transaction join key" in script
+
+
 def test_road_event_without_transit_match_remains_explicit_context() -> None:
     event = parse_road_events(
         {
