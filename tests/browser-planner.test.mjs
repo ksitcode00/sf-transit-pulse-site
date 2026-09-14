@@ -162,6 +162,16 @@ test("zero paid sessions is not mislabeled as low parking pressure", () => {
   assert.ok(result.alternatives.every(row => row.destination_parking.pressure_label === "NO_RECENT_PAID_ACTIVITY"));
 });
 
+test("low parking mapping coverage does not produce a high or low rating", () => {
+  const engine = realtimeEngine({parking: true});
+  engine.realtime.parking.match_coverage_ratio = 0.2;
+  engine.updateRealtime(engine.realtime);
+  const result = engine.plan("A", "X", "BALANCED");
+  assert.equal(result.meta.freshness.parking_evidence_sufficient, false);
+  assert.ok(result.alternatives.every(row => row.destination_parking.status === "LIMITED_EVIDENCE"));
+  assert.ok(result.alternatives.every(row => row.destination_parking.pressure_label === "NOT_RATED"));
+});
+
 test("fresh matched road context appears on the affected leg", () => {
   const result = realtimeEngine({road: true}).plan("A", "X", "BALANCED");
   const disruption = result.alternatives[0].disruption_analysis[0];

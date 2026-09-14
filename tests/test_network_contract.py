@@ -203,6 +203,7 @@ def test_parking_pressure_uses_paid_sessions_without_claiming_open_spaces() -> N
 
     assert context["status"] == "DESTINATION_PAID_PARKING_PRESSURE"
     assert context["matched_transaction_count"] == 2
+    assert context["mapping_quality"] == "SUFFICIENT_FOR_RELATIVE_GUIDANCE"
     assert context["recent_3h_transaction_count"] == 2
     assert context["cells"][0]["metered_spaces"] == 2
     assert context["cells"][0]["active_paid_sessions_proxy"] == 2
@@ -242,6 +243,19 @@ def test_parking_ids_are_normalized_but_paystation_sessions_are_not_merged() -> 
     assert context["match_coverage_ratio"] == 1
     assert context["deduplicated_session_count"] == 2
     assert context["multi_space_or_paystation_post_count"] == 1
+
+
+def test_low_parking_mapping_coverage_is_marked_as_limited_evidence() -> None:
+    meters = [{"post_id": "P1", "parking_space_id": "S1", "lat": 37.780, "lon": -122.420}]
+    rows = [
+        {"post_id": "P1", "session_start_dt": "2026-09-13T12:00:00", "session_end_dt": "2026-09-13T12:30:00"},
+        {"post_id": "UNKNOWN", "session_start_dt": "2026-09-13T12:10:00", "session_end_dt": "2026-09-13T12:40:00"},
+    ]
+
+    context = build_parking_pressure(rows, meters)
+
+    assert context["match_coverage_ratio"] == 0.5
+    assert context["mapping_quality"] == "LIMITED_EVIDENCE"
 
 
 def test_no_parking_payments_is_not_labeled_low_pressure() -> None:

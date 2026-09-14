@@ -34,6 +34,7 @@ ACCESS_RADIUS_M = 250.0
 TRANSFER_RADIUS_M = 180.0
 MAX_ALTERNATIVES = 12
 BOARDING_BUFFER_MIN = 1.0
+PARKING_MIN_MATCH_COVERAGE = 0.70
 ENGINE_VERSION = "24.1-beta"
 
 HEALTH_SEVERITY = {
@@ -280,6 +281,15 @@ class PlannerEngine:
         )
         self._safety_stop_cache: dict[str, dict[str, Any]] = {}
         self.parking_cells = list(realtime.get("parking", {}).get("cells", []))
+        raw_parking_coverage = realtime.get("parking", {}).get("match_coverage_ratio")
+        try:
+            self.parking_mapping_coverage = float(raw_parking_coverage)
+        except (TypeError, ValueError):
+            self.parking_mapping_coverage = None
+        self.parking_evidence_sufficient = (
+            self.parking_mapping_coverage is None
+            or self.parking_mapping_coverage >= PARKING_MIN_MATCH_COVERAGE
+        )
         self.parking_pressure_distribution = sorted(
             float(row.get("paid_session_pressure_ratio") or 0)
             for row in self.parking_cells
@@ -705,6 +715,28 @@ class PlannerEngine:
         cached = self._safety_stop_cache.get(stop.stop_id)
         if cached is not None:
             return cached
+        if not self.parking_evidence_sufficient:
+            result = {
+                "status": "LIMITED_EVIDENCE",
+                "radius_m": 400,
+                "pressure_label": "NOT_RATED",
+                "relative_pressure_percentile": None,
+                "metered_spaces_represented": 0,
+                "active_paid_sessions_proxy": 0,
+                "starts_15m": 0,
+                "starts_30m": 0,
+                "starts_60m": 0,
+                "trend": "UNAVAILABLE",
+                "match_coverage_ratio": self.parking_mapping_coverage,
+                "minimum_match_coverage_ratio": PARKING_MIN_MATCH_COVERAGE,
+                "detail": (
+                    "Too few recent paid sessions could be matched to mapped meters, "
+                    "so no high/low rating is shown."
+                ),
+                "disclaimer": "This does not measure physical occupancy or open spaces.",
+            }
+            self._parking_stop_cache[destination.stop_id] = result
+            return result
         nearby_count = 0
         for lat_offset in range(-3, 4):
             for lon_offset in range(-4, 5):

@@ -39,6 +39,7 @@ PARKING_INVENTORY_PATH = ROOT / "data" / "parking-inventory.json"
 STATIC_INDEX_PATH = ROOT / "data" / "static-index.json"
 PIPELINE_VERSION = "1.6.0"
 PARKING_INVENTORY_SCHEMA_VERSION = 2
+PARKING_MIN_MATCH_COVERAGE = 0.70
 USER_AGENT = "SF-Transit-Pulse/1.0 (+https://github.com/ksitcode00/sf-transit-pulse)"
 SF_BOUNDS = {"south": 37.68, "north": 37.84, "west": -122.55, "east": -122.33}
 REQUEST_BUDGET = {
@@ -1220,6 +1221,7 @@ def build_parking_pressure(
             cell["pressure_label"] = "LOW"
 
     cell_rows = sorted(cells.values(), key=lambda row: (row["lat"], row["lon"]))
+    match_coverage_ratio = round((len(parsed) - unmatched) / max(1, len(parsed)), 3)
     return {
         "status": "DESTINATION_PAID_PARKING_PRESSURE",
         "detail": (
@@ -1233,7 +1235,13 @@ def build_parking_pressure(
         "matched_transaction_count": len(parsed) - unmatched,
         "unmatched_transaction_count": unmatched,
         "matched_post_count": len(matched_posts),
-        "match_coverage_ratio": round((len(parsed) - unmatched) / max(1, len(parsed)), 3),
+        "match_coverage_ratio": match_coverage_ratio,
+        "minimum_match_coverage_ratio": PARKING_MIN_MATCH_COVERAGE,
+        "mapping_quality": (
+            "SUFFICIENT_FOR_RELATIVE_GUIDANCE"
+            if match_coverage_ratio >= PARKING_MIN_MATCH_COVERAGE
+            else "LIMITED_EVIDENCE"
+        ),
         "renewal_records_merged": raw_session_count - len(parsed),
         "multi_space_or_paystation_post_count": sum(
             1

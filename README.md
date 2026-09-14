@@ -75,7 +75,7 @@ Each row explains the rider need, the implementation's practical value, and an e
 | Balanced | Considers ETA, walking, transfer count, and current spacing reliability. | A slightly slower direct option may rank above a trip with more walking and a transfer. | Live, default mode |
 | Safety-first | Compares deduplicated 30-, 90-, and 365-day historical reports with transparent category weights. Origin, boarding, route, transfer, and destination use documented weights, and one extreme location is capped. | Use past area context as one extra input for a night trip. It is not a personal safety prediction. | Research beta |
 | Option A vs Option B | Places any two displayed routes side by side with ETA, evidence level, walking, transfers, connection slack, reliability, historical context, and street context. | Compare a faster tight transfer with a steadier direct route without switching cards repeatedly. | Live beta |
-| Destination parking pressure | Combines meter inventory and recent paid sessions as a relative signal; it is not occupancy or open-space availability. | Check whether paid activity near Mission is rising before driving there for pickup. | Research beta |
+| Destination parking pressure | Combines meter inventory and recent paid sessions as a relative signal. If fewer than 70% of sessions match mapped meters, it withholds high/low labels. It is not occupancy or open-space availability. | Check whether paid activity near Mission is rising; if source coverage drops, read the evidence count without an overstated rating. | Research beta |
 | Freshness and failure labels | Each source distinguishes current, retained, outdated, and unavailable. “No events” appears only after a usable source returns no matching events. | If street data fails, the app says it is unavailable instead of implying the road is clear. | Live |
 | Stable auto-refresh | A route structure has a stable itinerary ID, while its concrete vehicle run has a separate trip-instance ID. New snapshots recalculate the request without making the open option jump. | The next 38R trip can replace the prior trip while the rider stays on the same 38R itinerary card. | Live |
 | Mobile recommendation bar | Keeps the selected route and a 44-pixel trip button within reach on narrow screens; comparison cards collapse to one column. | Check the chosen trip one-handed while walking to a stop. | Live beta |
@@ -218,6 +218,16 @@ tests/
 ```bash
 python3 -m http.server 8765 --directory site
 ```
+
+### Browser planner benchmark
+
+Run a deterministic 100-query benchmark against the checked-in full Muni network:
+
+```bash
+node scripts/benchmark_planner.mjs 100
+```
+
+It reports query success rate, p50/p95/worst calculation time, and candidate counts. Results vary by device, so this is used to catch large regressions rather than promise one universal speed.
 
 Open `http://127.0.0.1:8765/?lang=en`. Do not open `index.html` directly because browser workers need an HTTP origin.
 

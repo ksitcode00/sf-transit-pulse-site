@@ -113,7 +113,7 @@ const appState = {
 function plannerWorkerCall(type, payload = {}) {
   if (!window.Worker) return Promise.reject(new Error("This browser does not support background route planning."));
   if (!plannerWorker) {
-    plannerWorker = new Worker("planner-worker.js?v=30", {type: "module"});
+    plannerWorker = new Worker("planner-worker.js?v=31", {type: "module"});
     plannerWorker.addEventListener("message", event => {
       const request = plannerWorkerRequests.get(event.data?.id);
       if (!request) return;
@@ -1425,6 +1425,7 @@ function renderJourneyEvidence(journey) {
   const parkingReady = parking.status === "PAID_PARKING_PRESSURE_PROXY";
   const parkingStale = parking.status === "STALE";
   const parkingNoActivity = parking.status === "NO_RECENT_PAID_ACTIVITY";
+  const parkingLimited = parking.status === "LIMITED_EVIDENCE";
   const parkingLabel = {
     LOW: language === "zh" ? "附近付费停车活动较少" : "Lower paid-parking activity nearby",
     MODERATE: language === "zh" ? "附近付费停车活动中等" : "Moderate paid-parking activity nearby",
@@ -1440,6 +1441,8 @@ function renderJourneyEvidence(journey) {
     ? (parkingLabel[parking.pressure_label] || (language === "zh" ? "已有附近付费停车数据" : "Nearby paid-parking data available"))
     : parkingStale
       ? (language === "zh" ? "停车数据过旧，未用于建议" : "Parking data is too old to use")
+      : parkingLimited
+        ? (language === "zh" ? "可匹配的数据不足，暂不判断高低" : "Not enough matched data to rate activity")
       : parkingNoActivity
         ? (language === "zh" ? "附近没有近期停车付费活动" : "No recent paid-parking activity nearby")
       : (language === "zh" ? "附近暂时没有足够数据" : "Not enough nearby data yet");
@@ -1454,6 +1457,8 @@ function renderJourneyEvidence(journey) {
       <p class="evidence-note">${language === "zh" ? "付费记录不代表车辆一定仍在现场，也不能告诉你还有多少空位。" : "A paid session does not prove a vehicle is still present and cannot tell you how many spaces are open."}</p>`
     : parkingStale
       ? `<p class="evidence-note">${language === "zh" ? `最新停车付费记录来自 ${timeAgo(parking.source_snapshot_time)}。它没有被当作当前停车压力。` : `The latest paid-parking record is from ${timeAgo(parking.source_snapshot_time)}. It is not treated as current parking pressure.`}</p>`
+      : parkingLimited
+        ? `<p class="evidence-note">${language === "zh" ? `只有 ${fmt(Number(parking.match_coverage_ratio || 0) * 100)}% 的近期付费记录能对应到地图上的停车表。覆盖率达到 ${fmt(Number(parking.minimum_match_coverage_ratio || .7) * 100)}% 前，我们不会显示“高”或“低”。` : `Only ${fmt(Number(parking.match_coverage_ratio || 0) * 100)}% of recent paid sessions matched a mapped meter. We do not show a high or low rating below ${fmt(Number(parking.minimum_match_coverage_ratio || .7) * 100)}% coverage.`}</p>`
       : parkingNoActivity
         ? `<p class="evidence-note">${language === "zh" ? "这可能是因为当时不收费，或者近期确实没有付费记录；不能因此说停车压力低。" : "Meters may have been outside charging hours, or there may truly be no recent payments. This is not evidence that parking pressure is low."}</p>`
       : `<p class="evidence-note">${language === "zh" ? "这不是实时车位查询。没有匹配数据时，我们不会猜测停车难度。" : "This is not a live space finder. When nearby evidence is missing, we do not guess how difficult parking will be."}</p>`;
@@ -1668,13 +1673,19 @@ async function planTrip({automaticRefresh = false} = {}) {
 function renderContext() {
   const parking = snapshot.parking || {};
   const parkingStale = isOlderThan(parking.source_snapshot_time, 180);
+  const parkingCoverageLimited = hasNumber(parking.match_coverage_ratio)
+    && Number(parking.match_coverage_ratio) < Number(parking.minimum_match_coverage_ratio || .7);
   const parkingStarts = hasNumber(parking.recent_3h_transaction_count)
     ? fmt(parking.recent_3h_transaction_count)
     : String(parking.detail || "").match(/[\d,]+/)?.[0];
-  document.getElementById("parking-status").textContent = parkingStale
+  document.getElementById("parking-status").textContent = parkingCoverageLimited
+    ? (language === "zh" ? "可匹配的停车数据不足" : "Limited matched parking data")
+    : parkingStale
     ? (language === "zh" ? "停车数据过旧" : "Parking data is out of date")
     : (language === "zh" ? "最近 3 小时的停车付费活动" : "Paid parking activity in the last 3 hours");
-  document.getElementById("parking-detail").textContent = parkingStale
+  document.getElementById("parking-detail").textContent = parkingCoverageLimited
+    ? (language === "zh" ? `目前有 ${fmt(Number(parking.match_coverage_ratio) * 100)}% 的近期付费记录能对应到地图上的停车表，所以暂不判断活动高低。` : `${fmt(Number(parking.match_coverage_ratio) * 100)}% of recent paid sessions currently match a mapped meter, so no high or low rating is shown.`)
+    : parkingStale
     ? (language === "zh" ? `最新记录来自 ${timeAgo(parking.source_snapshot_time)}，所以不会用它判断当前停车压力。` : `The latest record is from ${timeAgo(parking.source_snapshot_time)}, so it is not used to describe current parking pressure.`)
     : parkingStarts
     ? (language === "zh" ? `最近的数据中有 ${parkingStarts} 次停车付费开始记录。最后可用记录来自 ${timeAgo(parking.source_snapshot_time)}。它反映付费活动，不代表实际还有多少空位。` : `${parkingStarts} paid parking sessions began in the latest data. The latest available record is from ${timeAgo(parking.source_snapshot_time)}. This shows payment activity, not the number of open spaces.`)

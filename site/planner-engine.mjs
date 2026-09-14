@@ -21,7 +21,8 @@ const TRIP_PREDICTION_MAX_AGE_SEC = 10 * 60;
 const VEHICLE_MAX_AGE_SEC = 10 * 60;
 const SERVICE_CONTEXT_MAX_AGE_SEC = 30 * 60;
 const PARKING_MAX_AGE_SEC = 3 * 60 * 60;
-const ENGINE_VERSION = "25B-browser-1.3";
+const PARKING_MIN_MATCH_COVERAGE = 0.70;
+const ENGINE_VERSION = "25B-browser-1.4";
 const ROUTE_COLORS = ["#0066cc", "#34a853"];
 
 const HEALTH_SEVERITY = {
@@ -217,6 +218,10 @@ export class BrowserPlannerEngine {
     this.safetyStopCache = new Map();
     this.parkingFresh = this.sourceIsUsable("parking")
       && this.sourceIsFresh(this.parkingObservedEpoch, PARKING_MAX_AGE_SEC);
+    const rawParkingCoverage = Number(realtime.parking?.match_coverage_ratio);
+    this.parkingMappingCoverage = Number.isFinite(rawParkingCoverage) ? rawParkingCoverage : null;
+    this.parkingEvidenceSufficient = this.parkingMappingCoverage == null
+      || this.parkingMappingCoverage >= PARKING_MIN_MATCH_COVERAGE;
     this.parkingCells = this.parkingFresh ? [...(realtime.parking?.cells || [])] : [];
     this.parkingPressureDistribution = this.parkingCells
       .map(row => Number(row.paid_session_pressure_ratio || 0))
@@ -615,6 +620,19 @@ export class BrowserPlannerEngine {
       this.parkingStopCache.set(destination.stop_id, stale);
       return stale;
     }
+    if (!this.parkingEvidenceSufficient) {
+      const limited = {
+        status: "LIMITED_EVIDENCE", radius_m: 400, pressure_label: "NOT_RATED",
+        relative_pressure_percentile: null, metered_spaces_represented: 0,
+        active_paid_sessions_proxy: 0, starts_15m: 0, starts_30m: 0, starts_60m: 0,
+        trend: "UNAVAILABLE", match_coverage_ratio: this.parkingMappingCoverage,
+        minimum_match_coverage_ratio: PARKING_MIN_MATCH_COVERAGE,
+        detail: "Too few recent paid sessions could be matched to mapped meters, so no high/low rating is shown.",
+        disclaimer: "This does not measure physical occupancy or open spaces."
+      };
+      this.parkingStopCache.set(destination.stop_id, limited);
+      return limited;
+    }
     const matched = this.parkingCells.filter(row => Number.isFinite(Number(row.lat))
       && Number.isFinite(Number(row.lon))
       && haversineM(destination, [Number(row.lat), Number(row.lon)]) <= 400);
@@ -953,6 +971,8 @@ export class BrowserPlannerEngine {
           network_feed_version: this.network.meta?.feed_version || null,
           parking_source_time: this.realtime.parking?.source_snapshot_time || null,
           parking_context_usable: this.parkingFresh,
+          parking_mapping_coverage: this.parkingMappingCoverage,
+          parking_evidence_sufficient: this.parkingEvidenceSufficient,
           safety_basis: this.realtime.safety?.status || null
         }
       },

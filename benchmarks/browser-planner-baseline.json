@@ -1,0 +1,30 @@
+{
+  "measured_at": "2026-09-14T09:50:52Z",
+  "benchmark_version": "1.0",
+  "engine_version": "25B-browser-1.4",
+  "environment": {
+    "architecture": "arm64",
+    "macos_version": "26.5.2",
+    "node_version": "v23.7.0"
+  },
+  "requested_queries": 100,
+  "successful_queries": 100,
+  "failed_queries": 0,
+  "success_rate": 1,
+  "duration_ms": {
+    "p50": 76,
+    "p95": 484.3,
+    "maximum": 1399.3
+  },
+  "candidate_count": {
+    "p50": 17,
+    "p95": 129,
+    "maximum": 663
+  },
+  "network": {
+    "routes": 68,
+    "patterns": 287,
+    "stops": 3240
+  },
+  "interpretation": "Reference measurement only. Device speed varies; compare future runs on similar hardware to detect major regressions."
+}
