@@ -278,7 +278,8 @@ def test_unknown_vehicle_positions_are_separated_from_route_results() -> None:
 
 def test_realtime_journey_copy_distinguishes_predictions_from_estimates() -> None:
     app = (ROOT / "site/app.js").read_text(encoding="utf-8")
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme_zh = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme_en = (ROOT / "README.en.md").read_text(encoding="utf-8")
 
     assert "Live arrival prediction" in app
     assert "实时到站预测" in app
@@ -286,8 +287,8 @@ def test_realtime_journey_copy_distinguishes_predictions_from_estimates() -> Non
     assert "部分实时，部分估算" in app
     assert "Transfer slack" in app
     assert "换乘余量" in app
-    assert "one-minute boarding buffer" in readme
-    assert "一分钟上车余量" in readme
+    assert "one-minute boarding allowance" in readme_en
+    assert "一分钟上车余量" in readme_zh
     assert 'safety_status === "JOURNEY_RELATIVE_CONTEXT"' in app
     assert "不能预测你这次是否安全" in app
     assert "Parking near your destination" in app
