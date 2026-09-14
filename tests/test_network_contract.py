@@ -278,8 +278,8 @@ def test_unknown_vehicle_positions_are_separated_from_route_results() -> None:
 
 def test_realtime_journey_copy_distinguishes_predictions_from_estimates() -> None:
     app = (ROOT / "site/app.js").read_text(encoding="utf-8")
-    readme_zh = (ROOT / "README.md").read_text(encoding="utf-8")
-    readme_en = (ROOT / "README.en.md").read_text(encoding="utf-8")
+    readme_zh = (ROOT / "README.zh.md").read_text(encoding="utf-8")
+    readme_en = (ROOT / "README.md").read_text(encoding="utf-8")
 
     assert "Live arrival prediction" in app
     assert "实时到站预测" in app

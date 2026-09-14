@@ -1,213 +1,213 @@
 # SF Transit Pulse
 
-<p align="right"><strong>中文</strong> · <a href="./README.en.md">English</a></p>
+<p align="right"><a href="./README.zh.md">中文</a> · <strong>English</strong></p>
 
 <div align="center">
-  <p><strong>旧金山公交现在怎么样，我该坐哪一条，为什么？</strong></p>
+  <p><strong>What should I take in San Francisco right now, and why?</strong></p>
 
-  [打开中文实时网站](https://ksitcode00.github.io/sf-transit-pulse-site/?lang=zh)
+  [Open the live app in English](https://ksitcode00.github.io/sf-transit-pulse-site/?lang=en)
 
-  [![部署 GitHub Pages](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/pages.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/pages.yml)
-  [![检查应用功能](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/ci.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/ci.yml)
-  [![更新公交数据](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-data.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-data.yml)
+  [![Deploy GitHub Pages](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/pages.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/pages.yml)
+  [![Verify application contracts](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/ci.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/ci.yml)
+  [![Refresh transit snapshot](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-data.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-data.yml)
 </div>
 
-SF Transit Pulse 是一个为普通乘客设计的 Muni 出行决策工具。它不仅显示预计到站时间，还会解释车辆是否挤在一起、是否可能出现长时间空档、具体换乘是否赶得上，以及不同路线为什么会被推荐。
+SF Transit Pulse is a Muni decision tool for everyday riders. It goes beyond departure times by explaining vehicle spacing, possible long gaps, transfer timing, and why one route ranks above another.
 
-> 当前版本是独立研究原型，不是 SFMTA 官方服务。实时预测仍会变化，请为重要行程预留时间。
+> This is an independent research prototype, not an official SFMTA service. Live predictions can change, so leave extra time for important trips.
 
-## 30 秒体验
+## Try it in 30 seconds
 
-1. 打开[中文实时网站](https://ksitcode00.github.io/sf-transit-pulse-site/?lang=zh)。
-2. 在“现在的 Muni”选择线路和方向，查看车辆位置、间隔和服务提示。
-3. 在“规划行程”点击“查找附近站点”，允许定位后选择 100、200、300 或 400 米范围。
-4. 把附近站点设为起点或终点，再比较“最快到达”“综合推荐”和“安全优先”。
+1. Open the [English live app](https://ksitcode00.github.io/sf-transit-pulse-site/?lang=en).
+2. Choose a route and direction under “Muni now,” then inspect vehicle positions, spacing, and service notices.
+3. Under “Plan a trip,” select “Find nearby stops,” allow location access, and choose a 100, 200, 300, or 400 meter range.
+4. Use a nearby stop as your start or destination, then compare Fastest, Balanced, and Safety-first.
 
-## 产品目标
+## Product goal
 
-大多数公交应用擅长回答“下一班车几点来”。SF Transit Pulse 继续追问：
+Most transit apps answer “When is the next vehicle?” SF Transit Pulse also asks:
 
-- 同一条线路的两个方向，现在是否表现不同？
-- 最快的路线是否也值得现在选择，还是另一条路线更稳？
-- 推荐使用的是具体实时班次、当前运行估算，还是历史背景？
-- 用户能否看懂每个结论的依据和限制？
+- Are the two directions of the same route behaving differently right now?
+- Is the fastest option still the best choice, or is another route steadier?
+- Does the recommendation use a concrete live trip, a current estimate, or historical context?
+- Can a rider understand the evidence and limits behind every conclusion?
 
-产品原则很简单：数据能支持多少，就只说多少；限制必须放在结果旁边，而不是藏在说明书里。
+The product rule is simple: show only what the available evidence supports, and place important limits beside the result.
 
-## 功能清单
+## Feature catalog
 
-下表按用户任务列出当前功能。每一项都说明它解决什么问题，以及乘客可以怎样使用。
+Each row explains the rider need, the implementation's practical value, and an example of how to use it.
 
-| 功能 | 有什么用 | 使用示例 | 状态 |
+| Feature | Why it matters | Example | Status |
 |---|---|---|---|
-| 完整 Muni 线路目录 | 不把网站限制在几条演示线路；线路菜单读取当前公开 GTFS 目录。 | 想查看 14R、38、N 或其他 Muni 线路时，直接在线路菜单中选择。 | 已上线 |
-| 按线路方向查看 | 同一路线的两个方向可能表现完全不同。系统用 `route_id + direction_id` 分开车辆、班距和状态。 | 38R 西行出现长空档时，不会把东行自动标成同样不稳定。 | 已上线 |
-| 实时车辆地图 | 显示车辆实际回报的位置；无法匹配到乘客线路的车辆会单独计数，不会猜测归属。 | 出门前查看下一辆 5 路车大概在走廊的哪个位置。 | 已上线 |
-| 线路方向运行状态 | 把大量原始预测整理成“间隔较稳定”“部分等待可能较久”等普通人能看懂的状态。 | 14R 某个方向等待变化较大时，可以先比较 14 路或地铁。 | 已上线 |
-| 车辆间隔、扎堆和长空档 | 平均到站时间可能掩盖两辆车同时到、之后很久没车的问题；本功能直接展示车辆间隔证据。 | 页面会分别显示前方车辆扎堆和后续长空档。 | 已上线 |
-| 当前回报速度 | 帮助判断车辆当前移动是否明显低于同类交通方式的透明参考值；参考值不会冒充历史平均速度。 | 某段公交走廊当前中位速度明显偏低时，用户会看到减速提示。 | 有速度数据时上线 |
-| Muni 服务通知 | 把站点临时移动、电梯故障和服务调整放在线路旁边。 | 前往常用站点前，先看到该站临时搬到下一条街。 | 已上线 |
-| 道路施工与线路背景 | 把道路事件与公交运行放在一起看，但不会把位置接近写成已经证明的延误原因。 | Market Street 附近施工且车辆变慢时，只提示“可能有关”。 | 研究功能 |
-| 附近站点定位 | 用户主动允许后，在浏览器内计算当前位置与全部 Muni 站点的距离；位置不会上传或保存。 | 选择 200 米后，查看范围内所有站点、距离和可乘线路。 | 已上线，测试版 |
-| 100–400 米范围选择 | 查找范围只提供 100、200、300、400 米四档。改变范围不需要再次授权定位。 | 100 米没有站点时，把范围改为 300 米重新查看。 | 已上线 |
-| 附近站点设为起点或终点 | 找到站点后不必重新输入站名，减少移动端操作。 | 点击“设为起点”，再输入目的地进行路线比较。 | 已上线 |
-| 站点搜索 | 输入站名即可选择起点和终点，并查看该站经过的线路；搜索在浏览器中读取公开 GTFS。 | 输入“4th St & Market”，再选择正确的站点编号。 | 已上线 |
-| 直达和一次换乘规划 | 寻找可上车与下车的站点，并排除反方向、先下后上和距离过远的假换乘。 | 从 SoMa 去 Fillmore 时，同时比较直达和一次换乘方案。 | 已上线，测试版 |
-| 具体班次实时上下车时间 | 只有同一具体班次在上下车站都有有效预测时才标成实时，否则明确写成估算。 | 显示预计 8:12 上车、8:27 下车和班次编号，而不是只给模糊的 15 分钟。 | 有完整预测时上线 |
-| 换乘余量 | 用第一趟到达时间、换乘步行、一分钟上车余量和第二趟离开时间，计算还剩几分钟。 | 8:20 到、步行 2 分钟、8:25 开，会显示约 2 分钟余量并标成较紧。 | 实时或明确估算 |
-| 最快到达 | 按门到门预计时间排序，偏好分数不会被显示成预计到达时间。 | 快要迟到时，优先查看预计时间最短的路线。 | 已上线 |
-| 综合推荐 | 同时考虑预计时间、步行、换乘次数和当前车辆间隔稳定性。 | 一条路线快 2 分钟但要多走路和换乘时，系统可能推荐稍慢但更直接的方案。 | 已上线，默认模式 |
-| 安全优先 | 比较候选行程附近过去 365 天的历史事件报告相对值；它是历史背景，不是个人安全预测。 | 夜间出行时，把沿途历史情况作为额外参考。 | 研究功能 |
-| 目的地停车压力 | 把附近收费车位清单与近期付费活动合成相对参考；它不等于占用率或空位数。 | 到 Mission 接人前，查看附近付费活动是在增加还是减少。 | 研究功能 |
-| 数据新鲜度与失败状态 | 显示主要数据源更新时间；数据缺失时不会用演示数据冒充实时情况。 | 511 暂停更新时，页面会说明正在显示上次成功数据或实时信息不足。 | 已上线 |
-| 独立中英文界面 | 网址可以指定语言，按钮、状态、错误和方法说明会整体切换；选择也会保存在本机。 | `?lang=zh` 直接打开中文，`?lang=en` 直接打开英文。 | 已上线 |
-| 浏览器本地计算 | 查询路线和附近站点不需要 Render 或付费服务器；后台线程避免地图卡住，API 密钥也不会进入浏览器。 | 任何人打开 GitHub Pages 都能使用，项目作者不必开着 Notebook 或电脑。 | 已上线 |
+| Full Muni route catalog | The app is not limited to a few demo routes; its selector reads the current public GTFS catalog. | Select 14R, 38, N, or another Muni route from the route menu. | Live |
+| Route and direction filter | Two directions can behave differently. Vehicles, spacing, and health are separated by `route_id + direction_id`. | A long gap on one 38R direction does not label the other direction unstable. | Live |
+| Live vehicle map | Shows reported positions. Unmatched vehicles are counted separately instead of being assigned by guesswork. | Check where the next Route 5 vehicle appears along the corridor before leaving. | Live |
+| Direction-level service health | Turns raw predictions into plain-language states such as steady spacing or possible longer waits. | If one 14R direction has highly variable waits, compare Route 14 or rail. | Live |
+| Headways, bunching, and long gaps | Average arrival times can hide two vehicles together followed by a long wait. This feature exposes the spacing evidence. | See both a bunch ahead and the long gap behind it. | Live |
+| Current reported speed | Shows whether movement is below a transparent vehicle-type reference without presenting that reference as a historical average. | See a slowdown note when a corridor's median reported speed is unusually low. | Live when speed data exists |
+| Muni service notices | Places stop moves, elevator outages, and service changes beside route information. | Learn that a stop moved before walking to its usual location. | Live |
+| Street work and route context | Shows road events beside transit movement without claiming proximity proves causation. | Work near Market Street and a slower transit segment appear as possible context only. | Research beta |
+| Nearby stop location | After explicit permission, the browser calculates distance to every Muni stop. Coordinates are not uploaded or saved. | Choose 200 m and see every stop in range, its distance, and its routes. | Live beta |
+| 100–400 meter range | Provides exactly four predictable choices: 100, 200, 300, and 400 m. Changing the range does not request permission again. | Increase the range from 100 m to 300 m when no stop is close enough. | Live |
+| Use nearby stop as start or destination | Removes the need to retype a stop name, especially on mobile. | Select “Use as start,” then enter a destination and compare routes. | Live |
+| Stop search | Finds origin and destination stops and shows routes serving each stop using the public GTFS catalog in the browser. | Enter “4th St & Market” and choose the correct stop ID. | Live |
+| Direct and one-transfer planning | Finds feasible boarding and alighting stops while rejecting wrong-direction and distant fake transfers. | Compare direct and one-transfer options from SoMa to Fillmore. | Public beta |
+| Trip-level live boarding and arrival | A leg is labeled live only when one concrete trip has valid predictions at both stops. Otherwise it is estimated. | Show predicted 8:12 boarding, 8:27 arrival, and a trip ID instead of a vague 15 minutes. | Live with complete predictions |
+| Transfer catch slack | Uses first-trip arrival, walking time, a one-minute boarding allowance, and second-trip departure to calculate remaining minutes. | An 8:20 arrival, two-minute walk, and 8:25 departure produces about two minutes of slack. | Live or clearly estimated |
+| Fastest | Ranks the lowest door-to-door estimate. Preference scores never replace ETA. | Use Fastest when arrival time matters more than extra walking or variable service. | Live |
+| Balanced | Considers ETA, walking, transfer count, and current spacing reliability. | A slightly slower direct option may rank above a trip with more walking and a transfer. | Live, default mode |
+| Safety-first | Compares relative historical incident reports near candidates over the past 365 days. It is context, not a personal safety prediction. | Use past area context as one extra input for a night trip. | Research beta |
+| Destination parking pressure | Combines meter inventory and recent paid sessions as a relative signal; it is not occupancy or open-space availability. | Check whether paid activity near Mission is rising before driving there for pickup. | Research beta |
+| Freshness and failure labels | Shows source update times and never presents demo or stale data as current service without a warning. | If 511 pauses, the app says it is showing the last successful update or limited live evidence. | Live |
+| Separate English and Chinese UI | URLs can select a language, and controls, states, errors, and method copy switch together. The preference is also stored locally. | `?lang=en` opens English and `?lang=zh` opens Chinese. | Live |
+| On-device browser calculation | Trip and nearby-stop queries need no Render server. A Web Worker keeps the map responsive, and the API key never enters the browser. | Anyone can use GitHub Pages while the author's Notebook and computer remain offline. | Live |
 
-## 和同类产品相比
+## Market comparison
 
-这张表比较各产品官方资料明确描述的能力，不比较路线准确率。功能可能因城市、设备、系统版本和数据合作方而不同。“相关”表示竞品有接近能力，但输出或依据不同；“未见同等功能”表示所列官方资料没有描述同等能力，不代表所有地区绝对没有。
+This matrix compares capabilities described in official product material, not routing accuracy. Availability varies by city, device, operating system, and data partner. “Related” means a nearby capability exists but the output or evidence differs. “No equivalent found” means the cited official material does not document an equivalent, not that every regional version lacks it.
 
-资料核对日期：2026-09-14。
+Sources checked: 2026-09-14.
 
-| 乘客能力 | SF Transit Pulse | Google Maps | Apple Maps | Transit | Citymapper |
+| Rider capability | SF Transit Pulse | Google Maps | Apple Maps | Transit | Citymapper |
 |---|---|---|---|---|---|
-| 公交路线规划 | Muni 直达与一次换乘 | 有 | 有 | 有 | 有 |
-| 实时到站信息 | 有，并区分实时与估算 | 部分站点支持 | 视地区支持 | 有 | 有 |
-| 地图实时车辆 | 有，排除未归属车辆 | 相关，官方资料重点是实时出发 | 视地区支持 | 有，含乘客众包 | 有公交位置功能 |
-| 当前位置附近站点与距离范围 | 有，100–400 米四档且位置留在浏览器 | 有附近交通搜索 | 有附近交通功能 | 有附近站点 | 有附近站点 |
-| 按线路方向诊断状态 | 有，两个方向分别判断 | 未见同等功能 | 未见同等功能 | 未见同等功能 | 未见同等功能 |
-| 扎堆和长空档证据 | 有，显示数量与班距 | 未见同等功能 | 未见同等功能 | 相关，提供实时与乘客回报 | 相关，提供位置与交通预测 |
-| 具体换乘余量 | 有，显示分钟数和计算依据 | 相关，提供连接信息 | 相关，提供连接信息 | 相关，会提示紧张换乘 | 未见同等分钟数 |
-| 最快路线 | 有 | 有 | 有 | 有 | 有 |
-| 时间、步行、换乘与稳定性综合排序 | 有，并说明评分组成 | 相关，支持方式与无障碍偏好 | 相关，支持交通偏好 | 相关，提示长步行与紧换乘 | 相关，支持少走路与简单路线 |
-| 历史事件背景参与排序 | 有，研究功能并明确限制 | 未见同等功能 | 未见同等功能 | 未见同等功能 | 相关，可偏好主要道路，但依据不同 |
-| 道路事件与公交减速交叉说明 | 有，但不声称因果关系 | 未见同等解释 | 相关，显示中断与道路事件 | 相关，显示服务提示 | 相关，处理交通与改道 |
-| 目的地付费停车压力 | 有，研究功能 | 未见同等压力指标 | 未见同等压力指标 | 未见同等功能 | 未见同等功能 |
-| 数据依据、更新时间和限制 | 放在结果旁边 | 相关，区分实时与时刻表 | 相关，显示实时与中断 | 相关，区分来源并加入众包 | 相关，显示实时预测与路线类型 |
-| 逐步导航与到站提醒 | 尚未上线 | 有 | 有接近站点提醒 | 有导航与提醒 | 有语音和锁屏导航 |
-| 未来出发或到达时间 | 尚未上线 | 有 | 有 | 有 | 有相关功能 |
-| 无障碍路线 | 尚未上线，不会用普通路线冒充 | 有轮椅选项 | 所列资料未确认同等筛选 | 视城市数据支持 | 有无台阶路线 |
-| 多交通方式与共享单车 | 当前只做 Muni | 有 | 有 | 有公交、单车、滑板车和网约车 | 有多交通方式组合 |
+| Transit trip planning | Muni direct and one transfer | Yes | Yes | Yes | Yes |
+| Live departures | Yes, with live versus estimated labels | Some stations | Where supported | Yes | Yes |
+| Live vehicles on map | Yes; unmatched vehicles excluded | Related; official material emphasizes departures | Where supported | Yes, including rider crowdsourcing | Bus location features |
+| Nearby stops with adjustable distance | Yes; four 100–400 m ranges and on-device location | Nearby transit search | Nearby transit features | Nearby stops | Nearby stops |
+| Direction-specific health | Yes; each direction is evaluated separately | No equivalent found | No equivalent found | No equivalent found | No equivalent found |
+| Bunching and long-gap evidence | Yes; counts and spacing shown | No equivalent found | No equivalent found | Related live and rider reports | Related vehicle location and traffic predictions |
+| Exact transfer catch slack | Yes; minutes and basis shown | Related connection information | Related connection information | Related tight-transfer warnings | No equivalent minute value found |
+| Fastest route | Yes | Yes | Yes | Yes | Yes |
+| Time, walking, transfer, and reliability ranking | Yes, with documented scoring | Related mode and accessibility preferences | Related transit preferences | Related long-walk and tight-transfer cues | Related Walk Less and Simple routes |
+| Historical incident context in ranking | Research beta with explicit limits | No equivalent found | No equivalent found | No equivalent found | Related Main Roads walking option using different evidence |
+| Road event and slowdown context | Yes, without claiming causation | No equivalent explanation found | Related outages and road incidents | Related service alerts | Related traffic and diversion features |
+| Paid parking pressure near destination | Research beta | No equivalent pressure metric found | No equivalent pressure metric found | No equivalent found | No equivalent found |
+| Evidence, freshness, and limits | Shown beside results | Related live versus scheduled labels | Related live times and outages | Related source labels and crowdsourcing | Related live predictions and route types |
+| Step-by-step navigation and alerts | Roadmap | Yes | Approaching-stop alerts | GO navigation and alerts | GO, voice, and lock-screen navigation |
+| Future leave or arrive time | Roadmap | Yes | Yes | Yes | Related feature |
+| Accessible routing | Not available; standard routes are not mislabeled as accessible | Wheelchair option | Equivalent filter not confirmed in cited material | Where city data exists | Step-free routing |
+| Multimodal and shared mobility | Muni only | Multimodal | Multimodal | Transit, bike, scooter, and ridehail | Multimodal combinations |
 
-### 竞品资料
+### Competitor sources
 
-- [Google Maps：公交出发时间](https://support.google.com/maps/answer/6142130)
-- [Google Maps：无障碍公交](https://support.google.com/accessibility/answer/6396990)
-- [Apple Maps：公交功能](https://www.apple.com/maps/)
-- [Apple 支持：公交路线](https://support.apple.com/guide/iphone/get-transit-directions-ipha44f57caa/26)
-- [Transit：产品功能](https://transitapp.com/)
-- [Transit：GO 导航](https://help.transitapp.com/article/549-how-to-use-go)
-- [Transit：乘客众包](https://transitapp.com/en/features/go-crowdsourcing)
-- [Citymapper：功能更新](https://citymapper.com/news)
-- [Citymapper：无台阶路线](https://citymapper.com/news/2262/step-free-routing)
-- [Citymapper：步行路线偏好](https://citymapper.com/news/2266/turn-by-turn-directions-for-walking)
+- [Google Maps: transit departures](https://support.google.com/maps/answer/6142130)
+- [Google Maps: accessible transit](https://support.google.com/accessibility/answer/6396990)
+- [Apple Maps: transit features](https://www.apple.com/maps/)
+- [Apple Support: transit directions](https://support.apple.com/guide/iphone/get-transit-directions-ipha44f57caa/26)
+- [Transit: product features](https://transitapp.com/)
+- [Transit Support: how GO works](https://help.transitapp.com/article/549-how-to-use-go)
+- [Transit: GO crowdsourcing](https://transitapp.com/en/features/go-crowdsourcing)
+- [Citymapper: feature news](https://citymapper.com/news)
+- [Citymapper: Step-free routes](https://citymapper.com/news/2262/step-free-routing)
+- [Citymapper: walking route choices](https://citymapper.com/news/2266/turn-by-turn-directions-for-walking)
 
-## 推荐怎样计算
+## How recommendations are calculated
 
-每次查询先生成同一组直达和一次换乘候选路线。三种模式只改变排序，不改变任何路线的实际预计时间。
+Every query builds one shared set of direct and one-transfer candidates. The three modes change ranking only; they never rewrite a route's ETA.
 
-| 模式 | 排序依据 | 适合什么时候 |
+| Mode | Ranking basis | Best used when |
 |---|---|---|
-| 最快到达 | 门到门预计时间 | 只想尽快到达 |
-| 综合推荐 | 预计时间 + 当前稳定性惩罚 + 步行成本 + 换乘成本 | 希望时间、步行和换乘更均衡 |
-| 安全优先 | 综合推荐成本 + 沿途历史事件报告相对值 | 想把历史背景作为额外参考，并理解它不是安全预测 |
+| Fastest | Door-to-door ETA | Arrival time matters most |
+| Balanced | ETA + current reliability penalty + walking cost + transfer cost | You want a practical balance |
+| Safety-first | Balanced cost + relative historical report context along the trip | You want historical context as one input, not a safety prediction |
 
-## 数据真实性约定
+## Evidence contract
 
-- 只有具体班次在上下车站都有有效预测时，该段才标为实时，否则写明“估算”。
-- 实时换乘需要两趟具体班次的完整预测；数据不全时退回班距估算。
-- 没有实时信息不代表线路停运。
-- 道路事件和减速同时出现，只能作为背景，不能证明因果关系。
-- 历史事件记录不能预测犯罪、给地点贴安全标签或保证个人安全。
-- 停车付费记录不证明车辆仍在现场；停车压力不是占用率或空位数。
-- 偏好分数只用于排序，不会显示成预计到达时间。
-- 用户位置只在当前浏览器页面中计算附近站点，不上传、不保存，也不会在页面打开时自动请求。
+- A leg is live only when one concrete trip has valid predictions at both stops. Otherwise it is estimated.
+- A live transfer needs complete predictions for both trips. Incomplete evidence falls back to a headway estimate.
+- Missing live information does not mean a route has stopped running.
+- A nearby road event and a slowdown are context, not proof that one caused the other.
+- Historical reports do not predict crime, label a place safe or unsafe, or guarantee personal safety.
+- Paid parking sessions do not prove a vehicle is present. Parking pressure is not occupancy or open-space availability.
+- Preference costs rank routes. They are never shown as ETA.
+- Location is requested only after a rider selects the button. Coordinates stay on the current page and are neither uploaded nor saved.
 
-## 无服务器架构
+## Serverless architecture
 
 ```text
-511 SF Bay + DataSF + SFMTA 公开数据
+511 SF Bay + DataSF + SFMTA public data
                     |
-                    | GitHub Actions 定时更新
-                    | API 密钥保存在加密 Secret
+                    | scheduled GitHub Actions
+                    | API key stays in an encrypted Secret
                     v
-             不含密钥的 JSON 快照
+          credential-free JSON snapshots
                     |
                     | GitHub Pages CDN
                     v
-              访客自己的浏览器
+             visitor's web browser
                     |
-                    | Web Worker + 本地距离计算
+                    | Web Worker + local distance calculation
                     v
-       行程规划、路线排序与附近站点查找
+       trip planning, ranking, and nearby stops
 ```
 
-核心车辆位置与班次预测计划每 5 分钟更新；服务通知和道路背景每 15 分钟更新。预计每小时使用 44 次 511 请求，在默认每小时 60 次限制内保留 16 次余量。GitHub Actions 可能延迟，所以页面显示实际更新时间，不承诺严格的秒级刷新。
+Core vehicle positions and trip predictions are scheduled every five minutes. Service and road context refresh every 15 minutes. The plan uses an estimated 44 of the default 60 hourly 511 requests, leaving a 16-request margin. GitHub Actions can run late, so the product shows actual update times instead of promising second-level freshness.
 
-用户查询不会调用 511，也不需要 Render。`SF_TRANSIT_511_API_KEY` 只能保存在 GitHub Actions Secret，不能写入代码、浏览器存储、Notebook 输出或公开数据文件。
+User searches do not call 511 and do not need Render. `SF_TRANSIT_511_API_KEY` belongs only in the encrypted GitHub Actions Secret. It must not appear in code, browser storage, Notebook output, or public data files.
 
-## 项目结构
+## Repository guide
 
 ```text
 site/
-  index.html             页面结构与无障碍语义
-  styles.css             响应式视觉系统
-  app.js                 界面状态、地图、搜索、定位与双语文案
-  nearby-stops.js        距离计算和附近站点筛选
-  planner-engine.mjs     浏览器路线引擎与排序规则
-  planner-worker.js      后台计算线程
-  data/                  不含 API 密钥的公开快照
+  index.html             Page structure and accessible semantics
+  styles.css             Responsive visual system
+  app.js                 UI state, maps, search, location, and bilingual copy
+  nearby-stops.js        Distance calculation and nearby-stop filtering
+  planner-engine.mjs     Browser routing engine and ranking rules
+  planner-worker.js      Background calculation thread
+  data/                  Public snapshots with no API key
 
 scripts/
-  refresh_data.py        定时收集数据并生成快照
+  refresh_data.py        Scheduled collection and snapshot generation
 
 backend/
-  planner.py             用于一致性测试的 Python 参考实现
-  main.py                旧 API 边界，实时网站不使用
+  planner.py             Python reference implementation for parity tests
+  main.py                Legacy API boundary, unused by the live app
 
 tests/
-  browser-planner.test.mjs  浏览器规划器功能测试
-  nearby-stops.test.cjs     附近站点距离与范围测试
-  test_planner.py           Python 参考测试
+  browser-planner.test.mjs  Browser planner contracts
+  nearby-stops.test.cjs     Nearby distance and radius contracts
+  test_planner.py           Python reference contracts
 ```
 
-### 本地预览
+### Local preview
 
 ```bash
 python3 -m http.server 8765 --directory site
 ```
 
-打开 `http://127.0.0.1:8765/?lang=zh`。不要直接双击 `index.html`，浏览器后台线程需要 HTTP 来源。
+Open `http://127.0.0.1:8765/?lang=en`. Do not open `index.html` directly because browser workers need an HTTP origin.
 
-### 测试
+### Tests
 
 ```bash
 node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs
 python3 -m pytest -q tests
 ```
 
-## 当前范围与下一步
+## Current scope and roadmap
 
-| 已经可以使用 | 下一阶段 |
+| Available now | Next |
 |---|---|
-| Muni 全线路、方向和实时车辆 | 地址与地标搜索 |
-| 当前位置附近 100–400 米站点 | 在地图上标记当前位置与附近站点 |
-| 直达与一次换乘 | 多次换乘和更完整的步行路网 |
-| 最快到达、综合推荐、安全优先 | 数据完整时再开放无障碍路线 |
-| 实时班次与换乘余量 | 未来出发与到达时间 |
-| 线路、道路、历史事件和停车背景 | 收藏线路、提醒和逐步导航 |
+| All Muni routes, directions, and live vehicles | Address and place search |
+| Nearby stops within 100–400 meters | Show current location and nearby stops on the map |
+| Direct and one-transfer planning | Multiple transfers and a fuller walking graph |
+| Fastest, Balanced, and Safety-first | Accessible routing only when evidence is complete |
+| Live trips and transfer slack | Future leave and arrive times |
+| Transit, road, historical incident, and parking context | Favorites, alerts, and step-by-step guidance |
 
-## 数据来源
+## Data sources
 
-- [511 SF Bay Open Data](https://511.org/open-data/transit)：GTFS、实时车辆位置、班次更新和服务通知
-- [DataSF](https://datasf.org/)：研究用途的旧金山历史事件和停车数据
-- [SFMTA](https://www.sfmta.com/)：Muni 与停车项目资料
-- [Caltrans QuickMap](https://quickmap.dot.ca.gov/)：公开快照可用时的道路事件背景
-- [OpenStreetMap](https://www.openstreetmap.org/)：地图底图与署名
-- [W3C Geolocation](https://www.w3.org/TR/geolocation/)：浏览器定位的授权与隐私标准
+- [511 SF Bay Open Data](https://511.org/open-data/transit): GTFS, realtime vehicle positions, trip updates, and alerts
+- [DataSF](https://datasf.org/): San Francisco historical incident and parking datasets used for research context
+- [SFMTA](https://www.sfmta.com/): Muni and parking program context
+- [Caltrans QuickMap](https://quickmap.dot.ca.gov/): road event context where available in the public snapshot
+- [OpenStreetMap](https://www.openstreetmap.org/): map tiles and attribution
+- [W3C Geolocation](https://www.w3.org/TR/geolocation/): browser location permission and privacy standard
 
-## 版本
+## Version
 
-当前公开版本：`v1.1 · 附近站点测试版`
+Current public release: `v1.1 · Nearby Stops Beta`
 
-私有分析 Notebook 不在这个仓库中。仓库只包含可部署网页、无密钥数据快照、自动刷新流程、参考实现与测试。
+The private analytical Notebook is intentionally not published here. This repository contains only the deployable application, credential-free snapshots, refresh workflow, reference implementation, and tests.
