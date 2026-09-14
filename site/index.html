@@ -195,6 +195,7 @@
       </form>
       <button class="text-action example-trip-button" id="example-trip-button" type="button" data-i18n="tryExample">Try a sample trip</button>
       <div class="planner-status" id="planner-status" role="status"></div>
+      <div class="planner-update-notice" id="planner-update-notice" role="status" aria-live="polite" hidden></div>
       <p class="journey-od" id="journey-od">Select two stops to begin.</p>
 
       <div class="mode-grid" id="mode-grid"></div>
@@ -239,6 +240,26 @@
           <h3 data-i18n="tradeoffs">Compare time, walking, and transfers.</h3>
         </div>
         <div class="alternatives-list" id="alternatives-list"></div>
+      </div>
+
+      <section class="comparison-panel" id="comparison-panel" aria-labelledby="comparison-title" hidden>
+        <div class="comparison-heading">
+          <div>
+            <p class="eyebrow">Option A vs Option B</p>
+            <h3 id="comparison-title">Compare two routes side by side</h3>
+          </div>
+          <p id="comparison-help">Choose any two options to see the tradeoffs without switching back and forth.</p>
+        </div>
+        <div class="comparison-pickers">
+          <label><span id="comparison-a-label">Option A</span><select id="comparison-a"></select></label>
+          <label><span id="comparison-b-label">Option B</span><select id="comparison-b"></select></label>
+        </div>
+        <div class="comparison-grid" id="comparison-grid"></div>
+      </section>
+
+      <div class="mobile-recommendation" id="mobile-recommendation" hidden>
+        <div><span id="mobile-recommendation-label">Recommended now</span><strong id="mobile-recommendation-value">—</strong></div>
+        <button type="button" id="mobile-view-trip">View trip</button>
       </div>
     </section>
 
@@ -306,7 +327,7 @@
     </div>
     <div class="footer-meta">
       <span id="generated-at">Page update time unavailable</span>
-      <span data-i18n="footerVersion">v1.3 · Live Data Safeguards Beta</span>
+      <span data-i18n="footerVersion">v1.4 · Decision Support Beta</span>
       <span data-i18n="footerData">Data: 511 SF Bay · DataSF · SFMTA</span>
       <span data-i18n="footerMap">Map © OpenStreetMap contributors</span>
       <a href="https://github.com/ksitcode00/sf-transit-pulse-site/issues/new" target="_blank" rel="noreferrer" data-i18n="reportIssue">Report an issue</a>
@@ -317,6 +338,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="nearby-stops.js?v=26" defer></script>
   <script src="stop-catalog.js?v=27" defer></script>
-  <script src="app.js?v=28" defer></script>
+  <script src="app.js?v=29" defer></script>
 </body>
 </html>

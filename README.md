@@ -10,6 +10,7 @@
   [![Deploy GitHub Pages](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/pages.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/pages.yml)
   [![Verify application contracts](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/ci.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/ci.yml)
   [![Refresh transit snapshot](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-data.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-data.yml)
+  [![Recover stale transit snapshot](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-watchdog.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-watchdog.yml)
 </div>
 
 SF Transit Pulse is a Muni decision tool for everyday riders. It goes beyond departure times by explaining vehicle spacing, possible long gaps, transfer timing, and why one route ranks above another.
@@ -34,6 +35,19 @@ Most transit apps answer “When is the next vehicle?” SF Transit Pulse also a
 
 The product rule is simple: show only what the available evidence supports, and place important limits beside the result.
 
+## Why this is a decision system, not only a dashboard
+
+The project follows one end-to-end production-style path:
+
+| System layer | What it does | Why it matters |
+|---|---|---|
+| Live ingestion | Scheduled jobs collect vehicle positions, trip predictions, alerts, road events, paid-parking activity, and historical incident records. | The public site works without the author running a Notebook or computer. |
+| Cache and freshness | Credential-free files are split by update cadence. A second workflow checks whether transit observations are actually current and recovers stale snapshots. | A successful script run cannot disguise an old transit feed. |
+| Route diagnostics | Vehicles, headways, bunching, long gaps, and service health are calculated by route and direction. | A problem in one direction does not incorrectly label the other direction. |
+| Realtime candidate generation | The planner evaluates direct and one-transfer patterns, then lets concrete trips decide whether a slightly farther boarding or transfer stop arrives sooner. | Static walking distance cannot discard the ninth transfer option when that option catches the fastest real trip. |
+| Multi-objective scoring | Fastest, Balanced, and Safety-first rank the same feasible pool using documented inputs. | Preference changes affect ranking, not the underlying ETA. |
+| Explainable browser UI | A Web Worker calculates on the visitor's device. Timing evidence, transfer slack, A/B comparison, freshness, and limitations appear beside the recommendation. | Riders can understand both the choice and the uncertainty behind it. |
+
 ## Feature catalog
 
 Each row explains the rider need, the implementation's practical value, and an example of how to use it.
@@ -56,11 +70,15 @@ Each row explains the rider need, the implementation's practical value, and an e
 | Direct and one-transfer planning | Finds feasible boarding and alighting stops while rejecting wrong-direction and distant fake transfers. | Compare direct and one-transfer options from SoMa to Fillmore. | Public beta |
 | Trip-level live boarding and arrival | A leg is labeled live only when one concrete trip has valid predictions at both stops and the update is no more than 10 minutes old. Otherwise it is estimated. | Show predicted 8:12 boarding, 8:27 arrival, and a trip ID instead of a vague 15 minutes. | Live with fresh complete predictions |
 | Transfer catch slack | Uses first-trip arrival, walking time, a one-minute boarding allowance, and second-trip departure to calculate remaining minutes. | An 8:20 arrival, two-minute walk, and 8:25 departure produces about two minutes of slack. | Live or clearly estimated |
+| Realtime-first transfer selection | Keeps every spatially feasible transfer pair until concrete trip predictions are compared, instead of trimming to the eight closest pairs first. | A ninth, slightly farther transfer can win when its next vehicle arrives much earlier. | Live with fresh complete predictions |
 | Fastest | Ranks the lowest door-to-door estimate. Preference scores never replace ETA. | Use Fastest when arrival time matters more than extra walking or variable service. | Live |
 | Balanced | Considers ETA, walking, transfer count, and current spacing reliability. | A slightly slower direct option may rank above a trip with more walking and a transfer. | Live, default mode |
-| Safety-first | Compares relative historical incident reports near candidates over the past 365 days. All three modes choose from the full feasible pool before the page trims the display list. | Use past area context as one extra input for a night trip. It is not a personal safety prediction. | Research beta |
+| Safety-first | Compares deduplicated 30-, 90-, and 365-day historical reports with transparent category weights. Origin, boarding, route, transfer, and destination use documented weights, and one extreme location is capped. | Use past area context as one extra input for a night trip. It is not a personal safety prediction. | Research beta |
+| Option A vs Option B | Places any two displayed routes side by side with ETA, evidence level, walking, transfers, connection slack, reliability, historical context, and street context. | Compare a faster tight transfer with a steadier direct route without switching cards repeatedly. | Live beta |
 | Destination parking pressure | Combines meter inventory and recent paid sessions as a relative signal; it is not occupancy or open-space availability. | Check whether paid activity near Mission is rising before driving there for pickup. | Research beta |
-| Freshness and failure labels | Shows source update times and never presents demo or stale data as current service without a warning. | If 511 pauses, the app says it is showing the last successful update or limited live evidence. | Live |
+| Freshness and failure labels | Each source has a current/outdated state. Every route option says Live prediction, Limited live data, or Estimated. Parking shows the last available record time. | If 511 pauses, the app explains which times are estimates instead of silently presenting them as live. | Live |
+| Stable auto-refresh | Recalculates an open trip when a new snapshot arrives but preserves the route the rider is reading. If the winner changes, the page says so. | A five-minute update does not suddenly jump the user to another itinerary. | Live |
+| Mobile recommendation bar | Keeps the selected route and a 44-pixel trip button within reach on narrow screens; comparison cards collapse to one column. | Check the chosen trip one-handed while walking to a stop. | Live beta |
 | Separate English and Chinese UI | URLs can select a language, and controls, states, errors, and method copy switch together. The preference is also stored locally. | `?lang=en` opens English and `?lang=zh` opens Chinese. | Live |
 | On-device browser calculation | Trip and nearby-stop queries need no Render server. A Web Worker keeps the map responsive, and the API key never enters the browser. | Anyone can use GitHub Pages while the author's Notebook and computer remain offline. | Live |
 
@@ -129,23 +147,32 @@ Every query builds one shared set of direct and one-transfer candidates. The thr
 ```text
 511 SF Bay + DataSF + SFMTA public data
                     |
-                    | scheduled GitHub Actions
+                    | 5-minute refresh + stale-snapshot watchdog
                     | API key stays in an encrypted Secret
                     v
-          credential-free JSON snapshots
+       split, credential-free JSON snapshots
                     |
-                    | GitHub Pages CDN
+                    | freshness gates + GitHub Pages CDN
                     v
              visitor's web browser
                     |
                     | Web Worker + local distance calculation
                     v
-       trip planning, ranking, and nearby stops
+  candidate generation -> three rankings -> explanation
 ```
 
-Core vehicle positions and trip predictions are scheduled every five minutes. Service and road context refresh every 15 minutes, parking every 30 minutes, and safety plus static GTFS daily. The core plan uses an estimated 32 of the default 60 hourly 511 requests, leaving a 28-request margin. GitHub Actions may delay or drop scheduled runs, so predictions older than 10 minutes automatically become estimates and the page shows the actual source age.
+Core vehicle positions and trip predictions are scheduled every five minutes. Service and road context refresh every 15 minutes, parking every 30 minutes, and safety plus static GTFS daily. The core plan uses an estimated 32 of the default 60 hourly 511 requests, leaving a 28-request margin. A separate 15-minute watchdog compares both `generated_at` and the underlying transit `observed_at`; when either is more than 12 minutes old, it performs a recovery refresh. Predictions older than 10 minutes automatically become estimates.
 
 User searches do not call 511 and do not need Render. `SF_TRANSIT_511_API_KEY` belongs only in the encrypted GitHub Actions Secret. It must not appear in code, browser storage, Notebook output, or public data files.
+
+## Engineering evidence
+
+The checked-in public snapshot verified on 2026-09-14 contained 347 reported vehicle positions, 149 predicted trips, 31 route-direction rows across 18 routes, and five service notices. Counts naturally change with service and feed availability; the page displays the current values rather than hard-coding these numbers.
+
+- The frequently refreshed transit file is about 0.5 MB; slower road, parking, safety, and static-network data are separate, so the browser does not repeatedly download the full legacy snapshot.
+- A rolling `refresh-health.json` keeps up to 288 attempts, including script gaps, transit observation gaps, and source age at each refresh.
+- Realtime evidence expires after 10 minutes. Alerts and road context expire after 30 minutes; parking context after three hours.
+- Regression tests include a case where the ninth transfer location—not one of the eight closest—must win because it connects to an earlier real trip.
 
 ## Repository guide
 
@@ -162,6 +189,13 @@ site/
 
 scripts/
   refresh_data.py        Scheduled collection and snapshot generation
+  check_refresh_health.py Detects stale generated and transit-observation times
+
+.github/workflows/
+  refresh-data.yml       Five-minute ingestion and slower-source cadence
+  refresh-watchdog.yml   Independent stale-snapshot recovery
+  ci.yml                 Python, JavaScript, workflow, and data-contract checks
+  pages.yml              Static deployment
 
 backend/
   planner.py             Python reference implementation for parity tests
@@ -215,6 +249,6 @@ python3 -m pytest -q tests
 
 ## Version
 
-Current public release: `v1.3 · Live Data Safeguards Beta`
+Current public release: `v1.4 · Decision Support Beta`
 
 The private analytical Notebook is intentionally not published here. This repository contains only the deployable application, credential-free snapshots, refresh workflow, reference implementation, and tests.

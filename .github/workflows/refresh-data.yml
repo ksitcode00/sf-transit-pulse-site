@@ -47,6 +47,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/data/latest.json site/data/live-transit.json site/data/alerts-roads.json
           git add site/data/parking-context.json site/data/safety-context.json site/data/network.json
+          git add site/data/refresh-health.json
           if [ -f data/parking-inventory.json ]; then
             git add data/parking-inventory.json
           fi

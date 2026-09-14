@@ -22,8 +22,7 @@ const TRIP_PREDICTION_MAX_AGE_SEC = 10 * 60;
 const VEHICLE_MAX_AGE_SEC = 10 * 60;
 const SERVICE_CONTEXT_MAX_AGE_SEC = 30 * 60;
 const PARKING_MAX_AGE_SEC = 3 * 60 * 60;
-const MAX_TRANSFER_PAIRS_PER_PATTERN_PAIR = 8;
-const ENGINE_VERSION = "25B-browser-1.1";
+const ENGINE_VERSION = "25B-browser-1.2";
 const ROUTE_COLORS = ["#0066cc", "#34a853"];
 
 const HEALTH_SEVERITY = {
@@ -203,10 +202,16 @@ export class BrowserPlannerEngine {
     this.safetyCells = new Map();
     for (const row of realtime.safety?.cells || []) {
       if (row.lat == null || row.lon == null) continue;
-      this.safetyCells.set(this.cellKey(Number(row.lat), Number(row.lon)), Number(row.reported_incidents_365d_cell || 0));
+      this.safetyCells.set(this.cellKey(Number(row.lat), Number(row.lon)), {
+        count30: Number(row.reported_incidents_30d_cell || 0),
+        count90: Number(row.reported_incidents_90d_cell || 0),
+        count365: Number(row.reported_incidents_365d_cell || 0),
+        weighted365: Number(row.severity_weighted_365d_cell ?? row.reported_incidents_365d_cell ?? 0),
+        contextScore: Number(row.historical_context_score_cell ?? row.reported_incidents_365d_cell ?? 0)
+      });
     }
     this.safetyDistribution = (realtime.safety?.cells || [])
-      .map(row => Number(row.reported_incidents_365d_nearby || 0))
+      .map(row => Number(row.historical_context_score ?? row.reported_incidents_365d_nearby ?? 0))
       .filter(Number.isFinite)
       .sort((a, b) => a - b);
     this.safetyStopCache = new Map();
@@ -501,26 +506,40 @@ export class BrowserPlannerEngine {
 
   areaSafetyContext(stop) {
     if (this.safetyStopCache.has(stop.stop_id)) return this.safetyStopCache.get(stop.stop_id);
-    let nearbyCount = 0;
+    const nearby = {count30: 0, count90: 0, count365: 0, weighted365: 0, contextScore: 0};
     for (let latOffset = -3; latOffset <= 3; latOffset += 1) {
       for (let lonOffset = -4; lonOffset <= 4; lonOffset += 1) {
         const lat = round(round(stop.lat, 3) + latOffset / 1000, 3);
         const lon = round(round(stop.lon, 3) + lonOffset / 1000, 3);
-        const count = this.safetyCells.get(this.cellKey(lat, lon)) || 0;
-        if (count && haversineM(stop, [lat, lon]) <= 250) nearbyCount += count;
+        const cell = this.safetyCells.get(this.cellKey(lat, lon));
+        if (!cell || haversineM(stop, [lat, lon]) > 250) continue;
+        for (const field of Object.keys(nearby)) nearby[field] += Number(cell[field] || 0);
       }
     }
     const percentileValue = this.safetyDistribution.length
-      ? round(100 * bisectRight(this.safetyDistribution, nearbyCount) / this.safetyDistribution.length)
+      ? round(100 * bisectRight(this.safetyDistribution, nearby.contextScore) / this.safetyDistribution.length)
       : null;
-    const result = {...publicStop(stop), reported_incidents_365d_nearby: nearbyCount, percentile: percentileValue, radius_m: 250};
+    const priorMonthly = Math.max(0, nearby.count90 - nearby.count30) / 2;
+    const trend = nearby.count30 >= priorMonthly + 2 && nearby.count30 >= priorMonthly * 1.25 ? "RISING"
+      : priorMonthly >= nearby.count30 + 2 && nearby.count30 <= priorMonthly * 0.75 ? "FALLING" : "STEADY";
+    const result = {
+      ...publicStop(stop),
+      reported_incidents_30d_nearby: nearby.count30,
+      reported_incidents_90d_nearby: nearby.count90,
+      reported_incidents_365d_nearby: nearby.count365,
+      severity_weighted_365d_nearby: round(nearby.weighted365, 2),
+      historical_context_score: round(nearby.contextScore, 2),
+      recent_trend: trend,
+      percentile: percentileValue,
+      radius_m: 250
+    };
     this.safetyStopCache.set(stop.stop_id, result);
     return result;
   }
 
   relativeContextLabel(value) {
     if (value == null) return "NOT_RATED";
-    if (value >= 90) return "VERY_HIGHER_REPORTED_CONTEXT";
+    if (value >= 90) return "MUCH_HIGHER_REPORTED_CONTEXT";
     if (value >= 75) return "HIGHER_REPORTED_CONTEXT";
     if (value <= 25) return "LOWER_REPORTED_CONTEXT";
     return "MID_RANGE_REPORTED_CONTEXT";
@@ -537,13 +556,25 @@ export class BrowserPlannerEngine {
     const originContext = this.areaSafetyContext(origin);
     const boardingContext = this.areaSafetyContext(board);
     const destinationContext = this.areaSafetyContext(destination);
-    const routeValues = routeStops.map(stop => this.areaSafetyContext(stop).percentile).filter(value => value != null);
-    const transferValues = transferStops.map(stop => this.areaSafetyContext(stop).percentile).filter(value => value != null);
+    const routeContexts = routeStops.map(stop => this.areaSafetyContext(stop));
+    const transferContexts = transferStops.map(stop => this.areaSafetyContext(stop));
+    const routeValues = routeContexts.map(row => row.percentile).filter(value => value != null);
+    const transferValues = transferContexts.map(row => row.percentile).filter(value => value != null);
     const routePercentile = routeValues.length ? round(median(routeValues)) : null;
     const transferPercentile = transferValues.length ? round(median(transferValues)) : null;
-    const components = [originContext.percentile, boardingContext.percentile, routePercentile, transferPercentile, destinationContext.percentile]
-      .filter(value => value != null);
-    const overall = components.length ? round(median(components)) : null;
+    const weightedComponents = [
+      {key: "origin", percentile: originContext.percentile, weight: 15, trend: originContext.recent_trend},
+      {key: "boarding", percentile: boardingContext.percentile, weight: 20, trend: boardingContext.recent_trend},
+      {key: "along_route", percentile: routePercentile, weight: 20, trend: routeContexts.map(row => row.recent_trend).includes("RISING") ? "RISING" : "STEADY"},
+      {key: "transfer", percentile: transferPercentile, weight: 30, trend: transferContexts.map(row => row.recent_trend).includes("RISING") ? "RISING" : "STEADY"},
+      {key: "destination", percentile: destinationContext.percentile, weight: 15, trend: destinationContext.recent_trend}
+    ].filter(row => row.percentile != null);
+    // Cap each segment at the 95th percentile so one extreme stop can influence
+    // the result without overwhelming every other part of the journey.
+    const weightTotal = weightedComponents.reduce((sum, row) => sum + row.weight, 0);
+    const overall = weightTotal ? round(weightedComponents.reduce(
+      (sum, row) => sum + Math.min(95, row.percentile) * row.weight, 0
+    ) / weightTotal) : null;
     return {
       status: "JOURNEY_RELATIVE_CONTEXT",
       overall_percentile: overall,
@@ -552,10 +583,14 @@ export class BrowserPlannerEngine {
       route_percentile: routePercentile,
       transfer_percentile: transferPercentile,
       destination_percentile: destinationContext.percentile,
+      segments: weightedComponents,
+      extreme_value_cap_percentile: 95,
+      weighting_basis: "Origin 15%, boarding 20%, along route 20%, transfer 30%, destination 15%; available segments are renormalized.",
       label: this.relativeContextLabel(overall),
       lookback_days: this.realtime.safety?.lookback_days || 365,
       radius_m: 250,
-      detail: "Relative count of reported incidents near journey areas compared with other observed San Francisco cells.",
+      method_version: this.realtime.safety?.method_version || "1.0",
+      detail: "Relative 30/90/365-day reported-incident context with category weighting near journey areas, compared with other observed San Francisco cells.",
       disclaimer: "Historical reported incidents do not predict crime, label a place safe or unsafe, or guarantee personal safety."
     };
   }
@@ -673,9 +708,9 @@ export class BrowserPlannerEngine {
         pairs.push({firstStop, firstIndex, secondStop, secondIndex, transferM, staticScore});
       }
     }
-    return pairs
-      .sort((left, right) => left.staticScore - right.staticScore || left.transferM - right.transferM)
-      .slice(0, MAX_TRANSFER_PAIRS_PER_PATTERN_PAIR);
+    // Do not trim by static walking distance here. A slightly farther transfer
+    // can catch a much earlier concrete trip and win the true door-to-door ETA.
+    return pairs.sort((left, right) => left.staticScore - right.staticScore || left.transferM - right.transferM);
   }
 
   transferCandidate(origin, destination, first, firstBoardOption, second, finalAlightOption, transferPair, planningEpoch) {
@@ -877,7 +912,7 @@ export class BrowserPlannerEngine {
         exposure_label: winner.exposure,
         explanation: modeName === "FASTEST" ? "Lowest estimated door-to-door travel time in the current candidate set."
           : modeName === "BALANCED" ? "Balances ETA, walking, transfers, and current service-spacing evidence."
-          : this.safetyDistribution.length ? "Uses relative 365-day reported-incident context when location cells are available; this is not a prediction of personal safety."
+          : this.safetyDistribution.length ? "Uses relative 30-, 90-, and 365-day reported-incident context when location cells are available; this is not a prediction of personal safety."
           : "Stop-level historical context is not available, so this falls back to the reliability-aware ranking."
       });
     }

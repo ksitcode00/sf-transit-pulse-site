@@ -237,6 +237,8 @@ button.issue-card { cursor: pointer; }
 .example-trip-button { margin: 0 0 4px 4px; padding-left: 0; }
 .planner-status { min-height: 24px; margin: 0 2px 8px; color: var(--muted); font-size: 14px; }
 .planner-status.error { color: #b42318; }
+.planner-update-notice { margin: 0 0 18px; padding: 12px 16px; border: 1px solid #9bc8f5; border-radius: 12px; color: #084b83; background: #edf6ff; font-size: 14px; }
+.planner-update-notice[hidden] { display: none; }
 .planner-retry { margin-left: 10px; padding: 4px 10px; border: 1px solid currentColor; border-radius: var(--radius-pill); color: inherit; background: transparent; cursor: pointer; }
 .journey-od { margin: 0 0 24px; color: var(--ink); font-size: 21px; font-weight: 600; }
 .mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
@@ -251,6 +253,10 @@ button.issue-card { cursor: pointer; }
 .mode-card[aria-pressed="true"] { border: 2px solid var(--blue-focus); box-shadow: 0 10px 30px rgba(0,102,204,.09); }
 .mode-card[aria-pressed="true"]::before { content: "✓"; float: right; color: var(--blue); font-weight: 700; }
 .mode-label { color: var(--blue); font-size: 14px; font-weight: 600; }
+.timing-badge { display: inline-flex; width: fit-content; margin-top: 12px; padding: 4px 9px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600; }
+.timing-badge.live { color: #176b3a; background: #e8f7ee; }
+.timing-badge.limited { color: #875c00; background: #fff5d6; }
+.timing-badge.estimated { color: #55555a; background: #ededf0; }
 .mode-route { margin: 20px 0 4px; font-size: 34px; font-weight: 600; line-height: 1.05; }
 .mode-eta { color: var(--muted); font-size: 21px; }
 .mode-card dl { margin: 28px 0 0; }
@@ -282,6 +288,24 @@ button.issue-card { cursor: pointer; }
 .alternative-card-eta { color: var(--blue); font-weight: 600; white-space: nowrap; }
 .alternative-card-meta { margin: 12px 0 0; color: var(--muted); font-size: 14px; }
 .alternative-card-badge { display: inline-block; margin-top: 12px; padding: 4px 9px; border-radius: var(--radius-pill); color: var(--blue); background: #eaf4ff; font-size: 12px; }
+.alternative-card .timing-badge { margin-right: 6px; }
+
+.comparison-panel { margin-top: 28px; padding: 30px; border: 1px solid var(--hairline); border-radius: var(--radius-card); background: var(--pearl); }
+.comparison-panel[hidden] { display: none; }
+.comparison-heading { display: flex; align-items: end; justify-content: space-between; gap: 28px; }
+.comparison-heading > p { max-width: 480px; color: var(--muted); }
+.comparison-pickers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 22px 0 16px; }
+.comparison-pickers label { display: grid; gap: 7px; color: var(--muted); font-size: 14px; }
+.comparison-pickers select { width: 100%; min-height: 46px; padding: 0 13px; border: 1px solid var(--hairline); border-radius: 12px; color: var(--ink); background: var(--white); }
+.comparison-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.comparison-card { padding: 24px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--white); }
+.comparison-card h4 { margin: 0 0 4px; font-size: 26px; }
+.comparison-card .comparison-eta { margin: 0 0 16px; color: var(--blue); font-size: 20px; font-weight: 600; }
+.comparison-card dl { margin: 18px 0 0; }
+.comparison-card dl div { display: flex; justify-content: space-between; gap: 18px; padding: 10px 0; border-top: 1px solid var(--soft-divider); font-size: 14px; }
+.comparison-card dt { color: var(--muted); }
+.comparison-card dd { margin: 0; text-align: right; }
+.mobile-recommendation { display: none; }
 
 .context-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .context-card { min-height: 300px; padding: 30px; }
@@ -291,6 +315,9 @@ button.issue-card { cursor: pointer; }
 .context-value { font-size: 24px; font-weight: 600; line-height: 1.2; }
 .freshness-list { margin: 18px 0; }
 .freshness-list .evidence-row { padding: 8px 0; }
+.freshness-list .freshness-current strong::before, .freshness-list .freshness-outdated strong::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; }
+.freshness-list .freshness-current strong::before { background: #34a853; }
+.freshness-list .freshness-outdated strong::before { background: #ff9500; }
 
 .method { display: grid; grid-template-columns: 1fr 1fr; gap: 90px; color: var(--white); background: var(--dark-2); }
 .method-copy p:last-child { color: #cccccc; font-size: 21px; }
@@ -339,6 +366,7 @@ footer p { margin: 8px 0 0; }
   .route-controls { width: 100%; }
   .route-control { min-width: 0; }
   .mode-grid, .journey-evidence-grid, .nearby-results, .dark-columns, .method { grid-template-columns: 1fr; }
+  .comparison-heading { align-items: stretch; flex-direction: column; gap: 6px; }
   .method { gap: 48px; }
   .method-boundaries ul { columns: 1; }
   #map { height: 420px; }
@@ -369,6 +397,13 @@ footer p { margin: 8px 0 0; }
   .map-layer-control { top: 10px; right: 10px; width: 154px; padding: 10px 12px; }
   #map, #journey-map { height: 360px; }
   .alternatives-list { grid-template-columns: 1fr; }
+  .mode-card, .journey-detail-card, .journey-evidence-card, .alternatives-panel, .comparison-panel { padding: 20px; }
+  .comparison-pickers, .comparison-grid { grid-template-columns: 1fr; }
+  .mobile-recommendation:not([hidden]) { position: sticky; z-index: 840; bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 18px -8px 0; padding: 12px 14px; border: 1px solid rgba(0,0,0,.1); border-radius: 16px; background: rgba(255,255,255,.94); box-shadow: 0 12px 34px rgba(0,0,0,.16); backdrop-filter: blur(18px); }
+  .mobile-recommendation div { min-width: 0; display: grid; }
+  .mobile-recommendation span { color: var(--muted); font-size: 12px; }
+  .mobile-recommendation strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-recommendation button { min-width: 92px; min-height: 44px; border: 0; border-radius: var(--radius-pill); color: var(--white); background: var(--blue); }
   footer { flex-direction: column; }
   .footer-meta { text-align: left; }
 }

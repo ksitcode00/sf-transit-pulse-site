@@ -6,13 +6,16 @@ on:
     paths:
       - "backend/**"
       - "site/**"
+      - "scripts/**"
       - "tests/**"
-      - ".github/workflows/ci.yml"
+      - ".github/workflows/**"
   pull_request:
     paths:
       - "backend/**"
       - "site/**"
+      - "scripts/**"
       - "tests/**"
+      - ".github/workflows/**"
 
 permissions:
   contents: read
@@ -51,3 +54,6 @@ jobs:
         run: |
           python -m json.tool site/data/network.json > /dev/null
           python -m json.tool site/data/latest.json > /dev/null
+          if [ -f site/data/refresh-health.json ]; then
+            python -m json.tool site/data/refresh-health.json > /dev/null
+          fi

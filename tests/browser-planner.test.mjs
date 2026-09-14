@@ -223,3 +223,49 @@ test("a slightly farther stop can win when its concrete trip arrives sooner", ()
   assert.equal(winner.legs.find(row => row.type === "RIDE").from.stop_id, "B");
   assert.equal(winner.legs.find(row => row.type === "RIDE").trip_id, "soon");
 });
+
+test("one-transfer planning does not discard the ninth realtime transfer option", () => {
+  const now = Math.floor(Date.now() / 1000);
+  const observedAt = new Date(now * 1000).toISOString();
+  const origin = {stop_id: "O", name: "Origin", lat: 37.700, lon: -122.400};
+  const destination = {stop_id: "D", name: "Destination", lat: 37.720, lon: -122.400};
+  const firstTransfers = Array.from({length: 9}, (_, index) => ({
+    stop_id: `X${index}`, name: `First ${index}`, lat: 37.710, lon: -122.400
+  }));
+  const secondTransfers = Array.from({length: 9}, (_, index) => ({
+    stop_id: `B${index}`, name: `Second ${index}`, lat: 37.710, lon: -122.400
+  }));
+  const firstStops = [
+    {stop_id: "O", stop_sequence: 1, departure_time: now + 60},
+    ...firstTransfers.map((stop, index) => ({stop_id: stop.stop_id, stop_sequence: index + 2, arrival_time: now + 120 + index * 5}))
+  ];
+  const slowSecondStops = [
+    ...secondTransfers.slice(0, 8).map((stop, index) => ({stop_id: stop.stop_id, stop_sequence: index + 1, departure_time: now + 1200 + index * 5})),
+    {stop_id: "D", stop_sequence: 10, arrival_time: now + 1500}
+  ];
+  const engine = new BrowserPlannerEngine({
+    meta: {route_count: 2, pattern_count: 2},
+    routes: [{route_id: "R1", route_type: "3"}, {route_id: "R2", route_type: "3"}],
+    patterns: {
+      "R1|0|s1": {route_id: "R1", direction_id: "0", shape_id: "s1", stops: [origin, ...firstTransfers]},
+      "R2|0|s2": {route_id: "R2", direction_id: "0", shape_id: "s2", stops: [...secondTransfers, destination]}
+    }
+  }, {
+    meta: {status: "live", generated_at: observedAt, source_status: {transit: {observed_at: observedAt}}},
+    routes: [], vehicles: [], alerts: [], road_events: [], safety: {}, parking: {},
+    trip_predictions: [
+      {trip_id: "first", route_id: "R1", direction_id: "0", shape_id: "s1", update_timestamp: now, stops: firstStops},
+      {trip_id: "slow", route_id: "R2", direction_id: "0", shape_id: "s2", update_timestamp: now, stops: slowSecondStops},
+      {trip_id: "fast-ninth", route_id: "R2", direction_id: "0", shape_id: "s2", update_timestamp: now, stops: [
+        {stop_id: "B8", stop_sequence: 9, departure_time: now + 300},
+        {stop_id: "D", stop_sequence: 10, arrival_time: now + 480}
+      ]}
+    ]
+  });
+
+  const result = engine.plan("O", "D", "FASTEST");
+  const winner = result.alternatives.find(row => row.journey_id === result.selected_journey_id);
+  const transferWalk = winner.legs.find(row => row.type === "WALK" && row.transfer);
+  assert.equal(transferWalk.to.stop_id, "B8");
+  assert.equal(winner.legs.filter(row => row.type === "RIDE")[1].trip_id, "fast-ninth");
+});

@@ -34,6 +34,7 @@ LIVE_TRANSIT_PATH = ROOT / "site" / "data" / "live-transit.json"
 ALERTS_ROADS_PATH = ROOT / "site" / "data" / "alerts-roads.json"
 PARKING_CONTEXT_PATH = ROOT / "site" / "data" / "parking-context.json"
 SAFETY_CONTEXT_PATH = ROOT / "site" / "data" / "safety-context.json"
+REFRESH_HEALTH_PATH = ROOT / "site" / "data" / "refresh-health.json"
 PARKING_INVENTORY_PATH = ROOT / "data" / "parking-inventory.json"
 STATIC_INDEX_PATH = ROOT / "data" / "static-index.json"
 PIPELINE_VERSION = "1.5.0"
@@ -94,6 +95,74 @@ def write_snapshot(payload: dict[str, Any]) -> None:
             "journey": payload.get("journey", {}),
         },
         LIVE_TRANSIT_PATH,
+        compact=True,
+    )
+    try:
+        health = json.loads(REFRESH_HEALTH_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        health = {"history": []}
+    history = health.get("history", [])
+    generated_at = payload.get("meta", {}).get("generated_at")
+    transit_observed_at = payload.get("meta", {}).get("source_status", {}).get("transit", {}).get("observed_at")
+    gap_seconds = None
+    transit_observed_gap_seconds = None
+    if history and generated_at:
+        try:
+            current_time = datetime.fromisoformat(str(generated_at).replace("Z", "+00:00"))
+            prior_time = datetime.fromisoformat(str(history[-1]["generated_at"]).replace("Z", "+00:00"))
+            gap_seconds = max(0, round((current_time - prior_time).total_seconds()))
+        except (KeyError, TypeError, ValueError):
+            gap_seconds = None
+    if history and transit_observed_at and history[-1].get("transit_observed_at"):
+        try:
+            current_observed = datetime.fromisoformat(str(transit_observed_at).replace("Z", "+00:00"))
+            prior_observed = datetime.fromisoformat(str(history[-1]["transit_observed_at"]).replace("Z", "+00:00"))
+            if current_observed > prior_observed:
+                transit_observed_gap_seconds = round((current_observed - prior_observed).total_seconds())
+        except (TypeError, ValueError):
+            transit_observed_gap_seconds = None
+    transit_age_seconds = None
+    if generated_at and transit_observed_at:
+        try:
+            generated_time = datetime.fromisoformat(str(generated_at).replace("Z", "+00:00"))
+            observed_time = datetime.fromisoformat(str(transit_observed_at).replace("Z", "+00:00"))
+            transit_age_seconds = max(0, round((generated_time - observed_time).total_seconds()))
+        except (TypeError, ValueError):
+            transit_age_seconds = None
+    entry = {
+        "generated_at": generated_at,
+        "transit_observed_at": transit_observed_at,
+        "gap_seconds": gap_seconds,
+        "transit_observed_gap_seconds": transit_observed_gap_seconds,
+        "transit_age_seconds_at_refresh": transit_age_seconds,
+        "status": payload.get("meta", {}).get("status"),
+    }
+    if not history or history[-1].get("generated_at") != generated_at:
+        history.append(entry)
+    history = history[-288:]
+    observed_gaps = [row.get("gap_seconds") for row in history if isinstance(row.get("gap_seconds"), (int, float))]
+    transit_gaps = [
+        row.get("transit_observed_gap_seconds")
+        for row in history
+        if isinstance(row.get("transit_observed_gap_seconds"), (int, float))
+    ]
+    current_is_healthy = (
+        payload.get("meta", {}).get("status") == "live"
+        and isinstance(transit_age_seconds, (int, float))
+        and transit_age_seconds <= 10 * 60
+    )
+    write_json(
+        {
+            "status": "HEALTHY" if current_is_healthy else "CHECK_REQUIRED",
+            "latest_generated_at": generated_at,
+            "latest_transit_observed_at": transit_observed_at,
+            "largest_recorded_gap_seconds": max(observed_gaps, default=None),
+            "largest_transit_observation_gap_seconds": max(transit_gaps, default=None),
+            "latest_transit_age_seconds_at_refresh": transit_age_seconds,
+            "history_window": "last 288 refresh attempts",
+            "history": history,
+        },
+        REFRESH_HEALTH_PATH,
         compact=True,
     )
     write_json(
@@ -1182,67 +1251,166 @@ LIMIT 50000
     return build_parking_pressure(rows, load_parking_inventory())
 
 
-def build_safety_context(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """Turn aggregate incident cells into relative, non-predictive context."""
+SAFETY_CATEGORY_WEIGHTS = {
+    "homicide": 5.0,
+    "rape": 5.0,
+    "robbery": 4.0,
+    "assault": 3.0,
+    "weapons": 3.0,
+    "arson": 3.0,
+    "burglary": 2.0,
+    "motor vehicle theft": 2.0,
+    "larceny theft": 1.0,
+    "vandalism": 1.0,
+}
 
-    counts: dict[tuple[float, float], int] = {}
-    latest_values = []
-    for row in rows:
+
+def safety_category_weight(category: Any) -> float:
+    normalized = str(category or "").strip().casefold()
+    return next(
+        (weight for label, weight in SAFETY_CATEGORY_WEIGHTS.items() if label in normalized),
+        1.0,
+    )
+
+
+def build_safety_context(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Create deduplicated, multi-window historical context for journey comparison."""
+
+    # Feature 31 · Safety methodology upgrade / 历史事件方法升级
+    # 中文：原版本只有 365 天事件数量，重复记录、近期变化和事件类别都无法区分。
+    # 新版本优先按 incident_id 去重，计算 30/90/365 天窗口与类别权重，再聚合到
+    # 约 100 米网格。权重只用于相对比较，不代表伤害概率或个人安全风险。
+    # English: Deduplicate by incident ID, preserve 30/90/365-day windows, and
+    # apply a transparent category weight before aggregating to ~100 m cells.
+    # The score is relative historical context, never a personal-risk estimate.
+    raw_count = len(rows)
+    parsed_records: dict[str, tuple[tuple[float, float], datetime, float]] = {}
+    aggregate_rows = []
+    latest_values: list[datetime] = []
+    for index, row in enumerate(rows):
         try:
             key = (round(float(row["latitude"]), 3), round(float(row["longitude"]), 3))
-            count = int(float(row.get("incident_count", 0) or 0))
         except (KeyError, TypeError, ValueError):
             continue
-        if count <= 0 or not inside_sf(*key):
+        if not inside_sf(*key):
             continue
-        counts[key] = counts.get(key, 0) + count
-        latest = str(row.get("latest_incident_datetime") or "")
-        if latest:
-            latest_values.append(latest)
-    if not counts:
+        raw_time = row.get("incident_datetime") or row.get("latest_incident_datetime")
+        occurred = None
+        if raw_time:
+            try:
+                occurred = datetime.fromisoformat(str(raw_time).replace("Z", "+00:00"))
+                if occurred.tzinfo is None:
+                    occurred = occurred.replace(tzinfo=timezone.utc)
+                latest_values.append(occurred)
+            except ValueError:
+                occurred = None
+        incident_id = str(row.get("row_id") or row.get("incident_id") or "").strip()
+        if incident_id and occurred:
+            parsed_records.setdefault(
+                incident_id,
+                (key, occurred, safety_category_weight(row.get("incident_category"))),
+            )
+            continue
+        try:
+            count = int(float(row.get("incident_count", 0) or 0))
+        except (TypeError, ValueError):
+            count = 0
+        if count > 0:
+            aggregate_rows.append((key, count))
+
+    metrics: dict[tuple[float, float], dict[str, float]] = defaultdict(
+        lambda: {"count_30": 0, "count_90": 0, "count_365": 0, "weighted_365": 0.0}
+    )
+    reference_time = datetime.now(timezone.utc)
+    for key, occurred, weight in parsed_records.values():
+        age_days = (reference_time - occurred).total_seconds() / 86400
+        if age_days < 0 or age_days > 365:
+            continue
+        metrics[key]["count_365"] += 1
+        metrics[key]["weighted_365"] += weight
+        if age_days <= 90:
+            metrics[key]["count_90"] += 1
+        if age_days <= 30:
+            metrics[key]["count_30"] += 1
+    # Backward-compatible input used by tests and retained snapshots built from
+    # the older grouped query. It receives neutral weight and no invented trend.
+    for key, count in aggregate_rows:
+        metrics[key]["count_365"] += count
+        metrics[key]["weighted_365"] += count
+
+    if not metrics:
         return {
             "status": "CITY_CONTEXT_ONLY",
             "detail": "No usable location cells were returned for journey comparison.",
             "cells": [],
         }
 
-    # Feature 23 · Journey historical context / 行程级历史事件背景
-    # 中文：先按约 100 米网格聚合，再把每个网格周围约 250 米内的报告数与全市
-    # 有记录的网格比较，得到相对百分位。这里只表达“历史报告相对多或少”，不预测
-    # 犯罪，也不把任何地点标记为安全或危险。
-    # English: Aggregate to roughly 100 m cells, then compare each cell's nearby
-    # 365-day report count with other observed city cells. The percentile is
-    # descriptive historical context, never a crime forecast or safety label.
-    nearby_counts: dict[tuple[float, float], int] = {}
-    for lat, lon in counts:
-        nearby_counts[(lat, lon)] = sum(
-            counts.get((round(lat + lat_offset / 1000, 3), round(lon + lon_offset / 1000, 3)), 0)
-            for lat_offset in range(-2, 3)
-            for lon_offset in range(-3, 4)
-            if math.hypot(lat_offset * 110.54, lon_offset * 88.0) <= 250
+    nearby: dict[tuple[float, float], dict[str, float]] = {}
+    for lat, lon in metrics:
+        nearby_metrics = {name: 0.0 for name in ("count_30", "count_90", "count_365", "weighted_365")}
+        for lat_offset in range(-2, 3):
+            for lon_offset in range(-3, 4):
+                if math.hypot(lat_offset * 110.54, lon_offset * 88.0) > 250:
+                    continue
+                neighbor = metrics.get((round(lat + lat_offset / 1000, 3), round(lon + lon_offset / 1000, 3)))
+                if neighbor:
+                    for name in nearby_metrics:
+                        nearby_metrics[name] += neighbor[name]
+        # Recent windows are deliberately bounded additions to the long-term
+        # score so a short spike matters without erasing the 365-day baseline.
+        nearby_metrics["context_score"] = (
+            nearby_metrics["weighted_365"]
+            + nearby_metrics["count_90"] * 0.75
+            + nearby_metrics["count_30"] * 1.5
         )
-    distribution = sorted(nearby_counts.values())
-    cells = [
-        {
+        nearby[(lat, lon)] = nearby_metrics
+
+    distribution = sorted(value["context_score"] for value in nearby.values())
+    cells = []
+    for lat, lon in sorted(metrics):
+        local = metrics[(lat, lon)]
+        area = nearby[(lat, lon)]
+        recent_30 = area["count_30"]
+        prior_monthly = max(0.0, area["count_90"] - recent_30) / 2
+        trend = "RISING" if recent_30 >= prior_monthly + 2 and recent_30 >= prior_monthly * 1.25 \
+            else "FALLING" if prior_monthly >= recent_30 + 2 and recent_30 <= prior_monthly * 0.75 \
+            else "STEADY"
+        cells.append({
             "lat": lat,
             "lon": lon,
-            "reported_incidents_365d_cell": counts[(lat, lon)],
-            "reported_incidents_365d_nearby": nearby_counts[(lat, lon)],
-            "relative_percentile": round(
-                100 * bisect_right(distribution, nearby_counts[(lat, lon)]) / len(distribution)
+            "reported_incidents_30d_cell": int(local["count_30"]),
+            "reported_incidents_90d_cell": int(local["count_90"]),
+            "reported_incidents_365d_cell": int(local["count_365"]),
+            "reported_incidents_30d_nearby": int(area["count_30"]),
+            "reported_incidents_90d_nearby": int(area["count_90"]),
+            "reported_incidents_365d_nearby": int(area["count_365"]),
+            "severity_weighted_365d_cell": round(local["weighted_365"], 2),
+            "severity_weighted_365d_nearby": round(area["weighted_365"], 2),
+            "historical_context_score_cell": round(
+                local["weighted_365"] + local["count_90"] * 0.75 + local["count_30"] * 1.5,
+                2,
             ),
-        }
-        for lat, lon in sorted(counts)
-    ]
-    total = sum(counts.values())
+            "historical_context_score": round(area["context_score"], 2),
+            "recent_trend": trend,
+            "relative_percentile": round(
+                100 * bisect_right(distribution, area["context_score"]) / len(distribution)
+            ),
+        })
+
+    total = int(sum(value["count_365"] for value in metrics.values()))
     return {
         "status": "JOURNEY_RELATIVE_CONTEXT",
+        "method_version": "2.0",
         "detail": (
-            f"{total:,} reported incident rows summarized into {len(cells):,} location cells. "
+            f"{total:,} unique reported incidents summarized into {len(cells):,} location cells. "
             "Relative historical context only; not a crime forecast or safe/unsafe label."
         ),
-        "source_snapshot_time": max(latest_values) if latest_values else None,
+        "source_snapshot_time": max(latest_values).isoformat() if latest_values else None,
         "lookback_days": 365,
+        "windows_days": [30, 90, 365],
+        "raw_record_count": raw_count,
+        "deduplicated_record_count": len(parsed_records) if parsed_records else total,
+        "severity_weight_basis": "Transparent category groups from 1.0 to 5.0; descriptive comparison only.",
         "cell_precision_degrees": 0.001,
         "nearby_window": "approximately 250 meters",
         "cell_count": len(cells),
@@ -1254,18 +1422,20 @@ def refresh_safety() -> dict[str, Any]:
     since = (datetime.now(timezone.utc) - timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%S")
     query = f"""
 SELECT
+  row_id,
+  incident_id,
+  incident_datetime,
+  incident_category,
   latitude,
-  longitude,
-  count(*) AS incident_count,
-  max(incident_datetime) AS latest_incident_datetime
+  longitude
 WHERE incident_datetime >= '{since}'
   AND latitude IS NOT NULL
   AND longitude IS NOT NULL
-GROUP BY latitude, longitude
-LIMIT 20000
+ORDER BY incident_datetime DESC
+LIMIT 100000
 """.strip()
     return build_safety_context(
-        datasf_records("wg3w-h783", query, 5000, max_pages=4)
+        datasf_records("wg3w-h783", query, 5000, max_pages=20)
     )
 
 

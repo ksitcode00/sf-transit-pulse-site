@@ -155,6 +155,30 @@ def test_safety_context_aggregates_locations_without_labeling_places_safe() -> N
     assert "not a crime forecast or safe/unsafe label" in context["detail"]
 
 
+def test_safety_context_deduplicates_incidents_and_keeps_time_windows() -> None:
+    now = datetime.now(timezone.utc)
+    recent = (now - timedelta(days=10)).isoformat()
+    medium = (now - timedelta(days=60)).isoformat()
+    older = (now - timedelta(days=150)).isoformat()
+    rows = [
+        {"incident_id": "I1", "incident_datetime": recent, "incident_category": "Homicide", "latitude": "37.700", "longitude": "-122.400"},
+        {"incident_id": "I1", "incident_datetime": recent, "incident_category": "Homicide", "latitude": "37.700", "longitude": "-122.400"},
+        {"incident_id": "I2", "incident_datetime": medium, "incident_category": "Larceny Theft", "latitude": "37.700", "longitude": "-122.400"},
+        {"incident_id": "I3", "incident_datetime": older, "incident_category": "Vandalism", "latitude": "37.700", "longitude": "-122.400"},
+    ]
+
+    context = build_safety_context(rows)
+    cell = context["cells"][0]
+
+    assert context["method_version"] == "2.0"
+    assert context["raw_record_count"] == 4
+    assert context["deduplicated_record_count"] == 3
+    assert cell["reported_incidents_30d_cell"] == 1
+    assert cell["reported_incidents_90d_cell"] == 2
+    assert cell["reported_incidents_365d_cell"] == 3
+    assert cell["severity_weighted_365d_cell"] == 7
+
+
 def test_parking_pressure_uses_paid_sessions_without_claiming_open_spaces() -> None:
     meters = [
         {"post_id": "P1", "parking_space_id": "S1", "lat": 37.780, "lon": -122.420},
@@ -281,6 +305,10 @@ def test_workflow_runs_core_every_five_minutes_and_context_every_fifteen() -> No
     assert 'cron: "37 11 * * *"' in static_workflow
     assert 'SF_TRANSIT_STATIC_ONLY: "true"' in static_workflow
 
+    watchdog = (ROOT / ".github/workflows/refresh-watchdog.yml").read_text(encoding="utf-8")
+    assert 'cron: "11,26,41,56 * * * *"' in watchdog
+    assert "check_refresh_health.py --max-age-min 12" in watchdog
+
 
 def test_slow_sources_use_last_check_time_for_refresh_cadence() -> None:
     now = datetime.now(timezone.utc)
@@ -356,6 +384,9 @@ def test_realtime_journey_copy_distinguishes_predictions_from_estimates() -> Non
     assert "one-minute boarding allowance" in readme_en
     assert "一分钟上车余量" in readme_zh
     assert 'safety_status === "JOURNEY_RELATIVE_CONTEXT"' in app
+    assert 'class="timing-badge live"' in app
+    assert "renderComparison" in app
+    assert "New transit data changed the top option" in app
     assert "不能预测你这次是否安全" in app
     assert "Parking near your destination" in app
     assert "目的地附近停车情况" in app
