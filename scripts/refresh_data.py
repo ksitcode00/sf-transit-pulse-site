@@ -37,7 +37,8 @@ SAFETY_CONTEXT_PATH = ROOT / "site" / "data" / "safety-context.json"
 REFRESH_HEALTH_PATH = ROOT / "site" / "data" / "refresh-health.json"
 PARKING_INVENTORY_PATH = ROOT / "data" / "parking-inventory.json"
 STATIC_INDEX_PATH = ROOT / "data" / "static-index.json"
-PIPELINE_VERSION = "1.5.0"
+PIPELINE_VERSION = "1.6.0"
+PARKING_INVENTORY_SCHEMA_VERSION = 2
 USER_AGENT = "SF-Transit-Pulse/1.0 (+https://github.com/ksitcode00/sf-transit-pulse)"
 SF_BOUNDS = {"south": 37.68, "north": 37.84, "west": -122.55, "east": -122.33}
 REQUEST_BUDGET = {
@@ -957,6 +958,12 @@ def datasf_records(
     return records
 
 
+def canonical_meter_id(value: Any) -> str:
+    """Normalize formatting differences without inventing a meter identity."""
+
+    return re.sub(r"[^A-Z0-9]", "", str(value or "").strip().upper())
+
+
 def load_parking_inventory() -> list[dict[str, Any]]:
     """Cache weekly meter-space locations used to geolocate paid sessions."""
 
@@ -968,7 +975,10 @@ def load_parking_inventory() -> list[dict[str, Any]]:
             )
             if generated.tzinfo is None:
                 generated = generated.replace(tzinfo=timezone.utc)
-            if datetime.now(timezone.utc) - generated <= timedelta(days=7):
+            if (
+                cached.get("schema_version") == PARKING_INVENTORY_SCHEMA_VERSION
+                and datetime.now(timezone.utc) - generated <= timedelta(days=7)
+            ):
                 return list(cached.get("meters", []))
         except (OSError, TypeError, ValueError, json.JSONDecodeError):
             pass
@@ -993,7 +1003,7 @@ LIMIT 40000
         # still identifies one inventory record, so it is a safe fallback for
         # deduplicating spaces; POST_ID remains the transaction join key.
         space_id = str(row.get("parking_space_id") or row.get(":id") or "")
-        post_id = str(row.get("post_id") or "")
+        post_id = canonical_meter_id(row.get("post_id"))
         active_flag = str(row.get("active_meter_flag") or "").strip().upper()
         street_type = str(row.get("on_offstreet_type") or "").strip().upper()
         try:
@@ -1004,7 +1014,7 @@ LIMIT 40000
         if (
             not space_id
             or not post_id
-            or active_flag not in {"M", "T"}
+            or active_flag not in {"M", "P", "T"}
             or street_type != "ON"
             or space_id in seen_spaces
             or not inside_sf(lat, lon)
@@ -1023,6 +1033,7 @@ LIMIT 40000
                         [str(row.get("street_num") or ""), str(row.get("street_name") or "")],
                     )
                 ),
+                "active_meter_flag": active_flag,
             }
         )
     if not meters:
@@ -1034,6 +1045,7 @@ LIMIT 40000
     write_json(
         {
             "generated_at": datetime.now(timezone.utc).isoformat(),
+            "schema_version": PARKING_INVENTORY_SCHEMA_VERSION,
             "source": "DataSF Parking Meters 8vzz-qzz9",
             "meter_count": len(meters),
             "meters": meters,
@@ -1057,7 +1069,7 @@ def build_parking_pressure(
             lat, lon = float(meter["lat"]), float(meter["lon"])
         except (KeyError, TypeError, ValueError):
             continue
-        post_id = str(meter.get("post_id") or "")
+        post_id = canonical_meter_id(meter.get("post_id"))
         if not post_id:
             continue
         positions_by_post[post_id].append(meter)
@@ -1097,7 +1109,7 @@ def build_parking_pressure(
                 ended = ended.replace(tzinfo=timezone.utc)
         except ValueError:
             pass
-        parsed.append((started, ended, str(row.get("post_id") or ""), str(row.get("street_block") or "")))
+        parsed.append((started, ended, canonical_meter_id(row.get("post_id")), str(row.get("street_block") or "")))
     if not parsed or not cells:
         return {
             "status": "PARKING_PRESSURE_UNAVAILABLE",
@@ -1107,13 +1119,21 @@ def build_parking_pressure(
 
     raw_session_count = len(parsed)
     # Feature 29 · Parking renewal deduplication / 停车续费去重
-    # 中文：同一车位的重叠付费区间通常是续费，不能在同一时刻重复算作两辆车。
-    # English: Overlapping paid intervals for one meter post are merged so a
-    # renewal cannot look like two simultaneously occupied spaces.
+    # 中文：旧版把所有相同 post_id 的重叠记录都当作续费，但一个付费站可能服务
+    # 多个车位，会误删两辆车各自的合法付费。现在只有明确“一 post 对一普通车位”
+    # 时才合并；多车位或 P 类按车牌付费站保留原始记录。
+    # English: The old rule merged every overlapping post_id, but one paystation
+    # can serve multiple spaces. Merge only verified one-post/one-space meters;
+    # retain concurrent records for multi-space and P-type paystations.
     sessions_by_post: dict[str, list[tuple[datetime, datetime | None, str]]] = defaultdict(list)
     for started, ended, post_id, street in sorted(parsed, key=lambda row: (row[2], row[0])):
         existing = sessions_by_post[post_id]
-        if existing and existing[-1][1] is not None and started <= existing[-1][1]:
+        positions = positions_by_post.get(post_id, [])
+        one_space_meter = (
+            len(positions) == 1
+            and str(positions[0].get("active_meter_flag") or "M").upper() != "P"
+        )
+        if one_space_meter and existing and existing[-1][1] is not None and started <= existing[-1][1]:
             prior_start, prior_end, prior_street = existing[-1]
             merged_end = max(value for value in (prior_end, ended) if value is not None)
             existing[-1] = (prior_start, merged_end, prior_street or street)
@@ -1128,11 +1148,13 @@ def build_parking_pressure(
     newest = max(row[0] for row in parsed)
     block_counts = Counter()
     unmatched = 0
+    matched_posts = set()
     for started, ended, post_id, street in parsed:
         positions = positions_by_post.get(post_id, [])
         if not positions:
             unmatched += 1
             continue
+        matched_posts.add(post_id)
         mean_lat = statistics.mean(float(row["lat"]) for row in positions)
         mean_lon = statistics.mean(float(row["lon"]) for row in positions)
         key = (
@@ -1210,6 +1232,15 @@ def build_parking_pressure(
         "meter_inventory_count": len(meters),
         "matched_transaction_count": len(parsed) - unmatched,
         "unmatched_transaction_count": unmatched,
+        "matched_post_count": len(matched_posts),
+        "match_coverage_ratio": round((len(parsed) - unmatched) / max(1, len(parsed)), 3),
+        "renewal_records_merged": raw_session_count - len(parsed),
+        "multi_space_or_paystation_post_count": sum(
+            1
+            for post_id, positions in positions_by_post.items()
+            if len(positions) > 1
+            or any(str(row.get("active_meter_flag") or "").upper() == "P" for row in positions)
+        ),
         "recent_3h_transaction_count": sum(block_counts.values()),
         "busiest_blocks": [
             {"street_block": street, "payments_3h": count}
@@ -1304,7 +1335,9 @@ def build_safety_context(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 latest_values.append(occurred)
             except ValueError:
                 occurred = None
-        incident_id = str(row.get("row_id") or row.get("incident_id") or "").strip()
+        # DataSF can publish more than one source row for the same incident.
+        # incident_id is the event identity; row_id is only the last-resort row identity.
+        incident_id = str(row.get("incident_id") or row.get("row_id") or "").strip()
         if incident_id and occurred:
             parsed_records.setdefault(
                 incident_id,

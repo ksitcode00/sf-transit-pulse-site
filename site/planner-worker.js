@@ -7,7 +7,7 @@
  * responsive. Inputs are public, credential-free cache objects only.
  */
 
-import {BrowserPlannerEngine} from "./planner-engine.mjs?v=29";
+import {BrowserPlannerEngine} from "./planner-engine.mjs?v=30";
 
 let engine = null;
 

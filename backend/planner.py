@@ -32,7 +32,6 @@ from typing import Any, Iterable
 WALK_SPEED_M_PER_MIN = 75.0
 ACCESS_RADIUS_M = 250.0
 TRANSFER_RADIUS_M = 180.0
-MAX_ACCESS_STOPS = 10
 MAX_ALTERNATIVES = 12
 BOARDING_BUFFER_MIN = 1.0
 ENGINE_VERSION = "24.1-beta"
@@ -468,7 +467,7 @@ class PlannerEngine:
             if haversine_m(anchor, stop) <= ACCESS_RADIUS_M
         ]
         nearby.sort(key=lambda item: (item[1], item[0].name, item[0].stop_id))
-        return nearby[:MAX_ACCESS_STOPS]
+        return nearby
 
     def _pattern_access(
         self,
@@ -489,7 +488,7 @@ class PlannerEngine:
                     continue
                 matches.append((stop, index, distance_m))
             if matches:
-                results[pattern.key] = sorted(matches, key=lambda item: item[2])[:3]
+                results[pattern.key] = sorted(matches, key=lambda item: item[2])
         return results
 
     def _route_speed_mph(self, pattern: Pattern) -> float:
@@ -589,7 +588,11 @@ class PlannerEngine:
 
         leg_line = [tuple(point) for point in self._shape_slice(pattern, start, end)]
         road_context = []
-        for event in self.realtime.get("road_events", []):
+        roads_status = str(
+            self.realtime.get("meta", {}).get("source_status", {}).get("roads", {}).get("status") or ""
+        ).lower()
+        road_events = [] if roads_status in {"unavailable", "failed", "error"} else self.realtime.get("road_events", [])
+        for event in road_events:
             route_ids = {str(value) for value in event.get("route_ids", [])}
             relation = None
             distance_m = None
@@ -971,11 +974,14 @@ class PlannerEngine:
             destination,
         )
         safety_penalty = float(safety.get("overall_percentile") or 0) / 10
-        journey_id = self._candidate_id(
-            ["direct", pattern.key, board.stop_id, alight.stop_id, trip.trip_id if trip else "estimate"]
+        journey_id = self._candidate_id(["direct", pattern.key, board.stop_id, alight.stop_id])
+        trip_instance_id = self._candidate_id(
+            [journey_id, trip.trip_id if trip else "estimate"]
         )
         return {
             "journey_id": journey_id,
+            "itinerary_id": journey_id,
+            "trip_instance_id": trip_instance_id,
             "journey_type": "DIRECT",
             "route_sequence": pattern.route_id,
             "eta_min": round(eta_min, 1),
@@ -1196,12 +1202,19 @@ class PlannerEngine:
             [
                 "transfer", first.key, second.key, first_board.stop_id,
                 first_alight.stop_id, second_board.stop_id, final_alight.stop_id,
+            ]
+        )
+        trip_instance_id = self._candidate_id(
+            [
+                journey_id,
                 first_trip.trip_id if first_trip else "estimate",
                 second_trip.trip_id if second_trip else "estimate",
             ]
         )
         return {
             "journey_id": journey_id,
+            "itinerary_id": journey_id,
+            "trip_instance_id": trip_instance_id,
             "journey_type": "ONE_TRANSFER",
             "route_sequence": route_sequence,
             "eta_min": round(eta_min, 1),

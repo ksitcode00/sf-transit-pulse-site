@@ -161,8 +161,8 @@ def test_safety_context_deduplicates_incidents_and_keeps_time_windows() -> None:
     medium = (now - timedelta(days=60)).isoformat()
     older = (now - timedelta(days=150)).isoformat()
     rows = [
-        {"incident_id": "I1", "incident_datetime": recent, "incident_category": "Homicide", "latitude": "37.700", "longitude": "-122.400"},
-        {"incident_id": "I1", "incident_datetime": recent, "incident_category": "Homicide", "latitude": "37.700", "longitude": "-122.400"},
+        {"row_id": "ROW-1", "incident_id": "I1", "incident_datetime": recent, "incident_category": "Homicide", "latitude": "37.700", "longitude": "-122.400"},
+        {"row_id": "ROW-2", "incident_id": "I1", "incident_datetime": recent, "incident_category": "Homicide", "latitude": "37.700", "longitude": "-122.400"},
         {"incident_id": "I2", "incident_datetime": medium, "incident_category": "Larceny Theft", "latitude": "37.700", "longitude": "-122.400"},
         {"incident_id": "I3", "incident_datetime": older, "incident_category": "Vandalism", "latitude": "37.700", "longitude": "-122.400"},
     ]
@@ -223,6 +223,27 @@ def test_parking_renewals_do_not_double_count_one_meter() -> None:
     assert context["cells"][0]["active_paid_sessions_proxy"] == 1
 
 
+def test_parking_ids_are_normalized_but_paystation_sessions_are_not_merged() -> None:
+    meters = [{
+        "post_id": "614-08090",
+        "parking_space_id": "S1",
+        "lat": 37.780,
+        "lon": -122.420,
+        "active_meter_flag": "P",
+    }]
+    rows = [
+        {"post_id": "614 08090", "session_start_dt": "2026-09-13T12:00:00", "session_end_dt": "2026-09-13T12:30:00"},
+        {"post_id": "61408090", "session_start_dt": "2026-09-13T12:25:00", "session_end_dt": "2026-09-13T13:00:00"},
+    ]
+
+    context = build_parking_pressure(rows, meters)
+
+    assert context["matched_transaction_count"] == 2
+    assert context["match_coverage_ratio"] == 1
+    assert context["deduplicated_session_count"] == 2
+    assert context["multi_space_or_paystation_post_count"] == 1
+
+
 def test_no_parking_payments_is_not_labeled_low_pressure() -> None:
     meters = [
         {"post_id": "P1", "parking_space_id": "S1", "lat": 37.780, "lon": -122.420},
@@ -241,6 +262,14 @@ def test_parking_inventory_contract_allows_stable_row_id_fallback() -> None:
 
     assert 'row.get("parking_space_id") or row.get(":id")' in script
     assert "POST_ID remains the transaction join key" in script
+    assert 'active_flag not in {"M", "P", "T"}' in script
+
+
+def test_browser_snapshot_loader_keeps_core_transit_when_context_fails() -> None:
+    script = (ROOT / "site/app.js").read_text(encoding="utf-8")
+
+    assert "Promise.allSettled" in script
+    assert 'status: snapshot ? "retained_client_cache" : "unavailable"' in script
 
 
 def test_road_event_without_transit_match_remains_explicit_context() -> None:

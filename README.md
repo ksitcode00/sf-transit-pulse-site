@@ -44,7 +44,7 @@ The project follows one end-to-end production-style path:
 | Live ingestion | Scheduled jobs collect vehicle positions, trip predictions, alerts, road events, paid-parking activity, and historical incident records. | The public site works without the author running a Notebook or computer. |
 | Cache and freshness | Credential-free files are split by update cadence. A second workflow checks whether transit observations are actually current and recovers stale snapshots. | A successful script run cannot disguise an old transit feed. |
 | Route diagnostics | Vehicles, headways, bunching, long gaps, and service health are calculated by route and direction. | A problem in one direction does not incorrectly label the other direction. |
-| Realtime candidate generation | The planner evaluates direct and one-transfer patterns, then lets concrete trips decide whether a slightly farther boarding or transfer stop arrives sooner. | Static walking distance cannot discard the ninth transfer option when that option catches the fastest real trip. |
+| Realtime candidate generation | The planner keeps every stop inside the 250 m access radius and every feasible transfer pair until concrete trips are evaluated. | Static walking distance cannot discard an 11th nearby stop or a ninth transfer option when it catches the fastest real trip. |
 | Multi-objective scoring | Fastest, Balanced, and Safety-first rank the same feasible pool using documented inputs. | Preference changes affect ranking, not the underlying ETA. |
 | Explainable browser UI | A Web Worker calculates on the visitor's device. Timing evidence, transfer slack, A/B comparison, freshness, and limitations appear beside the recommendation. | Riders can understand both the choice and the uncertainty behind it. |
 
@@ -76,8 +76,8 @@ Each row explains the rider need, the implementation's practical value, and an e
 | Safety-first | Compares deduplicated 30-, 90-, and 365-day historical reports with transparent category weights. Origin, boarding, route, transfer, and destination use documented weights, and one extreme location is capped. | Use past area context as one extra input for a night trip. It is not a personal safety prediction. | Research beta |
 | Option A vs Option B | Places any two displayed routes side by side with ETA, evidence level, walking, transfers, connection slack, reliability, historical context, and street context. | Compare a faster tight transfer with a steadier direct route without switching cards repeatedly. | Live beta |
 | Destination parking pressure | Combines meter inventory and recent paid sessions as a relative signal; it is not occupancy or open-space availability. | Check whether paid activity near Mission is rising before driving there for pickup. | Research beta |
-| Freshness and failure labels | Each source has a current/outdated state. Every route option says Live prediction, Limited live data, or Estimated. Parking shows the last available record time. | If 511 pauses, the app explains which times are estimates instead of silently presenting them as live. | Live |
-| Stable auto-refresh | Recalculates an open trip when a new snapshot arrives but preserves the route the rider is reading. If the winner changes, the page says so. | A five-minute update does not suddenly jump the user to another itinerary. | Live |
+| Freshness and failure labels | Each source distinguishes current, retained, outdated, and unavailable. “No events” appears only after a usable source returns no matching events. | If street data fails, the app says it is unavailable instead of implying the road is clear. | Live |
+| Stable auto-refresh | A route structure has a stable itinerary ID, while its concrete vehicle run has a separate trip-instance ID. New snapshots recalculate the request without making the open option jump. | The next 38R trip can replace the prior trip while the rider stays on the same 38R itinerary card. | Live |
 | Mobile recommendation bar | Keeps the selected route and a 44-pixel trip button within reach on narrow screens; comparison cards collapse to one column. | Check the chosen trip one-handed while walking to a stop. | Live beta |
 | Separate English and Chinese UI | URLs can select a language, and controls, states, errors, and method copy switch together. The preference is also stored locally. | `?lang=en` opens English and `?lang=zh` opens Chinese. | Live |
 | On-device browser calculation | Trip and nearby-stop queries need no Render server. A Web Worker keeps the map responsive, and the API key never enters the browser. | Anyone can use GitHub Pages while the author's Notebook and computer remain offline. | Live |
@@ -136,6 +136,7 @@ Every query builds one shared set of direct and one-transfer candidates. The thr
 - A leg is live only when one concrete trip has valid predictions at both stops. Otherwise it is estimated.
 - A live transfer needs complete predictions for both trips. Incomplete evidence falls back to a headway estimate.
 - Missing live information does not mean a route has stopped running.
+- An unavailable street-event source does not mean there are no disruptions.
 - A nearby road event and a slowdown are context, not proof that one caused the other.
 - Historical reports do not predict crime, label a place safe or unsafe, or guarantee personal safety.
 - Paid parking sessions do not prove a vehicle is present. Parking pressure is not occupancy or open-space availability.
@@ -172,7 +173,7 @@ The checked-in public snapshot verified on 2026-09-14 contained 347 reported veh
 - The frequently refreshed transit file is about 0.5 MB; slower road, parking, safety, and static-network data are separate, so the browser does not repeatedly download the full legacy snapshot.
 - A rolling `refresh-health.json` keeps up to 288 attempts, including script gaps, transit observation gaps, and source age at each refresh.
 - Realtime evidence expires after 10 minutes. Alerts and road context expire after 30 minutes; parking context after three hours.
-- Regression tests include a case where the ninth transfer location—not one of the eight closest—must win because it connects to an earlier real trip.
+- Regression tests cover an 11th nearby stop, a ninth transfer, stable itinerary identity, unavailable road data, and context-file failure recovery.
 
 ## Repository guide
 

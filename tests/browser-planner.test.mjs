@@ -174,6 +174,41 @@ test("road context older than thirty minutes is ignored", () => {
   assert.ok(result.alternatives.every(row => row.disruption_analysis.every(item => item.road_context.length === 0)));
 });
 
+test("fresh timestamp does not make an unavailable road source usable", () => {
+  const engine = realtimeEngine({road: true});
+  engine.realtime.meta.source_status.roads.status = "unavailable";
+  engine.updateRealtime(engine.realtime);
+  const result = engine.plan("A", "X", "BALANCED");
+  assert.equal(result.meta.freshness.road_context_usable, false);
+  assert.ok(result.alternatives.every(row => row.disruption_analysis.every(item => item.road_context.length === 0)));
+});
+
+test("itinerary identity stays stable when the concrete trip changes", () => {
+  const engine = realtimeEngine();
+  const before = engine.plan("A", "X", "FASTEST").alternatives[0];
+  engine.realtime.trip_predictions[0].trip_id = "trip-next";
+  engine.updateRealtime(engine.realtime);
+  const after = engine.plan("A", "X", "FASTEST").alternatives[0];
+  assert.equal(after.itinerary_id, before.itinerary_id);
+  assert.equal(after.journey_id, before.journey_id);
+  assert.notEqual(after.trip_instance_id, before.trip_instance_id);
+});
+
+test("all access stops inside 250 m remain eligible", () => {
+  const anchor = {stop_id: "O", name: "Origin", lat: 37.7000, lon: -122.4000};
+  const stops = Array.from({length: 12}, (_, index) => ({
+    stop_id: `S${index}`, name: `Stop ${index}`, lat: 37.7001 + index * 0.00005, lon: -122.4000
+  }));
+  const engine = new BrowserPlannerEngine({
+    meta: {route_count: 1, pattern_count: 1},
+    routes: [{route_id: "R", route_type: "3"}],
+    patterns: {"R|0|s": {route_id: "R", direction_id: "0", shape_id: "s", stops}}
+  }, {meta: {generated_at: new Date().toISOString()}, routes: [], vehicles: [], trip_predictions: []});
+  const nearby = engine.nearbyStops(anchor);
+  assert.equal(nearby.length, 12);
+  assert.equal(engine.patternAccess(nearby, true).get("R|0|s").length, 11);
+});
+
 test("mode winners are chosen before the twelve-row display limit", () => {
   const engine = realtimeEngine();
   engine.generateCandidates = () => Array.from({length: 14}, (_, index) => ({

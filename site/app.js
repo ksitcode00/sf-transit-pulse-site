@@ -113,7 +113,7 @@ const appState = {
 function plannerWorkerCall(type, payload = {}) {
   if (!window.Worker) return Promise.reject(new Error("This browser does not support background route planning."));
   if (!plannerWorker) {
-    plannerWorker = new Worker("planner-worker.js?v=29", {type: "module"});
+    plannerWorker = new Worker("planner-worker.js?v=30", {type: "module"});
     plannerWorker.addEventListener("message", event => {
       const request = plannerWorkerRequests.get(event.data?.id);
       if (!request) return;
@@ -184,6 +184,24 @@ function freshnessDisplay(value, maxAgeMinutes) {
     text: `${timeAgo(value)} · ${outdated ? (language === "zh" ? "已过期" : "Outdated") : (language === "zh" ? "可使用" : "Current")}`,
     className: outdated ? "freshness-outdated" : "freshness-current"
   };
+}
+
+function sourceStatusUnavailable(source) {
+  return ["unavailable", "failed", "error"].includes(String(source?.status || "").toLowerCase());
+}
+
+function sourceFreshnessDisplay(source, maxAgeMinutes, observedAt = source?.observed_at) {
+  if (sourceStatusUnavailable(source)) return {
+    text: language === "zh" ? "数据暂时不可用" : "Temporarily unavailable",
+    className: "freshness-outdated"
+  };
+  const result = freshnessDisplay(observedAt, maxAgeMinutes);
+  if (String(source?.status || "").toLowerCase() === "retained_client_cache") {
+    result.text = language === "zh"
+      ? `使用上一次已载入的数据 · ${result.text}`
+      : `Using the last loaded copy · ${result.text}`;
+  }
+  return result;
 }
 
 function setLanguage(next, {syncUrl = false} = {}) {
@@ -351,10 +369,13 @@ function renderMeta() {
   document.getElementById("generated-at").textContent = generated ? `${language === "zh" ? "页面更新时间" : "Page updated"}: ${generated.toLocaleString()}` : (language === "zh" ? "页面更新时间不明" : "Page update time unavailable");
   document.getElementById("quality-status").textContent = sourceLabel;
   const failures = meta.errors || [];
+  const unavailableSources = Object.entries(meta.source_status || {})
+    .filter(([, source]) => sourceStatusUnavailable(source))
+    .map(([name]) => name);
   const sourceCheckMessage = transitStale && transit.isLive
     ? (language === "zh" ? "最新公交数据已超过 10 分钟，因此不会用于实时到站或当前车速判断。" : "The latest transit data is more than 10 minutes old, so it is not used for live arrivals or current speed.")
-    : failures.length ?
-    (language === "zh" ? `${failures.length} 项数据暂时无法更新。页面会明确标出旧数据或演示数据。` : `${failures.length} data source${failures.length === 1 ? " is" : "s are"} temporarily unavailable. Older or demo data is clearly labeled.`) :
+    : failures.length || unavailableSources.length ?
+    (language === "zh" ? `${Math.max(failures.length, unavailableSources.length)} 项数据暂时无法更新。页面不会把“没拿到数据”说成“没有事件”。` : `${Math.max(failures.length, unavailableSources.length)} data source${Math.max(failures.length, unavailableSources.length) === 1 ? " is" : "s are"} temporarily unavailable. Missing data is not presented as “no events.”`) :
     (language === "zh" ? "本次更新已成功检查所有已连接的数据。" : "All connected data sources were checked successfully.");
   const unassignedCount = vehicleCoverage().unassigned.length;
   const unassignedMessage = unassignedCount ? (language === "zh"
@@ -366,10 +387,10 @@ function renderMeta() {
     : freshnessDisplay(transit.observed_at, 10);
   const freshnessRows = [
     [language === "zh" ? "车辆与到站时间" : "Vehicles and arrivals", transitFreshness],
-    [language === "zh" ? "服务通知" : "Service notices", freshnessDisplay(meta.source_status?.alerts?.observed_at, 30)],
-    [language === "zh" ? "道路事件" : "Street events", freshnessDisplay(meta.source_status?.roads?.observed_at, 30)],
-    [language === "zh" ? "最近可用的停车付费活动" : "Latest paid-parking activity", freshnessDisplay(snapshot.parking?.source_snapshot_time, 180)],
-    [language === "zh" ? "历史事件记录" : "Historical incident records", freshnessDisplay(meta.source_status?.safety?.observed_at, 48 * 60)],
+    [language === "zh" ? "服务通知" : "Service notices", sourceFreshnessDisplay(meta.source_status?.alerts, 30)],
+    [language === "zh" ? "道路事件" : "Street events", sourceFreshnessDisplay(meta.source_status?.roads, 30)],
+    [language === "zh" ? "最近可用的停车付费活动" : "Latest paid-parking activity", sourceFreshnessDisplay(meta.source_status?.parking, 180, snapshot.parking?.source_snapshot_time)],
+    [language === "zh" ? "历史事件记录" : "Historical incident records", sourceFreshnessDisplay(meta.source_status?.safety, 48 * 60)],
     [language === "zh" ? "线路和站点" : "Routes and stops", {text: network?.meta?.feed_version ? `${language === "zh" ? "数据版本" : "Data version"} ${network.meta.feed_version}` : "—", className:"freshness-current"}]
   ];
   document.getElementById("source-freshness").innerHTML = freshnessRows.map(([label,value]) => `<div class="evidence-row ${value.className}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value.text)}</strong></div>`).join("");
@@ -543,7 +564,8 @@ function renderMap(routeId = appState.selectedRoute, directionId = appState.sele
   });
 
   const roadsObserved = snapshot?.meta?.source_status?.roads?.observed_at;
-  const currentRoads = isOlderThan(roadsObserved, 30) ? [] : (snapshot.road_events || []);
+  const roadsAvailable = !sourceStatusUnavailable(snapshot?.meta?.source_status?.roads);
+  const currentRoads = !roadsAvailable || isOlderThan(roadsObserved, 30) ? [] : (snapshot.road_events || []);
   currentRoads.filter(event => routeId === "all" || !(event.route_ids || []).length || (event.route_ids || []).map(String).includes(String(routeId))).forEach(event => {
     if (!hasNumber(event.lat) || !hasNumber(event.lon)) return;
     L.circleMarker([Number(event.lat), Number(event.lon)], {radius: 7, color: "#ffffff", weight: 2, fillColor: "#8e44ad", fillOpacity: 1})
@@ -764,21 +786,27 @@ function renderEvents(routeId = appState.selectedRoute, directionId = appState.s
     if (!ids.includes(String(routeId))) return false;
     return directionId === "all" || item.direction_id === undefined || item.direction_id === null || String(item.direction_id) === String(directionId);
   };
-  const alertsFresh = !isOlderThan(snapshot?.meta?.source_status?.alerts?.observed_at, 30);
-  const roadsFresh = !isOlderThan(snapshot?.meta?.source_status?.roads?.observed_at, 30);
+  const alertsAvailable = !sourceStatusUnavailable(snapshot?.meta?.source_status?.alerts);
+  const roadsAvailable = !sourceStatusUnavailable(snapshot?.meta?.source_status?.roads);
+  const alertsFresh = alertsAvailable && !isOlderThan(snapshot?.meta?.source_status?.alerts?.observed_at, 30);
+  const roadsFresh = roadsAvailable && !isOlderThan(snapshot?.meta?.source_status?.roads?.observed_at, 30);
   const alerts = alertsFresh ? (snapshot.alerts || []).filter(matchesRoute) : [];
   const roads = roadsFresh ? (snapshot.road_events || []).filter(matchesRoute) : [];
   list(
     "alert-list",
     alerts,
-    !alertsFresh
+    !alertsAvailable
+      ? (language === "zh" ? "服务通知数据暂时不可用。请稍后刷新；这不表示目前没有服务变化。" : "Service-notice data is temporarily unavailable. Try refreshing later; this does not mean service is unchanged.")
+      : !alertsFresh
       ? (language === "zh" ? "服务通知数据已超过 30 分钟，旧通知已隐藏。" : "Service-notice data is more than 30 minutes old, so old notices are hidden.")
       : language === "zh" ? `${routeId === "all" ? "目前没有新的 Muni 服务通知。" : `目前没有找到与 ${routeId} 相关的 Muni 服务通知。`}` : `${routeId === "all" ? "There are no new Muni service notices." : `No Muni service notices were found for ${routeId}.`}`
   );
   list(
     "road-list",
     roads,
-    !roadsFresh
+    !roadsAvailable
+      ? (language === "zh" ? "道路事件数据暂时不可用。请稍后刷新；这不表示道路上没有施工或事件。" : "Street-event data is temporarily unavailable. Try refreshing later; this does not mean there are no street disruptions.")
+      : !roadsFresh
       ? (language === "zh" ? "道路事件数据已超过 30 分钟，旧事件已隐藏。" : "Street-event data is more than 30 minutes old, so old events are hidden.")
       : language === "zh" ? `${routeId === "all" ? "目前没有可显示的道路施工或事件。" : `目前没有找到与 ${routeId} 相关的道路施工或事件。`}` : `${routeId === "all" ? "No street work or events are available right now." : `No street work or events were found for ${routeId}.`}`
   );
@@ -1713,6 +1741,11 @@ async function loadPublicSnapshot(cacheBuster) {
   const core = await coreResponse.json();
   const merged = {
     ...core,
+    meta: {
+      ...(core.meta || {}),
+      errors: [...(core.meta?.errors || [])],
+      source_status: {...(core.meta?.source_status || {})}
+    },
     alerts: snapshot?.alerts || [],
     road_events: snapshot?.road_events || [],
     parking: snapshot?.parking || {},
@@ -1726,14 +1759,34 @@ async function loadPublicSnapshot(cacheBuster) {
   const due = pieces.filter(piece => !snapshot
     || sourceRevision(core, piece.names) !== sourceRevision(snapshot, piece.names));
 
-  const loaded = await Promise.all(due.map(async piece => {
+  // Feature 31 · Partial snapshot recovery / 局部快照容错
+  // 中文：公交核心数据先被接受。道路、停车或历史背景文件单独失败时，
+  // 保留浏览器上一次成功载入的副本并明确标记，不让一个附加数据源拖垮实时到站。
+  // English: Core transit wins first. Optional context files settle independently;
+  // a failed context load keeps the previous browser copy with an explicit status.
+  const loaded = await Promise.allSettled(due.map(async piece => {
     const response = await fetch(`data/${piece.path}?t=${cacheBuster}`, {cache:"no-store"});
     if (!response.ok) throw new Error(`${piece.path} returned HTTP ${response.status}`);
     return {piece, payload: await response.json()};
   }));
-  for (const {piece, payload} of loaded) {
-    for (const field of piece.fields) merged[field] = payload[field] ?? merged[field];
-  }
+  loaded.forEach((result, index) => {
+    const piece = due[index];
+    if (result.status === "fulfilled") {
+      const {payload} = result.value;
+      for (const field of piece.fields) merged[field] = payload[field] ?? merged[field];
+      return;
+    }
+    merged.meta.errors.push(`Browser could not load ${piece.path}: ${result.reason?.message || "unknown error"}`);
+    for (const name of piece.names) {
+      const previousSource = snapshot?.meta?.source_status?.[name] || {};
+      const currentSource = merged.meta.source_status[name] || {};
+      merged.meta.source_status[name] = {
+        ...currentSource,
+        status: snapshot ? "retained_client_cache" : "unavailable",
+        observed_at: snapshot ? previousSource.observed_at || null : null
+      };
+    }
+  });
   return merged;
 }
 

@@ -15,14 +15,13 @@
 const WALK_SPEED_M_PER_MIN = 75;
 const ACCESS_RADIUS_M = 250;
 const TRANSFER_RADIUS_M = 180;
-const MAX_ACCESS_STOPS = 10;
 const MAX_ALTERNATIVES = 12;
 const BOARDING_BUFFER_MIN = 1;
 const TRIP_PREDICTION_MAX_AGE_SEC = 10 * 60;
 const VEHICLE_MAX_AGE_SEC = 10 * 60;
 const SERVICE_CONTEXT_MAX_AGE_SEC = 30 * 60;
 const PARKING_MAX_AGE_SEC = 3 * 60 * 60;
-const ENGINE_VERSION = "25B-browser-1.2";
+const ENGINE_VERSION = "25B-browser-1.3";
 const ROUTE_COLORS = ["#0066cc", "#34a853"];
 
 const HEALTH_SEVERITY = {
@@ -185,6 +184,7 @@ export class BrowserPlannerEngine {
     if (!realtime) throw new Error("Realtime planner data is incomplete.");
     this.realtime = realtime;
     const sourceStatus = realtime.meta?.source_status || {};
+    this.sourceStatus = sourceStatus;
     this.transitObservedEpoch = epochSeconds(sourceStatus.transit?.observed_at)
       ?? epochSeconds(realtime.meta?.generated_at);
     this.alertsObservedEpoch = epochSeconds(sourceStatus.alerts?.observed_at)
@@ -215,7 +215,8 @@ export class BrowserPlannerEngine {
       .filter(Number.isFinite)
       .sort((a, b) => a - b);
     this.safetyStopCache = new Map();
-    this.parkingFresh = this.sourceIsFresh(this.parkingObservedEpoch, PARKING_MAX_AGE_SEC);
+    this.parkingFresh = this.sourceIsUsable("parking")
+      && this.sourceIsFresh(this.parkingObservedEpoch, PARKING_MAX_AGE_SEC);
     this.parkingCells = this.parkingFresh ? [...(realtime.parking?.cells || [])] : [];
     this.parkingPressureDistribution = this.parkingCells
       .map(row => Number(row.paid_session_pressure_ratio || 0))
@@ -233,6 +234,11 @@ export class BrowserPlannerEngine {
     return Number.isFinite(observedEpoch)
       && referenceEpoch >= observedEpoch - 120
       && referenceEpoch - observedEpoch <= maxAgeSec;
+  }
+
+  sourceIsUsable(name) {
+    const status = String(this.sourceStatus?.[name]?.status || "").toLowerCase();
+    return !["unavailable", "failed", "error"].includes(status);
   }
 
   transitIsFresh(referenceEpoch = Date.now() / 1000) {
@@ -334,8 +340,7 @@ export class BrowserPlannerEngine {
       .filter(row => row.distance_m <= ACCESS_RADIUS_M)
       .sort((left, right) => left.distance_m - right.distance_m
         || left.stop.name.localeCompare(right.stop.name)
-        || left.stop.stop_id.localeCompare(right.stop.stop_id))
-      .slice(0, MAX_ACCESS_STOPS);
+        || left.stop.stop_id.localeCompare(right.stop.stop_id));
   }
 
   patternAccess(nearby, boarding) {
@@ -349,7 +354,7 @@ export class BrowserPlannerEngine {
         if (!boarding && index <= 0) continue;
         matches.push({stop, index, distance_m});
       }
-      if (matches.length) results.set(pattern.key, matches.sort((a, b) => a.distance_m - b.distance_m).slice(0, 3));
+      if (matches.length) results.set(pattern.key, matches.sort((a, b) => a.distance_m - b.distance_m));
     }
     return results;
   }
@@ -444,7 +449,8 @@ export class BrowserPlannerEngine {
       : "NEAR_COMPARISON";
     const legLine = this.shapeSlice(pattern, start, end);
     const roadContext = [];
-    const roadEvents = this.sourceIsFresh(this.roadsObservedEpoch, SERVICE_CONTEXT_MAX_AGE_SEC)
+    const roadEvents = this.sourceIsUsable("roads")
+      && this.sourceIsFresh(this.roadsObservedEpoch, SERVICE_CONTEXT_MAX_AGE_SEC)
       ? (this.realtime.road_events || []) : [];
     for (const event of roadEvents) {
       const routeIds = new Set((event.route_ids || []).map(String));
@@ -669,9 +675,16 @@ export class BrowserPlannerEngine {
     const disruption = this.legDisruption(pattern, board, alight);
     const safety = this.journeySafetyContext(origin, board, pattern.stops.slice(boardIndex, alightIndex + 1), [], destination);
     const safetyPenalty = Number(safety.overall_percentile || 0) / 10;
-    const journeyId = stableJourneyId(["direct", pattern.key, board.stop_id, alight.stop_id, trip?.trip_id || "estimate"]);
+    // Feature 30 · Stable itinerary identity / 稳定行程身份
+    // 中文：线路结构决定 itinerary_id；具体班次另存为 trip_instance_id。
+    // 刷新后即使下一班车替换了上一班，页面仍能保留用户正在比较的同一条走法。
+    // English: Route structure defines itinerary_id while concrete trip IDs define
+    // trip_instance_id, so an auto-refresh does not make the selected option jump.
+    const journeyId = stableJourneyId(["direct", pattern.key, board.stop_id, alight.stop_id]);
+    const tripInstanceId = stableJourneyId([journeyId, trip?.trip_id || "estimate"]);
     return {
-      journey_id: journeyId, journey_type: "DIRECT", route_sequence: pattern.route_id,
+      journey_id: journeyId, itinerary_id: journeyId, trip_instance_id: tripInstanceId,
+      journey_type: "DIRECT", route_sequence: pattern.route_id,
       eta_min: round(etaMin, 1), walking_min: round(walkingMin, 1), eta_status: etaStatus,
       transfer_count: 0, reliability: reliability.health, reliability_detail: reliability.evidence,
       disruption_analysis: [disruption], exposure: safety.label, safety,
@@ -749,9 +762,11 @@ export class BrowserPlannerEngine {
     const safetyPenalty = Number(safety.overall_percentile || 0) / 10;
     const catchability = transferBuffer < 0 ? "MISS" : transferBuffer >= 3 ? "CATCHABLE" : "TIGHT";
     const routeSequence = `${first.route_id} → ${second.route_id}`;
-    const journeyId = stableJourneyId(["transfer", first.key, second.key, firstBoard.stop_id, firstAlight.stop_id, secondBoard.stop_id, finalAlight.stop_id, firstTrip?.trip_id || "estimate", secondTrip?.trip_id || "estimate"]);
+    const journeyId = stableJourneyId(["transfer", first.key, second.key, firstBoard.stop_id, firstAlight.stop_id, secondBoard.stop_id, finalAlight.stop_id]);
+    const tripInstanceId = stableJourneyId([journeyId, firstTrip?.trip_id || "estimate", secondTrip?.trip_id || "estimate"]);
     return {
-      journey_id: journeyId, journey_type: "ONE_TRANSFER", route_sequence: routeSequence,
+      journey_id: journeyId, itinerary_id: journeyId, trip_instance_id: tripInstanceId,
+      journey_type: "ONE_TRANSFER", route_sequence: routeSequence,
       eta_min: round(etaMin, 1), walking_min: round(walkingMin, 1), eta_status: etaStatus,
       transfer_count: 1, reliability: reliability.health, reliability_detail: reliability.evidence,
       disruption_analysis: [firstDisruption, secondDisruption], exposure: safety.label, safety,
@@ -933,6 +948,8 @@ export class BrowserPlannerEngine {
           transit_realtime_usable: this.transitIsFresh(planningEpoch),
           trip_prediction_max_age_seconds: TRIP_PREDICTION_MAX_AGE_SEC,
           service_context_max_age_seconds: SERVICE_CONTEXT_MAX_AGE_SEC,
+          road_context_usable: this.sourceIsUsable("roads")
+            && this.sourceIsFresh(this.roadsObservedEpoch, SERVICE_CONTEXT_MAX_AGE_SEC, planningEpoch),
           network_feed_version: this.network.meta?.feed_version || null,
           parking_source_time: this.realtime.parking?.source_snapshot_time || null,
           parking_context_usable: this.parkingFresh,
