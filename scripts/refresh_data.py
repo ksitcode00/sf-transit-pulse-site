@@ -1169,7 +1169,9 @@ def refresh_parking() -> dict[str, Any]:
     latest = datetime.fromisoformat(str(latest_value).replace("Z", "+00:00"))
     if latest.tzinfo is None:
         latest = latest.replace(tzinfo=timezone.utc)
-    since = (latest - timedelta(hours=3)).isoformat()
+    # DataSF exposes this field as a floating timestamp and rejects a `+00:00`
+    # suffix in its v3 query endpoint, even when the returned value is parsed as UTC.
+    since = (latest - timedelta(hours=3)).replace(tzinfo=None).isoformat(timespec="seconds")
     query = f"""
 SELECT session_start_dt, session_end_dt, post_id, street_block
 WHERE session_start_dt >= '{since}'

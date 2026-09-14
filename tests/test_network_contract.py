@@ -291,6 +291,12 @@ def test_slow_sources_use_last_check_time_for_refresh_cadence() -> None:
     assert source_refresh_due(old, "parking", timedelta(minutes=30))
 
 
+def test_parking_query_uses_datasf_floating_timestamp_format() -> None:
+    script = (ROOT / "scripts/refresh_data.py").read_text(encoding="utf-8")
+
+    assert 'replace(tzinfo=None).isoformat(timespec="seconds")' in script
+
+
 def test_public_beta_removes_misleading_planner_fallbacks() -> None:
     app = (ROOT / "site/app.js").read_text(encoding="utf-8")
     page = (ROOT / "site/index.html").read_text(encoding="utf-8")
