@@ -98,13 +98,19 @@ test("reference trip returns all three real ranking modes", async () => {
   assert.ok(result.alternatives.every(row => row.map.route_paths.length >= 1));
 });
 
-test("preferences rank one candidate set without changing its ETA", async () => {
+test("preferences rank the same candidate set without material ETA drift", async () => {
   const engine = await publicEngine();
   const fastest = engine.plan("13161", "15659", "FASTEST");
   const balanced = engine.plan("13161", "15659", "BALANCED");
   const fastestEta = new Map(fastest.alternatives.map(row => [row.journey_id, row.eta_min]));
+  assert.deepEqual(
+    new Set(balanced.alternatives.map(row => row.journey_id)),
+    new Set(fastest.alternatives.map(row => row.journey_id))
+  );
   for (const row of balanced.alternatives) {
-    if (fastestEta.has(row.journey_id)) assert.equal(row.eta_min, fastestEta.get(row.journey_id));
+    // A live ETA can tick down by one rounding step while the second plan is
+    // calculated. Preference changes must not otherwise alter travel time.
+    assert.ok(Math.abs(row.eta_min - fastestEta.get(row.journey_id)) <= 0.2);
   }
 });
 
