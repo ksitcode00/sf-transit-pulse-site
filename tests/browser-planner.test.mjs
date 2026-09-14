@@ -15,7 +15,7 @@ async function publicEngine() {
   return new BrowserPlannerEngine(JSON.parse(networkText), JSON.parse(realtimeText));
 }
 
-function realtimeEngine({transfer = false, safety = false, parking = false, staleMinutes = 0} = {}) {
+function realtimeEngine({transfer = false, safety = false, parking = false, road = false, staleMinutes = 0} = {}) {
   const nowEpoch = Math.floor(Date.now() / 1000);
   const observedEpoch = nowEpoch - staleMinutes * 60;
   const stops = {
@@ -56,7 +56,11 @@ function realtimeEngine({transfer = false, safety = false, parking = false, stal
         roads: {observed_at: observedAt}, parking: {observed_at: observedAt}
       }},
       routes: [], vehicles: [], trip_predictions: predictions,
-      alerts: [], road_events: [],
+      alerts: [],
+      road_events: road ? [{
+        title: "Street work", route_ids: ["R1"], route_match_status: "MATCHED",
+        lat: 37.705, lon: -122.400, geometry: [[37.705, -122.400]]
+      }] : [],
       safety: safety ? {status: "JOURNEY_RELATIVE_CONTEXT", cells: [
         {lat: 37.700, lon: -122.400, reported_incidents_365d_cell: 2, reported_incidents_365d_nearby: 2},
         {lat: 37.710, lon: -122.400, reported_incidents_365d_cell: 8, reported_incidents_365d_nearby: 8},
@@ -156,6 +160,18 @@ test("zero paid sessions is not mislabeled as low parking pressure", () => {
   const result = engine.plan("A", "D", "BALANCED");
   assert.ok(result.alternatives.every(row => row.destination_parking.status === "NO_RECENT_PAID_ACTIVITY"));
   assert.ok(result.alternatives.every(row => row.destination_parking.pressure_label === "NO_RECENT_PAID_ACTIVITY"));
+});
+
+test("fresh matched road context appears on the affected leg", () => {
+  const result = realtimeEngine({road: true}).plan("A", "X", "BALANCED");
+  const disruption = result.alternatives[0].disruption_analysis[0];
+  assert.equal(disruption.road_context[0].title, "Street work");
+  assert.equal(disruption.road_context[0].relation, "DIRECT_ROUTE_MATCH");
+});
+
+test("road context older than thirty minutes is ignored", () => {
+  const result = realtimeEngine({road: true, staleMinutes: 31}).plan("A", "X", "BALANCED");
+  assert.ok(result.alternatives.every(row => row.disruption_analysis.every(item => item.road_context.length === 0)));
 });
 
 test("mode winners are chosen before the twelve-row display limit", () => {
