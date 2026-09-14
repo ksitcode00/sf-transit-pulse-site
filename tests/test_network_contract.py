@@ -7,6 +7,7 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
 from google.transit import gtfs_realtime_pb2
 
 from scripts.refresh_data import (
@@ -19,6 +20,7 @@ from scripts.refresh_data import (
     parse_road_events,
     parse_static_gtfs,
     parse_trip_predictions,
+    road_event_collection,
     source_refresh_due,
 )
 
@@ -341,6 +343,38 @@ def test_all_spatially_relevant_sf_road_events_are_kept() -> None:
     assert len(events) == 25
 
 
+def test_road_feed_distinguishes_valid_zero_events_from_unknown_schema() -> None:
+    assert road_event_collection({"Events": []}) == []
+
+    with pytest.raises(ValueError, match="no recognized event collection"):
+        road_event_collection({"message": "temporary upstream error"})
+
+    with pytest.raises(ValueError, match="is not a list"):
+        road_event_collection({"features": {"unexpected": "object"}})
+
+
+def test_every_production_split_json_has_its_minimum_contract() -> None:
+    contracts = {
+        "live-transit.json": {"meta", "system", "vehicles", "routes", "trip_predictions"},
+        "alerts-roads.json": {"source_status", "alerts", "road_events"},
+        "parking-context.json": {"source_status", "parking"},
+        "safety-context.json": {"source_status", "safety"},
+    }
+    for filename, required_keys in contracts.items():
+        payload = json.loads((ROOT / "site/data" / filename).read_text(encoding="utf-8"))
+        assert required_keys <= payload.keys(), filename
+
+    alerts_roads = json.loads((ROOT / "site/data/alerts-roads.json").read_text(encoding="utf-8"))
+    assert {"alerts", "roads"} <= alerts_roads["source_status"].keys()
+    assert isinstance(alerts_roads["alerts"], list)
+    assert isinstance(alerts_roads["road_events"], list)
+
+    parking = json.loads((ROOT / "site/data/parking-context.json").read_text(encoding="utf-8"))
+    assert isinstance(parking["parking"], dict)
+    safety = json.loads((ROOT / "site/data/safety-context.json").read_text(encoding="utf-8"))
+    assert isinstance(safety["safety"], dict)
+
+
 def test_refresh_plan_stays_below_default_511_rate_limit() -> None:
     budget = REQUEST_BUDGET
 
@@ -397,7 +431,7 @@ def test_public_beta_removes_misleading_planner_fallbacks() -> None:
     assert "planTrip({silent:true})" not in app
     assert 'fetch("data/network.json", {cache:"default"})' in app
     assert "https://tile.openstreetmap.org/{z}/{x}/{y}.png" in app
-    assert "Live predictions + estimates · Public Beta" in page
+    assert "Latest predictions + on-device planning · Public Beta" in page
     assert "Report an issue" in page
     assert 'SAFETY_FIRST:"Safety-first"' in app and "Not available yet" in app
     assert "What we check before recommending a trip" in page
@@ -455,6 +489,32 @@ def test_realtime_journey_copy_distinguishes_predictions_from_estimates() -> Non
     assert "Parking near your destination" in app
     assert "目的地附近停车情况" in app
     assert "cannot tell you how many spaces are open" in app
+    assert "Recent cached arrival prediction" in app
+    assert "近期缓存的到站预测" in app
+    assert "First transit leg now" in app
+    assert "首段公交当前移动" in app
+
+
+def test_safety_context_is_lazy_loaded_after_the_first_screen() -> None:
+    app = (ROOT / "site/app.js").read_text(encoding="utf-8")
+
+    assert 'piece.path !== "safety-context.json"' in app
+    assert "async function ensureSafetyContext()" in app
+    assert "await ensureSafetyContext();" in app
+    assert 'contextObserver.observe(contextSection)' in app
+
+
+def test_ci_validates_every_production_split_json() -> None:
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    for filename in (
+        "live-transit.json",
+        "alerts-roads.json",
+        "parking-context.json",
+        "safety-context.json",
+        "refresh-health.json",
+    ):
+        assert f"python -m json.tool site/data/{filename}" in workflow
 
 
 def test_static_gtfs_keeps_multiple_patterns_per_route_direction() -> None:

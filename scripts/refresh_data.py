@@ -37,7 +37,7 @@ SAFETY_CONTEXT_PATH = ROOT / "site" / "data" / "safety-context.json"
 REFRESH_HEALTH_PATH = ROOT / "site" / "data" / "refresh-health.json"
 PARKING_INVENTORY_PATH = ROOT / "data" / "parking-inventory.json"
 STATIC_INDEX_PATH = ROOT / "data" / "static-index.json"
-PIPELINE_VERSION = "1.7.0"
+PIPELINE_VERSION = "1.8.0"
 PARKING_INVENTORY_SCHEMA_VERSION = 2
 PARKING_MIN_MATCH_COVERAGE = 0.70
 USER_AGENT = "SF-Transit-Pulse/1.0 (+https://github.com/ksitcode00/sf-transit-pulse)"
@@ -836,6 +836,30 @@ def flatten_events(payload: Any) -> list[dict[str, Any]]:
     return []
 
 
+def road_event_collection(payload: Any) -> list[Any]:
+    """Return the raw 511 event collection or reject an unknown schema.
+
+    中文：合法的空列表代表“这次确实返回 0 条”；找不到列表字段则代表响应
+    结构异常。两者必须分开，避免 API 故障被网页误写成“没有道路事件”。
+
+    English: A valid empty collection means zero reported events. A payload
+    without a recognized collection is a source failure, not an empty result.
+    """
+
+    if isinstance(payload, list):
+        return payload
+    if not isinstance(payload, dict):
+        raise ValueError(f"511 road feed returned {type(payload).__name__}, not an event collection.")
+    for key in ("events", "Events", "traffic_events", "features", "data", "results"):
+        if key not in payload:
+            continue
+        value = payload[key]
+        if not isinstance(value, list):
+            raise ValueError(f"511 road feed field {key!r} is not a list.")
+        return value
+    raise ValueError("511 road feed returned no recognized event collection.")
+
+
 def first_value(item: dict[str, Any], keys: Iterable[str]) -> Any:
     for key in keys:
         if key in item and item[key] not in (None, "", []):
@@ -1312,7 +1336,17 @@ ORDER BY session_start_dt DESC
 LIMIT 50000
 """.strip()
     rows = datasf_records("imvp-dq3v", query, 5000, max_pages=10)
-    return build_parking_pressure(rows, load_parking_inventory())
+    result = build_parking_pressure(rows, load_parking_inventory())
+    source_lag_minutes = max(
+        0,
+        round((datetime.now(timezone.utc) - latest).total_seconds() / 60),
+    )
+    result["source_lag_minutes_at_check"] = source_lag_minutes
+    result["timeliness_status"] = (
+        "DELAYED_SOURCE" if source_lag_minutes > 180 else "CURRENT_SOURCE_WINDOW"
+    )
+    result["availability_label"] = "LATEST_AVAILABLE_PAID_PARKING_ACTIVITY"
+    return result
 
 
 SAFETY_CATEGORY_WEIGHTS = {
@@ -1600,7 +1634,13 @@ def main() -> int:
     }
     errors: list[str] = []
     configured_sources = 0
-    service_context_refreshed = False
+    alerts_refreshed = False
+    roads_refreshed = False
+    roads_failed = False
+    road_feed_counts: dict[str, int | None] = {
+        "raw_event_count": None,
+        "parsed_event_count": None,
+    }
     parking_refreshed = False
     safety_refreshed = False
     api_key = os.environ.get("SF_TRANSIT_511_API_KEY", "").strip()
@@ -1644,28 +1684,6 @@ def main() -> int:
             routes = parse_route_health(trip_feed, static["trip_lookup"], vehicles, static["stop_lookup"])
             trip_predictions = parse_trip_predictions(trip_feed, static["trip_lookup"])
             payload.update({"vehicles": vehicles, "routes": routes, "trip_predictions": trip_predictions})
-            if refresh_service_context:
-                alert_feed = fetch_gtfs_rt("https://api.511.org/transit/servicealerts", api_key)
-                road_payload = request(
-                    "https://api.511.org/traffic/events",
-                    params={
-                        "api_key": api_key,
-                        "Bbox": "-122.52,37.70,-122.35,37.83",
-                        "in_effect_on": "now",
-                        "limit": 100,
-                    },
-                ).json()
-                payload["alerts"] = parse_alerts(alert_feed)
-                payload["road_events"] = parse_road_events(road_payload)
-                service_context_refreshed = True
-            payload["system"] = {
-                "vehicle_count": len(vehicles),
-                "route_count": len({row["route_id"] for row in routes}),
-                "route_direction_count": len(routes),
-                "predicted_trip_count": len(trip_predictions),
-                "alert_count": len(payload.get("alerts", [])),
-                "road_event_count": len(payload.get("road_events", [])),
-            }
             feed_timestamps = [
                 int(feed.header.timestamp or 0)
                 for feed in (vehicle_feed, trip_feed)
@@ -1681,6 +1699,38 @@ def main() -> int:
             configured_sources += 1
         except Exception as exc:  # Preserve last valid public snapshot on source failure.
             errors.append(f"511 refresh failed: {type(exc).__name__}: {exc}")
+
+        if refresh_service_context:
+            try:
+                alert_feed = fetch_gtfs_rt("https://api.511.org/transit/servicealerts", api_key)
+                payload["alerts"] = parse_alerts(alert_feed)
+                alerts_refreshed = True
+                configured_sources += 1
+            except Exception as exc:
+                errors.append(f"511 alerts refresh failed: {type(exc).__name__}: {exc}")
+
+            try:
+                road_payload = request(
+                    "https://api.511.org/traffic/events",
+                    params={
+                        "api_key": api_key,
+                        "Bbox": "-122.52,37.70,-122.35,37.83",
+                        "in_effect_on": "now",
+                        "limit": 100,
+                    },
+                ).json()
+                raw_road_events = road_event_collection(road_payload)
+                parsed_road_events = parse_road_events(raw_road_events)
+                road_feed_counts = {
+                    "raw_event_count": len(raw_road_events),
+                    "parsed_event_count": len(parsed_road_events),
+                }
+                payload["road_events"] = parsed_road_events
+                roads_refreshed = True
+                configured_sources += 1
+            except Exception as exc:
+                roads_failed = True
+                errors.append(f"511 roads refresh failed: {type(exc).__name__}: {exc}")
     else:
         errors.append("511_API_KEY is not configured; the last transit snapshot is retained.")
         if local_gtfs_path:
@@ -1689,19 +1739,6 @@ def main() -> int:
                 write_json(static["network"], NETWORK_PATH, compact=True)
             except Exception as exc:
                 errors.append(f"Local static GTFS build failed: {type(exc).__name__}: {exc}")
-        # The checked-in fallback contains a small presentation sample rather
-        # than a complete fleet feed. Keep headline counts consistent with the
-        # visible sample so the public page never implies that demo rows are a
-        # current system-wide census.
-        fallback_routes = payload.get("routes", [])
-        payload["system"] = {
-            "vehicle_count": len(payload.get("vehicles", [])),
-            "route_count": len({str(row.get("route_id", "")) for row in fallback_routes if row.get("route_id")}),
-            "route_direction_count": len(fallback_routes),
-            "predicted_trip_count": len(payload.get("trip_predictions", [])),
-            "alert_count": len(payload.get("alerts", [])),
-            "road_event_count": len(payload.get("road_events", [])),
-        }
 
     if refresh_parking_context:
         try:
@@ -1719,6 +1756,16 @@ def main() -> int:
         except Exception as exc:
             errors.append(f"Safety refresh failed: {type(exc).__name__}: {exc}")
 
+    current_routes = payload.get("routes", [])
+    payload["system"] = {
+        "vehicle_count": len(payload.get("vehicles", [])),
+        "route_count": len({str(row.get("route_id", "")) for row in current_routes if row.get("route_id")}),
+        "route_direction_count": len(current_routes),
+        "predicted_trip_count": len(payload.get("trip_predictions", [])),
+        "alert_count": len(payload.get("alerts", [])),
+        "road_event_count": len(payload.get("road_events", [])),
+    }
+
     status = "live" if api_key and not errors else "partial_live" if configured_sources else "demo"
     checked_at = datetime.now(timezone.utc).isoformat()
     previous_sources = previous.get("meta", {}).get("source_status", {})
@@ -1731,14 +1778,22 @@ def main() -> int:
         "source_status": {
             "transit": {**transit_source, "checked_at": checked_at},
             "alerts": {
-                "status": "refreshed" if service_context_refreshed else "retained" if payload.get("alerts") else "unavailable",
-                "observed_at": checked_at if service_context_refreshed else previous_sources.get("alerts", {}).get("observed_at") or previous_transit.get("observed_at"),
+                "status": "refreshed" if alerts_refreshed else "retained" if payload.get("alerts") else "unavailable",
+                "observed_at": checked_at if alerts_refreshed else previous_sources.get("alerts", {}).get("observed_at") or previous_transit.get("observed_at"),
                 "checked_at": checked_at if refresh_service_context else previous_sources.get("alerts", {}).get("checked_at"),
             },
             "roads": {
-                "status": "refreshed" if service_context_refreshed else "retained" if payload.get("road_events") else "unavailable",
-                "observed_at": checked_at if service_context_refreshed else previous_sources.get("roads", {}).get("observed_at") or previous_transit.get("observed_at"),
+                "status": "unavailable" if roads_failed else "refreshed" if roads_refreshed else "retained" if payload.get("road_events") else "unavailable",
+                "observed_at": checked_at if roads_refreshed else previous_sources.get("roads", {}).get("observed_at"),
                 "checked_at": checked_at if refresh_service_context else previous_sources.get("roads", {}).get("checked_at"),
+                **(
+                    road_feed_counts
+                    if refresh_service_context
+                    else {
+                        "raw_event_count": previous_sources.get("roads", {}).get("raw_event_count"),
+                        "parsed_event_count": previous_sources.get("roads", {}).get("parsed_event_count"),
+                    }
+                ),
             },
             "parking": {
                 "status": "refreshed" if parking_refreshed else "retained" if payload.get("parking") else "unavailable",

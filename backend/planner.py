@@ -38,7 +38,7 @@ PARKING_MIN_MATCH_COVERAGE = 0.70
 SAFETY_MIDPOINT_PERCENTILE = 50.0
 BALANCED_SAFETY_MIN_PER_POINT = 0.03
 SAFETY_FIRST_MIN_PER_POINT = 0.15
-ENGINE_VERSION = "24.2-beta"
+ENGINE_VERSION = "24.3-beta"
 
 
 def midpoint_percentile_rank(ordered: list[float], value: float) -> float | None:
@@ -261,6 +261,10 @@ class PlannerEngine:
     def __init__(self, network: dict[str, Any], realtime: dict[str, Any]):
         self.network = network
         self.realtime = realtime
+        self.transit_source_status = str(
+            realtime.get("meta", {}).get("source_status", {}).get("transit", {}).get("status")
+            or "live"
+        ).lower()
         self.route_catalog = {
             str(row.get("route_id")): row for row in network.get("routes", [])
         }
@@ -329,6 +333,15 @@ class PlannerEngine:
         )
         self._parking_stop_cache: dict[str, dict[str, Any]] = {}
 
+    def _concrete_timing_status(self) -> str:
+        """Name fresh retained evidence honestly without discarding it."""
+
+        return (
+            "RECENT_CACHED_PREDICTION"
+            if self.transit_source_status.startswith("retained")
+            else "REALTIME_TRIP_PREDICTION"
+        )
+
     @classmethod
     def from_files(cls, network_path: Path, realtime_path: Path) -> "PlannerEngine":
         """Load both cache layers. No upstream API request occurs here."""
@@ -351,14 +364,14 @@ class PlannerEngine:
                 speed_mps = float(row.get("speed_mps"))
             except (TypeError, ValueError):
                 continue
-            if speed_mps < 1:
+            # Ignore stopped/noisy points and impossible GPS spikes per vehicle.
+            # Keep the route median itself uncapped so a real 2.8 mph slowdown
+            # is not silently raised to the old 5 mph floor.
+            if speed_mps < 1 or speed_mps > 22.35:
                 continue
             key = (str(row.get("route_id")), str(row.get("direction_id")))
             grouped.setdefault(key, []).append(speed_mps * 2.23694)
-        return {
-            key: max(5.0, min(18.0, median(values)))
-            for key, values in grouped.items()
-        }
+        return {key: median(values) for key, values in grouped.items()}
 
     def _build_trip_prediction_lookup(self) -> dict[tuple[str, str], list[PredictedTrip]]:
         """Index concrete trips by route + direction for fast candidate lookup.
@@ -1080,7 +1093,7 @@ class PlannerEngine:
                 (realtime_trip["board_epoch"] - planning_epoch - origin_walk_min * 60) / 60,
             )
             ride_min = (realtime_trip["alight_epoch"] - realtime_trip["board_epoch"]) / 60
-            eta_status = "REALTIME_TRIP_PREDICTION"
+            eta_status = self._concrete_timing_status()
         else:
             trip = None
             wait_min = self._wait_minutes(pattern)
@@ -1299,14 +1312,24 @@ class PlannerEngine:
                 - transfer_walk_complete_epoch
                 - BOARDING_BUFFER_MIN * 60
             ) / 60
-            eta_status = "REALTIME_TRIP_PREDICTION"
-            transfer_basis = "Concrete GTFS-RT arrival and departure predictions for both trips."
+            eta_status = self._concrete_timing_status()
+            transfer_basis = (
+                "Recent cached GTFS-RT predictions for both trips."
+                if eta_status == "RECENT_CACHED_PREDICTION"
+                else "Concrete GTFS-RT arrival and departure predictions for both trips."
+            )
         else:
             second_trip = None
             second_wait = self._wait_minutes(second)
             second_ride = self._ride_minutes(second, second_board_index, final_alight_index)
             transfer_buffer = second_wait - BOARDING_BUFFER_MIN
-            eta_status = "MIXED_REALTIME" if first_prediction else "ESTIMATED"
+            eta_status = (
+                "MIXED_CACHED"
+                if first_prediction and self._concrete_timing_status() == "RECENT_CACHED_PREDICTION"
+                else "MIXED_REALTIME"
+                if first_prediction
+                else "ESTIMATED"
+            )
             transfer_basis = "Estimated from route headway evidence; not a guaranteed connection."
 
         walking_min = origin_walk_min + transfer_walk_min + destination_walk_min
@@ -1426,7 +1449,7 @@ class PlannerEngine:
                         else None
                     ),
                     "timing_status": (
-                        "REALTIME_TRIP_PREDICTION" if first_prediction else "ESTIMATED"
+                        self._concrete_timing_status() if first_prediction else "ESTIMATED"
                     ),
                 },
                 {
@@ -1452,7 +1475,7 @@ class PlannerEngine:
                         else None
                     ),
                     "timing_status": (
-                        "REALTIME_TRIP_PREDICTION" if first_prediction else "ESTIMATED"
+                        self._concrete_timing_status() if first_prediction else "ESTIMATED"
                     ),
                     "disruption": first_disruption,
                 },
@@ -1478,7 +1501,7 @@ class PlannerEngine:
                     "catch_slack_min": round(transfer_buffer, 1),
                     "estimated_buffer_min": round(transfer_buffer, 1),
                     "timing_status": (
-                        "REALTIME_TRIP_PREDICTION" if second_prediction else "ESTIMATED"
+                        self._concrete_timing_status() if second_prediction else "ESTIMATED"
                     ),
                 },
                 {
@@ -1504,7 +1527,7 @@ class PlannerEngine:
                         else None
                     ),
                     "timing_status": (
-                        "REALTIME_TRIP_PREDICTION" if second_prediction else "ESTIMATED"
+                        self._concrete_timing_status() if second_prediction else "ESTIMATED"
                     ),
                     "disruption": second_disruption,
                 },
@@ -1708,6 +1731,12 @@ class PlannerEngine:
                 "calculated_at": datetime.now(timezone.utc).isoformat(),
                 "calculation_basis": "Cached GTFS route-direction patterns plus the latest credential-free realtime snapshot.",
                 "eta_status": selected["eta_status"],
+                "transit_source_status": self.transit_source_status,
+                "transit_prediction_basis": (
+                    "RECENT_CACHE"
+                    if selected["eta_status"] in {"RECENT_CACHED_PREDICTION", "MIXED_CACHED"}
+                    else "LIVE_OR_ESTIMATED"
+                ),
                 "trip_prediction_count": sum(len(rows) for rows in self.predicted_trips.values()),
                 "safety_status": (
                     "JOURNEY_RELATIVE_CONTEXT"

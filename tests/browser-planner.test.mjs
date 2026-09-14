@@ -15,7 +15,7 @@ async function publicEngine() {
   return new BrowserPlannerEngine(JSON.parse(networkText), JSON.parse(realtimeText));
 }
 
-function realtimeEngine({transfer = false, safety = false, parking = false, road = false, staleMinutes = 0} = {}) {
+function realtimeEngine({transfer = false, safety = false, parking = false, road = false, staleMinutes = 0, transitStatus = "live", speedMps = null} = {}) {
   const nowEpoch = Math.floor(Date.now() / 1000);
   const observedEpoch = nowEpoch - staleMinutes * 60;
   const stops = {
@@ -52,10 +52,13 @@ function realtimeEngine({transfer = false, safety = false, parking = false, road
     {meta: {route_count: routes.length, pattern_count: Object.keys(patterns).length}, routes, patterns},
     {
       meta: {status: "live", generated_at: observedAt, source_status: {
-        transit: {observed_at: observedAt}, alerts: {observed_at: observedAt},
+        transit: {status: transitStatus, observed_at: observedAt}, alerts: {observed_at: observedAt},
         roads: {observed_at: observedAt}, parking: {observed_at: observedAt}
       }},
-      routes: [], vehicles: [], trip_predictions: predictions,
+      routes: [], vehicles: speedMps == null ? [] : [{
+        vehicle_id: "vehicle-1", route_id: "R1", direction_id: "0",
+        speed_mps: speedMps, age_seconds: 0
+      }], trip_predictions: predictions,
       alerts: [],
       road_events: road ? [{
         title: "Street work", route_ids: ["R1"], route_match_status: "MATCHED",
@@ -123,6 +126,21 @@ test("trip updates older than ten minutes fall back to estimates", () => {
   assert.equal(result.meta.freshness.transit_realtime_usable, false);
   assert.ok(result.alternatives.every(row => row.eta_status === "ESTIMATED"));
   assert.ok(result.alternatives.every(row => row.legs.filter(leg => leg.type === "RIDE").every(leg => leg.trip_id === null)));
+});
+
+test("fresh retained predictions are usable but labeled as recent cache", () => {
+  const result = realtimeEngine({transitStatus: "retained"}).plan("A", "X", "FASTEST");
+  const journey = result.alternatives[0];
+  assert.equal(result.meta.freshness.transit_realtime_usable, true);
+  assert.equal(journey.eta_status, "RECENT_CACHED_PREDICTION");
+  assert.equal(journey.legs.find(row => row.type === "RIDE").timing_status, "RECENT_CACHED_PREDICTION");
+});
+
+test("route median keeps a genuine slowdown below the old five mph floor", () => {
+  const result = realtimeEngine({speedMps: 1.25}).plan("A", "X", "BALANCED");
+  const movement = result.alternatives[0].disruption_analysis[0];
+  assert.equal(movement.current_speed_mph, 2.8);
+  assert.equal(movement.movement_status, "SLOWER_THAN_COMPARISON");
 });
 
 test("concrete two-trip transfer calculates catch slack", () => {

@@ -79,7 +79,8 @@ def test_public_beta_uses_the_qa_validated_walking_policy() -> None:
 
 
 def _realtime_test_engine(
-    *, transfer: bool, safety: bool = False, parking: bool = False
+    *, transfer: bool, safety: bool = False, parking: bool = False,
+    transit_status: str = "live", speed_mps: float | None = None,
 ) -> PlannerEngine:
     now_epoch = int(datetime.now(timezone.utc).timestamp())
     stops = {
@@ -182,9 +183,14 @@ def _realtime_test_engine(
         ],
     } if parking else {}
     realtime = {
-        "meta": {"status": "live"},
+        "meta": {"status": "live", "source_status": {"transit": {"status": transit_status}}},
         "routes": [],
-        "vehicles": [],
+        "vehicles": [] if speed_mps is None else [{
+            "vehicle_id": "vehicle-1",
+            "route_id": "R1",
+            "direction_id": "0",
+            "speed_mps": speed_mps,
+        }],
         "trip_predictions": predictions,
         "safety": safety_payload,
         "parking": parking_payload,
@@ -200,6 +206,27 @@ def test_direct_journey_uses_concrete_trip_prediction() -> None:
     assert journey["eta_status"] == "REALTIME_TRIP_PREDICTION"
     assert journey["legs"][1]["trip_id"] == "trip-1"
     assert journey["legs"][2]["predicted_arrival"]
+
+
+def test_recent_retained_prediction_is_not_labeled_live() -> None:
+    journey = _realtime_test_engine(
+        transfer=False,
+        transit_status="retained",
+    ).plan("A", "X", "FASTEST")["alternatives"][0]
+
+    assert journey["eta_status"] == "RECENT_CACHED_PREDICTION"
+    assert journey["legs"][2]["timing_status"] == "RECENT_CACHED_PREDICTION"
+
+
+def test_route_speed_keeps_real_slowdown_below_old_floor() -> None:
+    journey = _realtime_test_engine(
+        transfer=False,
+        speed_mps=1.25,
+    ).plan("A", "X", "BALANCED")["alternatives"][0]
+
+    movement = journey["disruption_analysis"][0]
+    assert movement["current_speed_mph"] == pytest.approx(2.8, abs=0.1)
+    assert movement["movement_status"] == "SLOWER_THAN_COMPARISON"
 
 
 def test_transfer_uses_two_trips_and_calculates_catch_slack() -> None:

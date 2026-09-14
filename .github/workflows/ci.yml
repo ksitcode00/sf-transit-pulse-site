@@ -54,6 +54,8 @@ jobs:
         run: |
           python -m json.tool site/data/network.json > /dev/null
           python -m json.tool site/data/latest.json > /dev/null
-          if [ -f site/data/refresh-health.json ]; then
-            python -m json.tool site/data/refresh-health.json > /dev/null
-          fi
+          python -m json.tool site/data/live-transit.json > /dev/null
+          python -m json.tool site/data/alerts-roads.json > /dev/null
+          python -m json.tool site/data/parking-context.json > /dev/null
+          python -m json.tool site/data/safety-context.json > /dev/null
+          python -m json.tool site/data/refresh-health.json > /dev/null

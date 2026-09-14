@@ -25,7 +25,7 @@ const PARKING_MIN_MATCH_COVERAGE = 0.70;
 const SAFETY_MIDPOINT_PERCENTILE = 50;
 const BALANCED_SAFETY_MIN_PER_POINT = 0.03;
 const SAFETY_FIRST_MIN_PER_POINT = 0.15;
-const ENGINE_VERSION = "25B-browser-1.5";
+const ENGINE_VERSION = "25B-browser-1.6";
 const ROUTE_COLORS = ["#0066cc", "#34a853"];
 
 const HEALTH_SEVERITY = {
@@ -207,6 +207,7 @@ export class BrowserPlannerEngine {
     this.realtime = realtime;
     const sourceStatus = realtime.meta?.source_status || {};
     this.sourceStatus = sourceStatus;
+    this.transitSourceStatus = String(sourceStatus.transit?.status || "live").toLowerCase();
     this.transitObservedEpoch = epochSeconds(sourceStatus.transit?.observed_at)
       ?? epochSeconds(realtime.meta?.generated_at);
     this.alertsObservedEpoch = epochSeconds(sourceStatus.alerts?.observed_at)
@@ -285,6 +286,12 @@ export class BrowserPlannerEngine {
     return this.sourceIsFresh(observedEpoch, TRIP_PREDICTION_MAX_AGE_SEC, referenceEpoch);
   }
 
+  concreteTimingStatus() {
+    return this.transitSourceStatus.startsWith("retained")
+      ? "RECENT_CACHED_PREDICTION"
+      : "REALTIME_TRIP_PREDICTION";
+  }
+
   buildVehicleSpeeds() {
     const grouped = new Map();
     for (const row of this.realtime.vehicles || []) {
@@ -294,12 +301,14 @@ export class BrowserPlannerEngine {
         : null;
       if (!this.sourceIsFresh(observedEpoch, VEHICLE_MAX_AGE_SEC)) continue;
       const speedMps = Number(row.speed_mps);
-      if (!Number.isFinite(speedMps) || speedMps < 1) continue;
+      // Filter implausible points per vehicle. Do not clamp the route median:
+      // a real 2.8 mph slowdown must remain 2.8 mph, not become 5 mph.
+      if (!Number.isFinite(speedMps) || speedMps < 1 || speedMps > 22.35) continue;
       const key = `${String(row.route_id)}|${String(row.direction_id)}`;
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key).push(speedMps * 2.23694);
     }
-    return new Map([...grouped].map(([key, values]) => [key, Math.max(5, Math.min(18, median(values))) ]));
+    return new Map([...grouped].map(([key, values]) => [key, median(values)]));
   }
 
   buildPredictedTrips() {
@@ -730,7 +739,7 @@ export class BrowserPlannerEngine {
     const trip = realtimeTrip?.trip || null;
     const waitMin = realtimeTrip ? Math.max(0, (realtimeTrip.board_epoch - planningEpoch - originWalkMin * 60) / 60) : this.waitMinutes(pattern);
     const rideMin = realtimeTrip ? (realtimeTrip.alight_epoch - realtimeTrip.board_epoch) / 60 : this.rideMinutes(pattern, boardIndex, alightIndex);
-    const etaStatus = realtimeTrip ? "REALTIME_TRIP_PREDICTION" : "ESTIMATED";
+    const etaStatus = realtimeTrip ? this.concreteTimingStatus() : "ESTIMATED";
     const walkingMin = originWalkMin + destinationWalkMin;
     const etaMin = walkingMin + waitMin + rideMin;
     const reliability = this.reliability([pattern]);
@@ -812,7 +821,10 @@ export class BrowserPlannerEngine {
     const transferBuffer = secondPrediction
       ? (secondPrediction.board_epoch - transferWalkCompleteEpoch - BOARDING_BUFFER_MIN * 60) / 60
       : secondWait - BOARDING_BUFFER_MIN;
-    const etaStatus = secondPrediction ? "REALTIME_TRIP_PREDICTION" : firstPrediction ? "MIXED_REALTIME" : "ESTIMATED";
+    const concreteTimingStatus = this.concreteTimingStatus();
+    const etaStatus = secondPrediction ? concreteTimingStatus
+      : firstPrediction ? (concreteTimingStatus === "RECENT_CACHED_PREDICTION" ? "MIXED_CACHED" : "MIXED_REALTIME")
+      : "ESTIMATED";
     const walkingMin = originWalkMin + transferWalkMin + destinationWalkMin;
     const etaMin = walkingMin + firstWait + firstRide + secondWait + secondRide;
     const reliability = this.reliability([first, second]);
@@ -838,7 +850,11 @@ export class BrowserPlannerEngine {
       transfer: {
         from_stop: publicStop(firstAlight), to_stop: publicStop(secondBoard), walk_min: round(transferWalkMin, 1),
         catch_slack_min: round(transferBuffer, 1), estimated_buffer_min: round(transferBuffer, 1),
-        catchability, basis: secondPrediction ? "Concrete GTFS-RT arrival and departure predictions for both trips." : "Estimated from route headway evidence; not a guaranteed connection.",
+        catchability, basis: secondPrediction
+          ? (concreteTimingStatus === "RECENT_CACHED_PREDICTION"
+            ? "Recent cached GTFS-RT predictions for both trips."
+            : "Concrete GTFS-RT arrival and departure predictions for both trips.")
+          : "Estimated from route headway evidence; not a guaranteed connection.",
         timing_status: etaStatus,
         first_trip_arrival: firstPrediction ? new Date(firstPrediction.alight_epoch * 1000).toISOString() : null,
         ready_to_board_at: transferWalkCompleteEpoch == null ? null : new Date((transferWalkCompleteEpoch + BOARDING_BUFFER_MIN * 60) * 1000).toISOString(),
@@ -852,11 +868,11 @@ export class BrowserPlannerEngine {
       },
       legs: [
         {type: "WALK", from: publicStop(origin), to: publicStop(firstBoard), duration_min: round(originWalkMin, 1), distance_m: round(originWalkM)},
-        {type: "WAIT", at: publicStop(firstBoard), duration_min: round(firstWait, 1), route_id: first.route_id, trip_id: firstTrip?.trip_id || null, predicted_departure: firstPrediction ? new Date(firstPrediction.board_epoch * 1000).toISOString() : null, timing_status: firstPrediction ? "REALTIME_TRIP_PREDICTION" : "ESTIMATED"},
-        {type: "RIDE", route_id: first.route_id, direction_id: first.direction_id, direction_label: first.direction_label, headsign: first.headsign, from: publicStop(firstBoard), to: publicStop(firstAlight), duration_min: round(firstRide, 1), stop_count: firstAlightIndex - firstBoardIndex, trip_id: firstTrip?.trip_id || null, vehicle_id: firstTrip?.vehicle_id || null, predicted_departure: firstPrediction ? new Date(firstPrediction.board_epoch * 1000).toISOString() : null, predicted_arrival: firstPrediction ? new Date(firstPrediction.alight_epoch * 1000).toISOString() : null, timing_status: firstPrediction ? "REALTIME_TRIP_PREDICTION" : "ESTIMATED", disruption: firstDisruption},
+        {type: "WAIT", at: publicStop(firstBoard), duration_min: round(firstWait, 1), route_id: first.route_id, trip_id: firstTrip?.trip_id || null, predicted_departure: firstPrediction ? new Date(firstPrediction.board_epoch * 1000).toISOString() : null, timing_status: firstPrediction ? concreteTimingStatus : "ESTIMATED"},
+        {type: "RIDE", route_id: first.route_id, direction_id: first.direction_id, direction_label: first.direction_label, headsign: first.headsign, from: publicStop(firstBoard), to: publicStop(firstAlight), duration_min: round(firstRide, 1), stop_count: firstAlightIndex - firstBoardIndex, trip_id: firstTrip?.trip_id || null, vehicle_id: firstTrip?.vehicle_id || null, predicted_departure: firstPrediction ? new Date(firstPrediction.board_epoch * 1000).toISOString() : null, predicted_arrival: firstPrediction ? new Date(firstPrediction.alight_epoch * 1000).toISOString() : null, timing_status: firstPrediction ? concreteTimingStatus : "ESTIMATED", disruption: firstDisruption},
         {type: "WALK", from: publicStop(firstAlight), to: publicStop(secondBoard), duration_min: round(transferWalkMin, 1), distance_m: round(transferM), transfer: true},
-        {type: "WAIT", at: publicStop(secondBoard), duration_min: round(secondWait, 1), route_id: second.route_id, trip_id: secondTrip?.trip_id || null, predicted_departure: secondPrediction ? new Date(secondPrediction.board_epoch * 1000).toISOString() : null, catch_slack_min: round(transferBuffer, 1), estimated_buffer_min: round(transferBuffer, 1), timing_status: secondPrediction ? "REALTIME_TRIP_PREDICTION" : "ESTIMATED"},
-        {type: "RIDE", route_id: second.route_id, direction_id: second.direction_id, direction_label: second.direction_label, headsign: second.headsign, from: publicStop(secondBoard), to: publicStop(finalAlight), duration_min: round(secondRide, 1), stop_count: finalAlightIndex - secondBoardIndex, trip_id: secondTrip?.trip_id || null, vehicle_id: secondTrip?.vehicle_id || null, predicted_departure: secondPrediction ? new Date(secondPrediction.board_epoch * 1000).toISOString() : null, predicted_arrival: secondPrediction ? new Date(secondPrediction.alight_epoch * 1000).toISOString() : null, timing_status: secondPrediction ? "REALTIME_TRIP_PREDICTION" : "ESTIMATED", disruption: secondDisruption},
+        {type: "WAIT", at: publicStop(secondBoard), duration_min: round(secondWait, 1), route_id: second.route_id, trip_id: secondTrip?.trip_id || null, predicted_departure: secondPrediction ? new Date(secondPrediction.board_epoch * 1000).toISOString() : null, catch_slack_min: round(transferBuffer, 1), estimated_buffer_min: round(transferBuffer, 1), timing_status: secondPrediction ? concreteTimingStatus : "ESTIMATED"},
+        {type: "RIDE", route_id: second.route_id, direction_id: second.direction_id, direction_label: second.direction_label, headsign: second.headsign, from: publicStop(secondBoard), to: publicStop(finalAlight), duration_min: round(secondRide, 1), stop_count: finalAlightIndex - secondBoardIndex, trip_id: secondTrip?.trip_id || null, vehicle_id: secondTrip?.vehicle_id || null, predicted_departure: secondPrediction ? new Date(secondPrediction.board_epoch * 1000).toISOString() : null, predicted_arrival: secondPrediction ? new Date(secondPrediction.alight_epoch * 1000).toISOString() : null, timing_status: secondPrediction ? concreteTimingStatus : "ESTIMATED", disruption: secondDisruption},
         {type: "WALK", from: publicStop(finalAlight), to: publicStop(destination), duration_min: round(destinationWalkMin, 1), distance_m: round(destinationWalkM)}
       ],
       map: {
@@ -1003,6 +1019,9 @@ export class BrowserPlannerEngine {
         calculated_at: new Date().toISOString(),
         calculation_basis: "Cached GTFS route-direction patterns plus the latest credential-free realtime snapshot; calculated in this browser.",
         eta_status: selected.eta_status,
+        transit_source_status: this.transitSourceStatus,
+        transit_prediction_basis: selected.eta_status === "RECENT_CACHED_PREDICTION"
+          || selected.eta_status === "MIXED_CACHED" ? "RECENT_CACHE" : "LIVE_OR_ESTIMATED",
         trip_prediction_count: [...this.predictedTrips.values()].reduce((sum, rows) => sum + rows.length, 0),
         safety_status: this.safetyDistribution.length ? "JOURNEY_RELATIVE_CONTEXT" : "CITY_CONTEXT_ONLY",
         execution: "BROWSER_WEB_WORKER",
@@ -1010,6 +1029,7 @@ export class BrowserPlannerEngine {
           realtime_generated_at: this.realtime.meta?.generated_at || null,
           realtime_status: this.realtime.meta?.status || null,
           transit_realtime_usable: this.transitIsFresh(planningEpoch),
+          transit_prediction_usable: this.transitIsFresh(planningEpoch),
           trip_prediction_max_age_seconds: TRIP_PREDICTION_MAX_AGE_SEC,
           service_context_max_age_seconds: SERVICE_CONTEXT_MAX_AGE_SEC,
           road_context_usable: this.sourceIsUsable("roads")

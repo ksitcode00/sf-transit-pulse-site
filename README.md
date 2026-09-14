@@ -41,7 +41,7 @@ The project follows one end-to-end production-style path:
 
 | System layer | What it does | Why it matters |
 |---|---|---|
-| Live ingestion | Scheduled jobs collect vehicle positions, trip predictions, alerts, road events, paid-parking activity, and historical incident records. | The public site works without the author running a Notebook or computer. |
+| Scheduled ingestion | Scheduled jobs collect vehicle positions, trip predictions, alerts, road events, the latest available paid-parking activity, and historical incident records. | The public site works without the author running a Notebook or computer. |
 | Cache and freshness | Credential-free files are split by update cadence. A second workflow checks whether transit observations are actually current and recovers stale snapshots. | A successful script run cannot disguise an old transit feed. |
 | Route diagnostics | Vehicles, headways, bunching, long gaps, and service health are calculated by route and direction. | A problem in one direction does not incorrectly label the other direction. |
 | Realtime candidate generation | The planner keeps every stop inside the 250 m access radius and every feasible transfer pair until concrete trips are evaluated. | Static walking distance cannot discard an 11th nearby stop or a ninth transfer option when it catches the fastest real trip. |
@@ -75,7 +75,7 @@ Each row explains the rider need, the implementation's practical value, and an e
 | Balanced | Considers ETA, walking, transfers, current spacing, and a small penalty only for historical context above the 50th percentile of all Muni stops. | A slightly slower direct option may rank above a trip with more walking, a transfer, or a clearly higher historical report context. | Live, default mode |
 | Safety-first | Compares deduplicated 30-, 90-, and 365-day reports against all Muni stops. Direct trips use 45/40/15 origin-route-destination weights; transfers use 20/35/30/15 origin-route-transfer-destination weights. | Use past area context as one extra input for a night trip. It is not a personal safety prediction. | Research beta · method 3.0 |
 | Option A vs Option B | Places any two displayed routes side by side with ETA, evidence level, walking, transfers, connection slack, reliability, historical context, and street context. | Compare a faster tight transfer with a steadier direct route without switching cards repeatedly. | Live beta |
-| Destination parking pressure | Combines meter inventory and recent paid sessions as a relative signal. If fewer than 70% of sessions match mapped meters, it withholds high/low labels. It is not occupancy or open-space availability. | Check whether paid activity near Mission is rising; if source coverage drops, read the evidence count without an overstated rating. | Research beta |
+| Destination parking activity | Combines meter inventory and the latest available paid sessions as a relative signal. If the newest source record is over three hours old, or fewer than 70% of sessions match mapped meters, it withholds high/low labels. It is not occupancy or open-space availability. | Check whether recent paid activity near Mission is rising; when DataSF is delayed, the app shows the source age instead of calling it realtime. | Research beta |
 | Freshness and failure labels | Each source distinguishes current, retained, outdated, and unavailable. “No events” appears only after a usable source returns no matching events. | If street data fails, the app says it is unavailable instead of implying the road is clear. | Live |
 | Stable auto-refresh | A route structure has a stable itinerary ID, while its concrete vehicle run has a separate trip-instance ID. New snapshots recalculate the request without making the open option jump. | The next 38R trip can replace the prior trip while the rider stays on the same 38R itinerary card. | Live |
 | Mobile recommendation bar | Keeps the selected route and a 44-pixel trip button within reach on narrow screens; comparison cards collapse to one column. | Check the chosen trip one-handed while walking to a stop. | Live beta |
@@ -139,6 +139,7 @@ The v1 planner intentionally supports at most one transfer. Corridor-specific hi
 
 - A leg is live only when one concrete trip has valid predictions at both stops. Otherwise it is estimated.
 - A live transfer needs complete predictions for both trips. Incomplete evidence falls back to a headway estimate.
+- A failed 511 refresh may retain predictions for up to 10 minutes. They remain usable but are labeled “Recent cached prediction,” never “Live prediction.”
 - Missing live information does not mean a route has stopped running.
 - An unavailable street-event source does not mean there are no disruptions.
 - A nearby road event and a slowdown are context, not proof that one caused the other.
@@ -167,7 +168,7 @@ The v1 planner intentionally supports at most one transfer. Corridor-specific hi
   candidate generation -> three rankings -> explanation
 ```
 
-Core vehicle positions and trip predictions are scheduled every five minutes. Service and road context refresh every 15 minutes, parking every 30 minutes, and safety plus static GTFS daily. The core plan uses an estimated 32 of the default 60 hourly 511 requests, leaving a 28-request margin. A separate 15-minute watchdog compares both `generated_at` and the underlying transit `observed_at`; when either is more than 12 minutes old, it performs a recovery refresh. Predictions older than 10 minutes automatically become estimates.
+Core vehicle positions and trip predictions are scheduled every five minutes. Service and road context refresh every 15 minutes, parking every 30 minutes, and safety plus static GTFS daily. The core plan uses an estimated 32 of the default 60 hourly 511 requests, leaving a 28-request margin. A separate 15-minute watchdog compares both `generated_at` and the underlying transit `observed_at`; when either is more than 12 minutes old, it performs a recovery refresh. Predictions older than 10 minutes automatically become estimates. The road feed records raw and parsed event counts; an unknown payload schema is marked unavailable instead of being presented as zero events.
 
 User searches do not call 511 and do not need Render. `SF_TRANSIT_511_API_KEY` belongs only in the encrypted GitHub Actions Secret. It must not appear in code, browser storage, Notebook output, or public data files.
 
@@ -175,7 +176,7 @@ User searches do not call 511 and do not need Render. `SF_TRANSIT_511_API_KEY` b
 
 The checked-in public snapshot verified on 2026-09-14 contained 347 reported vehicle positions, 149 predicted trips, 31 route-direction rows across 18 routes, and five service notices. Counts naturally change with service and feed availability; the page displays the current values rather than hard-coding these numbers.
 
-- The frequently refreshed transit file is about 0.5 MB; slower road, parking, safety, and static-network data are separate, so the browser does not repeatedly download the full legacy snapshot.
+- The frequently refreshed transit file is about 0.5 MB; slower road, parking, safety, and static-network data are separate. The roughly 2 MB safety context loads only when a rider compares a journey or opens the context section, so it does not block the first Network screen.
 - A rolling `refresh-health.json` keeps up to 288 attempts, including script gaps, transit observation gaps, and source age at each refresh.
 - Realtime evidence expires after 10 minutes. Alerts and road context expire after 30 minutes; parking context after three hours.
 - Regression tests cover an 11th nearby stop, a ninth transfer, stable itinerary identity, unavailable road data, and context-file failure recovery.
