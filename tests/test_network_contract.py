@@ -284,6 +284,7 @@ def test_browser_snapshot_loader_keeps_core_transit_when_context_fails() -> None
 
     assert "Promise.allSettled" in script
     assert 'status: snapshot ? "retained_client_cache" : "unavailable"' in script
+    assert "Using the latest successful update" in script
 
 
 def test_road_event_without_transit_match_remains_explicit_context() -> None:

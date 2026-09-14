@@ -113,7 +113,7 @@ const appState = {
 function plannerWorkerCall(type, payload = {}) {
   if (!window.Worker) return Promise.reject(new Error("This browser does not support background route planning."));
   if (!plannerWorker) {
-    plannerWorker = new Worker("planner-worker.js?v=31", {type: "module"});
+    plannerWorker = new Worker("planner-worker.js?v=32", {type: "module"});
     plannerWorker.addEventListener("message", event => {
       const request = plannerWorkerRequests.get(event.data?.id);
       if (!request) return;
@@ -196,10 +196,15 @@ function sourceFreshnessDisplay(source, maxAgeMinutes, observedAt = source?.obse
     className: "freshness-outdated"
   };
   const result = freshnessDisplay(observedAt, maxAgeMinutes);
-  if (String(source?.status || "").toLowerCase() === "retained_client_cache") {
+  const status = String(source?.status || "").toLowerCase();
+  if (status === "retained_client_cache") {
     result.text = language === "zh"
       ? `使用上一次已载入的数据 · ${result.text}`
       : `Using the last loaded copy · ${result.text}`;
+  } else if (status.startsWith("retained")) {
+    result.text = language === "zh"
+      ? `沿用上一次成功更新 · ${result.text}`
+      : `Using the latest successful update · ${result.text}`;
   }
   return result;
 }
@@ -372,10 +377,13 @@ function renderMeta() {
   const unavailableSources = Object.entries(meta.source_status || {})
     .filter(([, source]) => sourceStatusUnavailable(source))
     .map(([name]) => name);
+  const retainedSources = Object.values(meta.source_status || {})
+    .filter(source => String(source?.status || "").toLowerCase().startsWith("retained"));
   const sourceCheckMessage = transitStale && transit.isLive
     ? (language === "zh" ? "最新公交数据已超过 10 分钟，因此不会用于实时到站或当前车速判断。" : "The latest transit data is more than 10 minutes old, so it is not used for live arrivals or current speed.")
     : failures.length || unavailableSources.length ?
-    (language === "zh" ? `${Math.max(failures.length, unavailableSources.length)} 项数据暂时无法更新。页面不会把“没拿到数据”说成“没有事件”。` : `${Math.max(failures.length, unavailableSources.length)} data source${Math.max(failures.length, unavailableSources.length) === 1 ? " is" : "s are"} temporarily unavailable. Missing data is not presented as “no events.”`) :
+    (language === "zh" ? `${Math.max(failures.length, unavailableSources.length)} 项数据暂时无法更新。页面不会把“没拿到数据”说成“没有事件”。` : `${Math.max(failures.length, unavailableSources.length)} data source${Math.max(failures.length, unavailableSources.length) === 1 ? " is" : "s are"} temporarily unavailable. Missing data is not presented as “no events.”`) : retainedSources.length ?
+    (language === "zh" ? "公交数据已更新；更新较慢的来源沿用上一次成功结果，并按各自时间判断是否还能使用。" : "Transit is updated. Slower sources use their latest successful update and remain subject to their own freshness limits.") :
     (language === "zh" ? "本次更新已成功检查所有已连接的数据。" : "All connected data sources were checked successfully.");
   const unassignedCount = vehicleCoverage().unassigned.length;
   const unassignedMessage = unassignedCount ? (language === "zh"
