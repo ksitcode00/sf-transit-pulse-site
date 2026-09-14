@@ -9,7 +9,7 @@
   <title>SF Transit Pulse</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=37">
 </head>
 <body>
   <a class="skip-link" href="#main" data-i18n="skipToMuni">Skip to Muni updates</a>
@@ -44,20 +44,52 @@
   <main id="main">
     <section class="hero" id="top">
       <div class="hero-copy">
-        <p class="eyebrow" data-i18n="eyebrow">San Francisco Muni · Latest updates</p>
-        <h1 data-i18n="heroTitle">Know your next move.</h1>
-        <p class="hero-lead" data-i18n="heroLead">See where vehicles are, spot longer waits, and compare routes before you leave.</p>
+        <p class="eyebrow" data-i18n="eyebrow">SF Transit Pulse</p>
+        <h1 data-i18n="heroTitle">Know what to take. Know why.</h1>
+        <p class="hero-lead" data-i18n="heroLead">Live Muni reliability and explainable journey recommendations.</p>
         <div class="hero-actions">
           <a class="primary-button large" href="#journey" data-i18n="planJourney">Plan a trip</a>
-          <a class="secondary-button large" href="#network" data-i18n="viewNetwork">Check Muni now</a>
-          <a class="secondary-button large" href="#method" data-i18n="howWorks">See how results are made</a>
+          <a class="hero-text-link" href="#network" data-i18n="viewNetwork">Explore Muni →</a>
         </div>
       </div>
-      <div class="hero-metrics" aria-live="polite">
+      <div class="hero-visual" aria-label="A simplified Muni route with vehicle and service-gap markers">
+        <svg class="hero-route-art" viewBox="0 0 620 420" role="img" aria-hidden="true">
+          <path class="hero-street" d="M38 92 C166 22 242 152 334 106 S492 62 584 126"/>
+          <path class="hero-street" d="M52 310 C152 246 226 330 304 278 S468 222 570 290"/>
+          <path class="hero-street" d="M124 34 C174 132 116 224 174 386"/>
+          <path class="hero-route-line" d="M62 330 C142 278 166 204 230 188 S338 236 394 166 S492 104 558 82"/>
+          <circle class="hero-vehicle" cx="112" cy="292" r="9"/><circle class="hero-vehicle" cx="236" cy="189" r="9"/>
+          <circle class="hero-vehicle" cx="393" cy="167" r="9"/><circle class="hero-vehicle" cx="548" cy="89" r="9"/>
+          <circle class="hero-gap" cx="316" cy="202" r="15"/><path class="hero-gap-mark" d="M316 194v9m0 7v1"/>
+        </svg>
+        <div class="hero-metrics" aria-live="polite">
         <article><span id="vehicle-count">—</span><small id="vehicle-count-label">live vehicles matched to a route</small></article>
-        <article><span id="unassigned-count">—</span><small id="unassigned-count-label">live positions not assigned to a route</small></article>
-        <article><span id="route-count">—</span><small id="route-count-label">routes reporting right now</small></article>
         <article><span id="issue-count">—</span><small id="issue-count-label">directions with possible longer waits</small></article>
+        <article hidden><span id="unassigned-count">—</span><small id="unassigned-count-label">live positions not assigned to a route</small></article>
+        <article hidden><span id="route-count">—</span><small id="route-count-label">routes reporting right now</small></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="product-highlights" aria-labelledby="highlights-title">
+      <div class="story-heading">
+        <p class="eyebrow" data-i18n="highlightsEyebrow">Beyond a single ETA</p>
+        <h2 id="highlights-title" data-i18n="highlightsTitle">See what an ETA alone can miss.</h2>
+      </div>
+      <div class="highlight-rail">
+        <article><span>01</span><h3 data-i18n="highlightDirection">Direction health</h3><p data-i18n="highlightDirectionBody">Check each direction separately for uneven spacing and longer waits.</p></article>
+        <article><span>02</span><h3 data-i18n="highlightTransfer">Can you catch the transfer?</h3><p data-i18n="highlightTransferBody">See the expected connection buffer when two concrete trips are available.</p></article>
+        <article><span>03</span><h3 data-i18n="highlightWhy">Why this route?</h3><p data-i18n="highlightWhyBody">Open the evidence only when you want to understand the recommendation.</p></article>
+      </div>
+    </section>
+
+    <section class="decision-story" aria-labelledby="decision-story-title">
+      <p class="eyebrow" data-i18n="decisionStoryEyebrow">A useful tradeoff</p>
+      <h2 id="decision-story-title" data-i18n="decisionStoryTitle">Fastest isn't always the easiest trip.</h2>
+      <div class="decision-comparison">
+        <article><span data-i18n="storyFastest">FASTEST</span><strong>28 min</strong><p data-i18n="storyFastMeta">8 min walk · 1 transfer · Watch</p></article>
+        <div><strong>+3 min</strong><p data-i18n="decisionStoryMiddle">Less walking. No transfer. Steadier service.</p></div>
+        <article class="recommended"><span data-i18n="storyBalanced">BALANCED</span><strong>31 min</strong><p data-i18n="storyBalancedMeta">3 min walk · Direct · Stable</p></article>
       </div>
     </section>
 
@@ -102,10 +134,11 @@
           </div>
           <div class="map-caption">
             <span id="map-label">All vehicles with current locations</span>
-            <span data-i18n="mapHint">The map updates when you choose a route or direction.</span>
+            <button class="map-detail-button" id="route-detail-toggle" type="button" aria-controls="route-focus" aria-expanded="false" data-i18n="viewRouteDetails">View details →</button>
           </div>
         </div>
-        <aside class="route-focus" id="route-focus" aria-live="polite">
+        <aside class="route-focus" id="route-focus" aria-live="polite" hidden>
+          <button class="drawer-close" id="route-detail-close" type="button" aria-label="Close route details">×</button>
           <p class="eyebrow" data-i18n="routePulse">What's happening</p>
           <h3 id="focus-route-name">All Muni routes</h3>
           <p class="focus-status" id="focus-route-status">Loading the latest Muni update.</p>
@@ -116,18 +149,21 @@
       </div>
 
       <div class="route-list-header">
-        <h3 data-i18n="routeOverview">Routes with the clearest live picture</h3>
+        <h3 data-i18n="routeOverview">Routes needing attention</h3>
         <p data-i18n="directionNote">Each direction can run differently, so we check them separately.</p>
       </div>
       <div class="route-grid" id="route-grid" aria-live="polite"></div>
+      <button class="text-action route-grid-toggle" id="route-grid-toggle" type="button" aria-expanded="false" data-i18n="viewAllRoutes">View all routes →</button>
     </section>
 
     <section class="section dark" id="disruptions">
-      <div class="dark-heading">
+      <details class="disruption-details">
+      <summary class="dark-heading">
         <p class="eyebrow" data-i18n="streetsService">What may affect your ride</p>
         <h2 data-i18n="explainWhy">See service and street updates together.</h2>
         <p data-i18n="causalityNote">A street event near a route may affect service, but it does not prove what caused a delay.</p>
-      </div>
+        <span class="details-action" data-i18n="openUpdates">Open updates ＋</span>
+      </summary>
       <div class="dark-columns">
         <div>
           <h3 data-i18n="serviceNotices">Muni service updates</h3>
@@ -138,6 +174,7 @@
           <div class="event-list" id="road-list"></div>
         </div>
       </div>
+      </details>
     </section>
 
     <section class="section parchment" id="journey">
@@ -195,10 +232,31 @@
       </form>
       <button class="text-action example-trip-button" id="example-trip-button" type="button" data-i18n="tryExample">Try a sample trip</button>
       <div class="planner-status" id="planner-status" role="status"></div>
+      <div class="journey-loading" id="journey-loading" hidden aria-live="polite">
+        <strong data-i18n="findingOptions">Finding your best options…</strong>
+        <div class="loading-checks">
+          <span data-i18n="loadingTrips">Feasible Muni trips</span><span data-i18n="loadingPredictions">Current predictions</span>
+          <span data-i18n="loadingTransfers">Transfers</span><span data-i18n="loadingReliability">Route reliability</span>
+        </div>
+      </div>
       <div class="planner-update-notice" id="planner-update-notice" role="status" aria-live="polite" hidden></div>
-      <p class="journey-od" id="journey-od">Select two stops to begin.</p>
+      <p class="journey-od" id="journey-od" hidden>Select two stops to begin.</p>
 
-      <div class="mode-grid" id="mode-grid"></div>
+      <section class="journey-recommendation" id="journey-recommendation" hidden aria-live="polite">
+        <div>
+          <p class="eyebrow" id="recommendation-mode">Recommended</p>
+          <h3 id="recommendation-route">—</h3>
+          <p class="recommendation-eta" id="recommendation-eta">—</p>
+          <p class="recommendation-arrival" id="recommendation-arrival">—</p>
+        </div>
+        <div class="recommendation-reasons" id="recommendation-reasons"></div>
+        <div class="recommendation-actions">
+          <button class="primary-button" id="why-route-button" type="button" aria-controls="journey-evidence" aria-expanded="false" data-i18n="whyRoute">Why this route?</button>
+          <button class="text-action" id="explore-trip-button" type="button" data-i18n="exploreTrip">Explore full trip →</button>
+        </div>
+      </section>
+
+      <div class="mode-grid" id="mode-grid" hidden aria-label="Choose ranking preference"></div>
 
       <div class="journey-workspace" id="journey-workspace" hidden>
         <div class="map-shell journey-map-shell">
@@ -216,7 +274,11 @@
         </article>
       </div>
 
-      <div class="journey-evidence-grid" id="journey-evidence" hidden>
+      <div class="journey-evidence-grid evidence-drawer" id="journey-evidence" hidden role="dialog" aria-modal="true" aria-labelledby="why-drawer-title">
+        <div class="drawer-heading">
+          <div><p class="eyebrow" data-i18n="recommendationEvidence">Recommendation evidence</p><h2 id="why-drawer-title" data-i18n="whyRoute">Why this route?</h2></div>
+          <button class="drawer-close" id="why-route-close" type="button" aria-label="Close recommendation evidence">×</button>
+        </div>
         <article class="journey-evidence-card">
           <p class="eyebrow" data-i18n="journeyReliability">How steady is this trip?</p>
           <h3 id="journey-reliability-status">—</h3>
@@ -234,21 +296,23 @@
         </article>
       </div>
 
-      <div class="alternatives-panel">
+      <div class="alternatives-panel" id="alternatives-panel" hidden>
         <div>
           <p class="eyebrow" data-i18n="alternatives">Other routes</p>
           <h3 data-i18n="tradeoffs">Compare time, walking, and transfers.</h3>
         </div>
         <div class="alternatives-list" id="alternatives-list"></div>
+        <button class="secondary-button comparison-open" id="comparison-open" type="button" aria-controls="comparison-panel" aria-expanded="false" data-i18n="compareTwo">Compare two options</button>
       </div>
 
-      <section class="comparison-panel" id="comparison-panel" aria-labelledby="comparison-title" hidden>
+      <section class="comparison-panel" id="comparison-panel" role="dialog" aria-modal="true" aria-labelledby="comparison-title" hidden>
         <div class="comparison-heading">
           <div>
-            <p class="eyebrow">Option A vs Option B</p>
-            <h3 id="comparison-title">Compare two routes side by side</h3>
+            <p class="eyebrow" data-i18n="comparisonEyebrow">Option A vs Option B</p>
+            <h3 id="comparison-title" data-i18n="comparisonTitle">Compare two routes side by side</h3>
           </div>
-          <p id="comparison-help">Choose any two options to see the tradeoffs without switching back and forth.</p>
+          <p id="comparison-help" data-i18n="comparisonHelp">Choose any two options to see the tradeoffs without switching back and forth.</p>
+          <button class="drawer-close" id="comparison-close" type="button" aria-label="Close comparison">×</button>
         </div>
         <div class="comparison-pickers">
           <label><span id="comparison-a-label">Option A</span><select id="comparison-a"></select></label>
@@ -271,27 +335,32 @@
         </div>
       </div>
       <div class="context-grid">
-        <article class="context-card">
+        <article class="context-card data-quality-card">
           <span class="context-index">01</span>
-          <h3 data-i18n="parkingDemand">Recent parking activity</h3>
-          <p class="context-value" id="parking-status">Loading…</p>
-          <p id="parking-detail">Recent paid-session activity is compared with the feed's own timestamp.</p>
-        </article>
-        <article class="context-card">
-          <span class="context-index">02</span>
-          <h3 data-i18n="safetyContext">Historical incident context</h3>
-          <p class="context-value" id="safety-status">Loading…</p>
-          <p id="safety-detail">Historical records only compare past conditions across areas. They do not predict crime or label a place safe or unsafe.</p>
-        </article>
-        <article class="context-card">
-          <span class="context-index">03</span>
-          <h3 data-i18n="dataQuality">How current is this data?</h3>
+          <h3 data-i18n="freshnessFeature">Old data doesn't stay “live.”</h3>
           <p class="context-value" id="quality-status">Checking…</p>
           <div class="freshness-list" id="source-freshness"></div>
           <p id="quality-detail">Every source publishes freshness and failure state instead of silently substituting stale data.</p>
         </article>
+        <details class="context-card safety-context-card">
+          <summary>
+            <span class="context-index">02</span>
+            <h3 data-i18n="safetyContext">Historical incident context</h3>
+            <p class="context-value" id="safety-status">Loading…</p>
+            <span class="context-disclosure" data-i18n="safetyExpand">Read what this can—and cannot—tell you</span>
+          </summary>
+          <p id="safety-detail">Historical records only compare past conditions across areas. They do not predict crime or label a place safe or unsafe.</p>
+        </details>
+        <article class="context-card parking-context-card">
+          <span class="context-index">03</span>
+          <h3 data-i18n="parkingDemand">Recent parking activity</h3>
+          <p class="context-value" id="parking-status">Loading…</p>
+          <p id="parking-detail">Recent paid-session activity is compared with the feed's own timestamp.</p>
+        </article>
       </div>
     </section>
+
+    <div class="ui-scrim" id="ui-scrim" hidden></div>
 
     <section class="section method" id="method">
       <div class="method-copy">
@@ -304,7 +373,7 @@
         <li><span>1</span><div><strong data-i18n="observe">Collect current updates</strong><p data-i18n="observeBody">Check vehicle locations, arrival estimates, service notices, route paths, and when each source was updated.</p></div></li>
         <li><span>2</span><div><strong data-i18n="diagnose">Check each route direction</strong><p data-i18n="diagnoseBody">Look for steady vehicle spacing, vehicles too close together, long waits, and limited live data in each direction.</p></div></li>
         <li><span>3</span><div><strong data-i18n="build">Build trips you may be able to make</strong><p data-i18n="buildBody">Compare direct and one-transfer trips. When complete live predictions are available, check whether two specific trips connect; otherwise label the time as an estimate.</p></div></li>
-        <li><span>4</span><div><strong data-i18n="compare">Compare what matters to you</strong><p data-i18n="compareBody">Fastest favors time. Balanced weighs time, steady service, walking, transfers, and only large historical differences. Safety-first gives those historical differences more weight.</p></div></li>
+        <li><span>4</span><div><strong data-i18n="compare">Compare what matters to you</strong><p data-i18n="compareBody">Fastest favors time. Balanced weighs time, steady service, walking, transfers, and only large historical differences. Historical context gives those past differences more weight.</p></div></li>
         <li><span>5</span><div><strong data-i18n="explain">Explain the recommendation</strong><p data-i18n="explainBody">Show why one route ranks first, what the other options offer, and where the data is limited.</p></div></li>
       </ol>
       <div class="method-boundaries">
@@ -338,6 +407,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="nearby-stops.js?v=26" defer></script>
   <script src="stop-catalog.js?v=27" defer></script>
-  <script src="app.js?v=35" defer></script>
+  <script src="app.js?v=37" defer></script>
 </body>
 </html>

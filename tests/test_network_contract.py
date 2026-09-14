@@ -453,7 +453,7 @@ def test_public_beta_removes_misleading_planner_fallbacks() -> None:
     assert "https://tile.openstreetmap.org/{z}/{x}/{y}.png" in app
     assert "Latest predictions + on-device planning · Public Beta" in page
     assert "Report an issue" in page
-    assert 'SAFETY_FIRST:"Safety-first"' in app and "Not available yet" in app
+    assert 'SAFETY_FIRST:"Historical context"' in app and "Not available yet" in app
     assert "What we check before recommending a trip" in page
     assert all(step in page for step in ("Collect current updates", "Check each route direction", "Build trips you may be able to make", "Compare what matters to you", "Explain the recommendation"))
 
@@ -484,7 +484,7 @@ def test_unknown_vehicle_positions_are_separated_from_route_results() -> None:
     assert 'id="unassigned-count"' in page
     assert "live positions not assigned to a route" in page
     assert "leave them off the map and out of route analysis" in app
-    assert "Know your next move." in app and "Know your next move." in page
+    assert "Know what to take. Know why." in app and "Know what to take. Know why." in page
     assert 'journeyTimeline: "Your trip"' in app
 
 

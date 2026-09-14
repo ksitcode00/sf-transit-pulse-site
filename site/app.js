@@ -1,30 +1,33 @@
 const I18N = {
   en: {
     navNetwork: "Muni now", navJourney: "Plan a trip", navContext: "More travel info", refresh: "Get latest update", skipToMuni: "Skip to Muni updates",
-    eyebrow: "San Francisco Muni · Latest updates", heroTitle: "Know your next move.",
-    heroLead: "See where vehicles are, spot longer waits, and compare routes before you leave.",
-    planJourney: "Plan a trip", viewNetwork: "Check Muni now", howWorks: "See how results are made", vehiclesReporting: "vehicle locations found",
+    eyebrow: "SF Transit Pulse", heroTitle: "Know what to take. Know why.",
+    heroLead: "Live Muni reliability and explainable journey recommendations.",
+    planJourney: "Plan a trip", viewNetwork: "Explore Muni →", howWorks: "See how results are made", vehiclesReporting: "vehicle locations found",
     routesObserved: "routes with recent updates", activeNotices: "service updates", liveNetwork: "Muni right now",
     seeCityMove: "Check your route before you go.", focusRoute: "Choose a route", focusDirection: "Choose a direction", mapHint: "The map updates when you choose a route or direction.",
     routePulse: "What's happening", vehicles: "Vehicle locations", medianGap: "Time between vehicles", bunching: "Vehicles close together", serviceGaps: "Long waits", currentSpeed: "Reported speed", evidence: "Arrival estimates checked",
-    routeOverview: "Routes with the clearest live picture", directionNote: "Each direction can run differently, so we check them separately.",
+    routeOverview: "Routes needing attention", directionNote: "Each direction can run differently, so we check them separately.",
+    viewRouteDetails: "View details →", viewAllRoutes: "View all routes →", showFewerRoutes: "Show fewer routes", openUpdates: "Open updates ＋", closeUpdates: "Close updates −",
     streetsService: "What may affect your ride", explainWhy: "See service and street updates together.",
     causalityNote: "A street event near a route may affect service, but it does not prove what caused a delay.",
     serviceNotices: "Muni service updates", roadEvents: "Nearby street work", journeyDecision: "Plan your trip",
     whereGoing: "Where do you want to go?", plannerLead: "Choose two Muni stops. We'll compare direct trips and trips with one transfer using the latest available data.",
     dynamicPlanner: "Latest predictions + on-device planning · Public Beta", fromStop: "Starting stop", toStop: "Destination stop", browseAllStops: "Browse all stops", findRoute: "Compare routes", tryExample: "Try a sample trip",
+    findingOptions: "Finding your best options…", loadingTrips: "Feasible Muni trips", loadingPredictions: "Current predictions", loadingTransfers: "Transfers", loadingReliability: "Route reliability",
+    whyRoute: "Why this route?", exploreTrip: "Explore full trip →", recommendationEvidence: "Recommendation evidence", compareTwo: "Compare two options",
     journeyMapHint: "Transit legs are solid; walking connections are dotted.", journeyTimeline: "Your trip",
     journeyReliability: "How steady is this trip?", journeySafety: "Historical incident context", journeyParking: "Parking near your destination",
     threeWays: "Choose what matters most.", referenceCase: "Reference trip", alternatives: "Other routes",
     tradeoffs: "Compare time, walking, and transfers.", route: "Route", eta: "Estimated trip time", walk: "Walking", reliability: "Current service",
     exposure: "Historical incident context", cityContext: "More travel info", moreThanBus: "Other things that may affect your trip.",
-    parkingDemand: "Recent parking activity", safetyContext: "Historical incident context", dataQuality: "How current is this data?",
+    parkingDemand: "Recent parking activity", safetyContext: "Historical incident context", safetyExpand: "Read what this can—and cannot—tell you", dataQuality: "How current is this data?",
     methodEyebrow: "How we build each result", evidenceTitle: "What we check before recommending a trip.",
     northStarBody: "SF Transit Pulse answers one practical question: What should I take right now, and why?", evidenceBody: "We only say what the available data supports.",
     observe: "Collect current updates", observeBody: "Check vehicle locations, arrival estimates, service notices, route paths, and when each source was updated.",
     diagnose: "Check each route direction", diagnoseBody: "Look for steady vehicle spacing, vehicles too close together, long waits, and limited live data in each direction.",
     build: "Build trips you may be able to make", buildBody: "Compare direct and one-transfer trips. When complete live predictions are available, check whether two specific trips connect; otherwise label the time as an estimate.",
-    compare: "Compare what matters to you", compareBody: "Fastest favors time. Balanced weighs time, steady service, walking, transfers, and only large historical differences. Safety-first gives those historical differences more weight.",
+    compare: "Compare what matters to you", compareBody: "Fastest favors time. Balanced weighs time, steady service, walking, transfers, and only large historical differences. Historical context gives those past differences more weight.",
     boundariesTitle: "Important limits", boundarySafety: "Historical incident data cannot tell whether you will be safe.", boundaryRoad: "A nearby street event does not prove what caused a transit delay.", boundaryMissing: "No live update does not mean a route has stopped running.", boundaryCost: "A comparison score is not an arrival time.", boundaryTransfer: "Live predictions can change, so a possible transfer is not guaranteed.",
     explain: "Explain the recommendation", explainBody: "Show why one route ranks first, what the other options offer, and where the data is limited.",
     nearbyEyebrow: "Start from where you are", nearbyTitle: "Find Muni stops near you",
@@ -32,35 +35,49 @@ const I18N = {
     nearbyRadiusLabel: "Search within", nearbyButton: "Find nearby stops",
     nearbyPrivacy: "Your location is used only on this page to calculate distance. It is not uploaded or saved.",
     nearbyInitial: "Select “Find nearby stops” when you're ready to share your location with this page.",
+    highlightsEyebrow: "Beyond a single ETA", highlightsTitle: "See what an ETA alone can miss.",
+    highlightDirection: "Direction health", highlightDirectionBody: "Check each direction separately for uneven spacing and longer waits.",
+    highlightTransfer: "Can you catch the transfer?", highlightTransferBody: "See the expected connection buffer when two concrete trips are available.",
+    highlightWhy: "Why this route?", highlightWhyBody: "Open the evidence only when you want to understand the recommendation.",
+    decisionStoryEyebrow: "A useful tradeoff", decisionStoryTitle: "Fastest isn't always the easiest trip.",
+    storyFastest: "FASTEST", storyFastMeta: "8 min walk · 1 transfer · Watch",
+    storyBalanced: "BALANCED", storyBalancedMeta: "3 min walk · Direct · Stable",
+    decisionStoryMiddle: "Less walking. No transfer. Steadier service.",
+    comparisonEyebrow: "Option A vs Option B", comparisonTitle: "Compare two routes side by side",
+    comparisonHelp: "Choose any two options to see the tradeoffs without switching back and forth.",
+    freshnessFeature: "Old data doesn't stay “live.”",
     footerNote: "An independent research prototype. Not an official SFMTA service.", footerVersion: "v1.4 · Decision Support Beta",
     footerData: "Data: 511 SF Bay · DataSF · SFMTA", footerMap: "Map © OpenStreetMap contributors", reportIssue: "Report an issue"
   },
   zh: {
     navNetwork: "现在的 Muni", navJourney: "规划行程", navContext: "更多出行信息", refresh: "获取最新数据", skipToMuni: "跳到 Muni 实时信息",
-    eyebrow: "旧金山 Muni · 最新动态", heroTitle: "出发前，先选清楚怎么坐。",
-    heroLead: "查看车辆位置和可能的长时间等待，再比较适合你的路线。",
-    planJourney: "规划行程", viewNetwork: "查看现在的 Muni", howWorks: "看看结果怎么来的", vehiclesReporting: "个车辆位置",
+    eyebrow: "SF Transit Pulse", heroTitle: "知道坐什么，也知道为什么。",
+    heroLead: "查看 Muni 当前运行情况，并获得说得清理由的行程推荐。",
+    planJourney: "规划行程", viewNetwork: "查看 Muni →", howWorks: "看看结果怎么来的", vehiclesReporting: "个车辆位置",
     routesObserved: "条线路有近期信息", activeNotices: "条服务更新", liveNetwork: "现在的 Muni",
     seeCityMove: "出发前，先看看你的线路。", focusRoute: "选择线路", focusDirection: "选择方向", mapHint: "选择线路或方向后，地图会跟着更新。",
     routePulse: "现在运行得怎么样", vehicles: "车辆位置", medianGap: "车辆通常相隔多久", bunching: "几辆车挤在一起", serviceGaps: "两班车间隔过长", currentSpeed: "回报速度", evidence: "已查看的到站信息",
-    routeOverview: "实时信息最完整的线路", directionNote: "同一条线路的两个方向可能不一样，所以会分开查看。",
+    routeOverview: "需要留意的线路", directionNote: "同一条线路的两个方向可能不一样，所以会分开查看。",
+    viewRouteDetails: "查看详情 →", viewAllRoutes: "查看全部线路 →", showFewerRoutes: "收起线路", openUpdates: "展开更新 ＋", closeUpdates: "收起更新 −",
     streetsService: "可能影响行程的情况", explainWhy: "把公交和道路更新放在一起看。",
     causalityNote: "线路附近的道路事件可能影响公交，但不能单凭位置接近就认定它造成了延误。",
     serviceNotices: "Muni 服务更新", roadEvents: "附近道路施工与事件", journeyDecision: "规划行程",
     whereGoing: "你想从哪里去哪里？", plannerLead: "选择两个 Muni 站点。我们会用最新数据比较直达和一次换乘的路线。",
     dynamicPlanner: "最新预测与本机计算 · 测试版", fromStop: "起点站", toStop: "终点站", browseAllStops: "浏览全部站点", findRoute: "比较路线", tryExample: "试试示例行程",
+    findingOptions: "正在寻找适合你的路线…", loadingTrips: "可以乘坐的 Muni 路线", loadingPredictions: "当前到站预测", loadingTransfers: "换乘是否接得上", loadingReliability: "线路运行稳定性",
+    whyRoute: "为什么推荐这条？", exploreTrip: "查看完整行程 →", recommendationEvidence: "推荐依据", compareTwo: "比较两个方案",
     journeyMapHint: "实线是公交路段，虚线是步行连接。", journeyTimeline: "行程步骤",
     journeyReliability: "这趟行程稳不稳定？", journeySafety: "历史事件参考", journeyParking: "目的地附近停车情况",
     threeWays: "按你最在意的事情来选。", referenceCase: "参考行程", alternatives: "其他路线",
     tradeoffs: "比较时间、步行和换乘。", route: "线路", eta: "预计行程时间", walk: "步行", reliability: "当前运行情况",
     exposure: "历史事件参考", cityContext: "更多出行信息", moreThanBus: "看看其他可能影响出行的情况。",
-    parkingDemand: "近期停车付费情况", safetyContext: "历史事件参考", dataQuality: "这些数据有多新？",
+    parkingDemand: "近期停车付费情况", safetyContext: "历史事件参考", safetyExpand: "了解这些记录能说明什么、不能说明什么", dataQuality: "这些数据有多新？",
     methodEyebrow: "每个结果是怎么得出的", evidenceTitle: "推荐路线前，我们会检查这些信息。",
     northStarBody: "SF Transit Pulse 只想回答一个实用问题：我现在该坐什么？为什么？", evidenceBody: "数据能说明多少，我们就只说多少。",
     observe: "收集最新信息", observeBody: "查看车辆位置、预计到站时间、服务通知、线路路径，以及每份数据的更新时间。",
     diagnose: "分方向检查每条线路", diagnoseBody: "查看车辆间隔是否稳定、是否挤在一起、会不会等很久，以及实时信息是否足够。",
     build: "找出可能坐得上的路线", buildBody: "比较直达和一次换乘。有完整实时预测时，会检查两趟具体班次是否接得上；数据不足时会明确写成估算。",
-    compare: "按你的需要比较", compareBody: "最快到达只优先看时间；综合推荐兼顾稳定性、步行和换乘，只轻微考虑明显偏高的历史差异；安全优先会更重视这项差异。",
+    compare: "按你的需要比较", compareBody: "最快到达只优先看时间；综合推荐兼顾稳定性、步行和换乘，只轻微考虑明显偏高的历史差异；历史背景优先会更重视过去记录的差异。",
     boundariesTitle: "请注意这些限制", boundarySafety: "历史事件记录不能判断你这次出行是否安全。", boundaryRoad: "附近有道路事件，不代表它一定造成了公交延误。", boundaryMissing: "没有实时信息，不代表这条线路已经停运。", boundaryCost: "路线比较分数不等于预计到达时间。", boundaryTransfer: "实时到站预测仍会变化，所以显示能换乘也不代表一定赶得上。",
     explain: "说明推荐理由", explainBody: "告诉你为什么这条路线排在前面、其他路线有什么不同，以及哪些数据仍然不足。",
     nearbyEyebrow: "从你现在的位置出发", nearbyTitle: "查找附近的 Muni 站点",
@@ -68,6 +85,17 @@ const I18N = {
     nearbyRadiusLabel: "查找范围", nearbyButton: "查找附近站点",
     nearbyPrivacy: "你的位置只会在这个页面中用于计算距离，不会上传或保存。",
     nearbyInitial: "准备好后，点击“查找附近站点”并选择是否允许本页使用你的位置。",
+    highlightsEyebrow: "不只看一个到达时间", highlightsTitle: "看看单一 ETA 容易漏掉什么。",
+    highlightDirection: "分方向看运行情况", highlightDirectionBody: "两个方向分开检查车辆间隔和可能的长时间等待。",
+    highlightTransfer: "这次换乘赶得上吗？", highlightTransferBody: "有具体班次预测时，直接显示预计可用的换乘余量。",
+    highlightWhy: "为什么推荐这条？", highlightWhyBody: "需要了解理由时再展开证据，平时不用面对所有技术细节。",
+    decisionStoryEyebrow: "更实用的取舍", decisionStoryTitle: "最快，不一定是最省事。",
+    storyFastest: "最快到达", storyFastMeta: "步行 8 分钟 · 换乘 1 次 · 需留意",
+    storyBalanced: "综合推荐", storyBalancedMeta: "步行 3 分钟 · 直达 · 较稳定",
+    decisionStoryMiddle: "少走路、不换乘，运行也更稳定。",
+    comparisonEyebrow: "方案 A 与方案 B", comparisonTitle: "并排比较两条路线",
+    comparisonHelp: "选择任意两个方案，不用来回切换就能看清差别。",
+    freshnessFeature: "旧数据不会一直被叫作“实时”。",
     footerNote: "独立研究原型，并非 SFMTA 官方服务。", footerVersion: "v1.4 · 出行决策测试版",
     footerData: "数据：511 SF Bay · DataSF · SFMTA", footerMap: "地图 © OpenStreetMap 贡献者", reportIssue: "报告问题"
   }
@@ -88,6 +116,7 @@ let plannerStops = [];
 const stopBrowseState = new WeakMap();
 let userLocation = null;
 let nearbyFeedback = null;
+let overlayReturnFocus = null;
 // Feature 25B · Scheme B worker bridge / 方案 B 浏览器线程连接
 // 中文：旧版在这里保存 Render 地址；现在主页面只和本地 Web Worker 通信。
 // 每次实时快照更新后，Worker 会收到新的无密钥数据并重新建立查询索引。
@@ -108,6 +137,10 @@ const appState = {
   selectedMode: "BALANCED",
   selectedJourneyId: null,
   compareJourneyIds: [],
+  comparisonOpen: false,
+  evidenceOpen: false,
+  routeDetailsOpen: false,
+  showAllRoutes: false,
   plannerResult: null,
   plannerRequestKey: null
 };
@@ -211,6 +244,12 @@ function sourceFreshnessDisplay(source, maxAgeMinutes, observedAt = source?.obse
   return result;
 }
 
+function syncDisruptionDisclosure() {
+  const details = document.querySelector(".disruption-details");
+  const action = details?.querySelector(".details-action");
+  if (action) action.textContent = I18N[language][details.open ? "closeUpdates" : "openUpdates"];
+}
+
 function setLanguage(next, {syncUrl = false} = {}) {
   language = next;
   localStorage.setItem("sf-transit-language", language);
@@ -256,6 +295,14 @@ function setLanguage(next, {syncUrl = false} = {}) {
   const destinationList = document.getElementById("destination-suggestions");
   if (originList) originList.setAttribute("aria-label", language === "zh" ? "起点站选项" : "Starting stop choices");
   if (destinationList) destinationList.setAttribute("aria-label", language === "zh" ? "终点站选项" : "Destination stop choices");
+  const localizedLabels = {
+    "route-detail-close": language === "zh" ? "关闭线路详情" : "Close route details",
+    "why-route-close": language === "zh" ? "关闭推荐依据" : "Close recommendation evidence",
+    "comparison-close": language === "zh" ? "关闭路线比较" : "Close route comparison",
+    "mode-grid": language === "zh" ? "选择路线排序方式" : "Choose a route ranking preference"
+  };
+  Object.entries(localizedLabels).forEach(([id, label]) => document.getElementById(id)?.setAttribute("aria-label", label));
+  syncDisruptionDisclosure();
   updateStopBrowseButtons();
   document.querySelectorAll("#nearby-radius option").forEach(option => {
     option.textContent = `${option.value} ${language === "zh" ? "米" : "m"}`;
@@ -776,10 +823,21 @@ function renderRouteFocus(routeId = appState.selectedRoute, directionId = appSta
 
 function renderRouteGrid() {
   const source = transitSource();
+  const severity = {UNSTABLE:3, WATCH:2, LIMITED_REALTIME_DATA:1, NO_DATA:0, STABLE:0};
   const rows = source.isCurrent || source.isSample
-    ? (snapshot.routes || []).slice().sort((a,b) => Number(b.predictions_observed || 0)-Number(a.predictions_observed || 0)).slice(0,12)
+    ? (snapshot.routes || []).slice().sort((a,b) =>
+      (severity[b.health] || 0) - (severity[a.health] || 0)
+      || Number(b.predictions_observed || 0) - Number(a.predictions_observed || 0)
+    )
     : [];
   const grid = document.getElementById("route-grid");
+  grid.classList.toggle("expanded", appState.showAllRoutes);
+  const gridToggle = document.getElementById("route-grid-toggle");
+  gridToggle.hidden = rows.length <= 4;
+  gridToggle.setAttribute("aria-expanded", String(appState.showAllRoutes));
+  gridToggle.textContent = appState.showAllRoutes
+    ? I18N[language].showFewerRoutes
+    : I18N[language].viewAllRoutes;
   const note = source.isCached
     ? `<p class="coverage-note">${language === "zh" ? "511 本次更新失败；以下内容来自 10 分钟内最近一次成功获取的数据。" : "The latest 511 refresh failed. These cards use the last successful update from under 10 minutes ago."}</p>`
     : source.isCurrent ? "" : `<p class="coverage-note">${source.isSample
@@ -1233,8 +1291,8 @@ function selectedJourney() {
 
 function modeName(mode) {
   const key = String(mode || "BALANCED");
-  const en = {FASTEST:"Fastest", BALANCED:"Balanced", SAFETY_FIRST:"Safety-first"};
-  const zh = {FASTEST:"最快到达", BALANCED:"综合推荐", SAFETY_FIRST:"安全优先"};
+  const en = {FASTEST:"Fastest", BALANCED:"Balanced", SAFETY_FIRST:"Historical context"};
+  const zh = {FASTEST:"最快到达", BALANCED:"综合推荐", SAFETY_FIRST:"历史背景优先"};
   return (language === "zh" ? zh : en)[key] || key.replaceAll("_", "-");
 }
 
@@ -1326,26 +1384,17 @@ function renderModeCards(modes) {
   grid.innerHTML = modes.map(mode => {
     const unavailable = mode.mode === "SAFETY_FIRST" && !safetyReady;
     const availability = unavailable ? (language === "zh" ? " · 暂不可用" : " · Not available yet") : "";
-    const explanation = modeExplanation(mode.mode, !unavailable);
     return `
-    <button type="button" class="mode-card ${unavailable ? "unavailable" : ""}" data-mode="${escapeHtml(mode.mode)}" aria-pressed="${!unavailable && mode.mode === appState.selectedMode}" ${unavailable ? "disabled aria-disabled=\"true\"" : ""}>
-      <span class="mode-label">${escapeHtml(modeName(mode.mode))}${mode.mode === "BALANCED" ? (language === "zh" ? " · 默认" : " · Default") : ""}${availability}</span>
-      <p class="mode-route">${unavailable ? (language === "zh" ? "还不能比较" : "Cannot compare yet") : escapeHtml(mode.route || "—")}</p>
-      <p class="mode-eta">${unavailable ? "—" : `${fmt(mode.eta_min,1)} min`}</p>
-      ${unavailable ? "" : timingBadgeMarkup(mode.eta_status)}
-      <p>${escapeHtml(explanation)}</p>
-      <dl>
-        <div><dt>${language === "zh" ? "步行" : "Walking"}</dt><dd>${unavailable ? "—" : `${fmt(mode.walking_min,1)} min`}</dd></div>
-        <div><dt>${language === "zh" ? "换乘" : "Transfers"}</dt><dd>${unavailable ? "—" : fmt(mode.transfer_count)}</dd></div>
-        <div><dt>${language === "zh" ? "当前运行" : "Current service"}</dt><dd>${unavailable ? "—" : escapeHtml(healthCopy(mode.reliability_label))}</dd></div>
-      </dl>
+    <button type="button" class="mode-segment ${unavailable ? "unavailable" : ""}" data-mode="${escapeHtml(mode.mode)}" aria-pressed="${!unavailable && mode.mode === appState.selectedMode}" title="${escapeHtml(modeExplanation(mode.mode, !unavailable))}" ${unavailable ? "disabled aria-disabled=\"true\"" : ""}>
+      ${escapeHtml(modeName(mode.mode))}${availability}
     </button>`;
   }).join("");
-  grid.querySelectorAll(".mode-card:not([disabled])").forEach(card => card.addEventListener("click", () => {
+  grid.querySelectorAll(".mode-segment:not([disabled])").forEach(card => card.addEventListener("click", () => {
     const mode = card.dataset.mode;
     const winner = (appState.plannerResult?.modes || []).find(row => row.mode === mode);
     appState.selectedMode = mode;
     if (winner) appState.selectedJourneyId = winner.winner_journey_id;
+    appState.evidenceOpen = false;
     renderJourney();
   }));
 }
@@ -1524,7 +1573,7 @@ function renderJourneyEvidence(journey) {
     <div class="evidence-row"><span>${escapeHtml(segmentLabels[segment.key] || segment.key)}</span><strong>${escapeHtml(historicalContextLevel(segment.percentile))}</strong></div>
     <p class="fine-print">${hasNumber(segment.percentile) ? (language === "zh" ? `与全部 Muni 站点相比：第 ${fmt(segment.percentile)} 百分位` : `Compared with all Muni stops: ${fmt(segment.percentile)}th percentile`) : ""}${hasNumber(segment.weight) ? (language === "zh" ? ` · 本次比较权重 ${fmt(segment.weight)}%` : ` · ${fmt(segment.weight)}% comparison weight`) : ""}${segment.trend === "RISING" ? (language === "zh" ? " · 最近 30 天报告有所增加" : " · Reports increased in the latest 30 days") : ""}</p>`).join("") +
     `<p class="evidence-note">${hasNumber(safety.ranking_effect?.excess_percentile_points) && safety.ranking_effect.excess_percentile_points > 0
-      ? (language === "zh" ? `只有高于第 50 百分位的 ${fmt(safety.ranking_effect.excess_percentile_points)} 个百分点参与排序。综合推荐的权衡成本为 ${fmt(safety.ranking_effect.balanced_penalty_min,2)} 分钟，安全优先为 ${fmt(safety.ranking_effect.safety_first_penalty_min,2)} 分钟；这不会改变预计行程时间。` : `Only the ${fmt(safety.ranking_effect.excess_percentile_points)} points above the 50th percentile affect ranking. The tradeoff cost is ${fmt(safety.ranking_effect.balanced_penalty_min,2)} min for Balanced and ${fmt(safety.ranking_effect.safety_first_penalty_min,2)} min for Safety-first; it does not change the ETA.`)
+      ? (language === "zh" ? `只有高于第 50 百分位的 ${fmt(safety.ranking_effect.excess_percentile_points)} 个百分点参与排序。综合推荐的权衡成本为 ${fmt(safety.ranking_effect.balanced_penalty_min,2)} 分钟，历史背景优先为 ${fmt(safety.ranking_effect.safety_first_penalty_min,2)} 分钟；这不会改变预计行程时间。` : `Only the ${fmt(safety.ranking_effect.excess_percentile_points)} points above the 50th percentile affect ranking. The tradeoff cost is ${fmt(safety.ranking_effect.balanced_penalty_min,2)} min for Balanced and ${fmt(safety.ranking_effect.safety_first_penalty_min,2)} min for Historical context; it does not change the ETA.`)
       : (language === "zh" ? "这项历史参考没有高于全部 Muni 站点的中间水平，因此不会增加排序成本。" : "This historical context is at or below the Muni-stop midpoint, so it adds no ranking cost.")}</p>` +
     `<p class="evidence-note">${language === "zh" ? "比较会参考去重后的 30、90 和 365 天报告及事件类别，并限制单个极端地点的影响。它不能预测犯罪、判断地点是否安全，也不能保证个人安全。" : "The comparison uses deduplicated 30-, 90-, and 365-day reports and incident categories, while limiting the influence of one extreme location. It cannot predict crime, label a place safe or unsafe, or guarantee personal safety."}</p>`;
 
@@ -1621,7 +1670,7 @@ function comparisonCard(journey, label) {
 
 function renderComparison(alternatives) {
   const panel = document.getElementById("comparison-panel");
-  if (!panel || alternatives.length < 2) {
+  if (!panel || alternatives.length < 2 || !appState.comparisonOpen) {
     if (panel) panel.hidden = true;
     return;
   }
@@ -1668,23 +1717,83 @@ function renderMobileRecommendation(journey) {
   button.onclick = () => document.getElementById("journey-workspace").scrollIntoView({behavior:"smooth", block:"start"});
 }
 
+function syncUiOverlays() {
+  const evidence = document.getElementById("journey-evidence");
+  const comparison = document.getElementById("comparison-panel");
+  const routeDetails = document.getElementById("route-focus");
+  const evidenceAvailable = Boolean(appState.plannerResult && selectedJourney());
+  if (evidence) evidence.hidden = !(appState.evidenceOpen && evidenceAvailable);
+  if (comparison && !appState.comparisonOpen) comparison.hidden = true;
+  if (routeDetails) routeDetails.hidden = !appState.routeDetailsOpen;
+  const anyOpen = Boolean(appState.evidenceOpen || appState.comparisonOpen || appState.routeDetailsOpen);
+  const scrim = document.getElementById("ui-scrim");
+  if (scrim) scrim.hidden = !anyOpen;
+  document.body.classList.toggle("overlay-open", anyOpen);
+  document.getElementById("why-route-button")?.setAttribute("aria-expanded", String(appState.evidenceOpen));
+  document.getElementById("comparison-open")?.setAttribute("aria-expanded", String(appState.comparisonOpen));
+  document.getElementById("route-detail-toggle")?.setAttribute("aria-expanded", String(appState.routeDetailsOpen));
+}
+
+function closeUiOverlays() {
+  const returnFocus = overlayReturnFocus;
+  appState.evidenceOpen = false;
+  appState.comparisonOpen = false;
+  appState.routeDetailsOpen = false;
+  overlayReturnFocus = null;
+  syncUiOverlays();
+  returnFocus?.focus({preventScroll: true});
+}
+
+function focusOverlay(closeButtonId, trigger) {
+  overlayReturnFocus = trigger;
+  requestAnimationFrame(() => document.getElementById(closeButtonId)?.focus({preventScroll: true}));
+}
+
+function renderJourneyRecommendation(journey) {
+  const recommendation = document.getElementById("journey-recommendation");
+  recommendation.hidden = false;
+  document.getElementById("recommendation-mode").textContent = language === "zh"
+    ? `推荐 · ${modeName(appState.selectedMode)}`
+    : `Recommended · ${modeName(appState.selectedMode)}`;
+  document.getElementById("recommendation-route").textContent = journey.route_sequence;
+  document.getElementById("recommendation-eta").textContent = language === "zh"
+    ? `${fmt(journey.eta_min, 1)} 分钟`
+    : `${fmt(journey.eta_min, 1)} min`;
+  const arrival = sfTime(new Date(Date.now() + Number(journey.eta_min || 0) * 60_000).toISOString());
+  document.getElementById("recommendation-arrival").textContent = language === "zh"
+    ? `预计约 ${arrival} 到达 · ${timingSource(journey.eta_status)}`
+    : `Arrive around ${arrival} · ${timingSource(journey.eta_status)}`;
+  const reasons = [
+    `<span>${escapeHtml(healthCopy(journey.reliability))}</span>`,
+    `<span>${escapeHtml(journey.transfer_count ? transferComfort(journey.transfer) : (language === "zh" ? "无需换乘" : "Direct trip"))}</span>`,
+    timingBadgeMarkup(journey.eta_status)
+  ];
+  document.getElementById("recommendation-reasons").innerHTML = reasons.join("");
+  document.getElementById("why-route-button").onclick = () => {
+    appState.evidenceOpen = true;
+    appState.comparisonOpen = false;
+    syncUiOverlays();
+    focusOverlay("why-route-close", document.getElementById("why-route-button"));
+  };
+  document.getElementById("explore-trip-button").onclick = () =>
+    document.getElementById("journey-workspace").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
 function renderPlannerEmpty() {
-  const safetyAvailable = !safetyContextLoaded
-    || snapshot?.safety?.status === "JOURNEY_RELATIVE_CONTEXT"
-    || (snapshot?.safety?.cells || []).length > 0;
   document.getElementById("journey-od").textContent = language === "zh" ? "选择起点和终点后开始规划。" : "Choose an origin and destination to begin.";
-  document.getElementById("mode-grid").dataset.modeCount = "3";
-  document.getElementById("mode-grid").innerHTML = [
-    ["FASTEST", true],
-    ["BALANCED", true],
-    ["SAFETY_FIRST", safetyAvailable]
-  ].map(([mode, available], index) => `<div class="mode-card mode-preview ${available ? "" : "unavailable"}"><span class="mode-label">${modeName(mode)}${index === 1 ? (language === "zh" ? " · 默认" : " · Default") : ""}${available ? "" : (language === "zh" ? " · 暂不可用" : " · Not available yet")}</span><p>${modeExplanation(mode, available)}</p></div>`).join("");
-  document.getElementById("alternatives-list").innerHTML = `<p class="planner-empty-inline">${language === "zh" ? "比较这趟行程后，其他可选路线会显示在这里。如果规划服务暂时不可用，我们会直接告诉你。" : "Other routes will appear here after you compare this trip. If trip planning is unavailable, we'll tell you directly."}</p>`;
+  document.getElementById("journey-od").hidden = true;
+  document.getElementById("journey-recommendation").hidden = true;
+  document.getElementById("mode-grid").hidden = true;
+  document.getElementById("mode-grid").innerHTML = "";
   document.getElementById("journey-workspace").hidden = true;
-  document.getElementById("journey-evidence").hidden = true;
+  document.getElementById("alternatives-panel").hidden = true;
+  document.getElementById("journey-loading").hidden = true;
+  appState.evidenceOpen = false;
+  appState.comparisonOpen = false;
   document.getElementById("comparison-panel").hidden = true;
   document.getElementById("mobile-recommendation").hidden = true;
   document.getElementById("planner-update-notice").hidden = true;
+  syncUiOverlays();
 }
 
 function renderJourney() {
@@ -1696,15 +1805,19 @@ function renderJourney() {
   const journey = selectedJourney();
   if (!journey) return;
   document.getElementById("journey-od").textContent = `${result.origin.name} → ${result.destination.name}`;
+  document.getElementById("journey-od").hidden = false;
+  document.getElementById("mode-grid").hidden = false;
   document.getElementById("journey-workspace").hidden = false;
-  document.getElementById("journey-evidence").hidden = false;
+  document.getElementById("alternatives-panel").hidden = false;
+  renderJourneyRecommendation(journey);
   renderModeCards(result.modes || []);
   renderAlternatives(result.alternatives || []);
   renderComparison(result.alternatives || []);
   renderJourneyMap(journey);
   renderJourneyTimeline(journey);
   renderJourneyEvidence(journey);
-  renderMobileRecommendation(journey);
+  document.getElementById("mobile-recommendation").hidden = true;
+  syncUiOverlays();
 }
 
 async function planTrip({automaticRefresh = false} = {}) {
@@ -1729,7 +1842,16 @@ async function planTrip({automaticRefresh = false} = {}) {
   const previousModeWinnerId = (appState.plannerResult?.modes || [])
     .find(row => row.mode === appState.selectedMode)?.winner_journey_id || null;
   const button = document.getElementById("plan-trip-button");
+  const loading = document.getElementById("journey-loading");
   button.disabled = true;
+  if (!automaticRefresh) {
+    loading.hidden = false;
+    document.getElementById("journey-recommendation").hidden = true;
+    document.getElementById("mode-grid").hidden = true;
+    document.getElementById("journey-workspace").hidden = true;
+    document.getElementById("alternatives-panel").hidden = true;
+    closeUiOverlays();
+  }
   setPlannerStatus(automaticRefresh
     ? (language === "zh" ? "收到新的公交数据，正在重新计算这趟行程…" : "New transit data received. Recalculating this trip…")
     : (language === "zh" ? "正在比较直达和一次换乘路线…" : "Comparing direct trips and trips with one transfer…"));
@@ -1788,6 +1910,7 @@ async function planTrip({automaticRefresh = false} = {}) {
       : (language === "zh" ? "暂时无法在你的浏览器中比较路线。请刷新页面后重试。" : "We couldn't compare routes in this browser. Refresh the page and try again."));
   } finally {
     clearTimeout(longerCalculationMessage);
+    loading.hidden = true;
     button.disabled = false;
   }
 }
@@ -2016,6 +2139,32 @@ document.addEventListener("DOMContentLoaded", () => {
   }));
   document.getElementById("route-select").addEventListener("change", event => selectRoute(event.target.value, "all"));
   document.getElementById("direction-select").addEventListener("change", event => selectRoute(appState.selectedRoute, event.target.value));
+  document.getElementById("route-detail-toggle").addEventListener("click", event => {
+    appState.routeDetailsOpen = true;
+    appState.evidenceOpen = false;
+    appState.comparisonOpen = false;
+    syncUiOverlays();
+    focusOverlay("route-detail-close", event.currentTarget);
+  });
+  document.getElementById("route-detail-close").addEventListener("click", closeUiOverlays);
+  document.getElementById("route-grid-toggle").addEventListener("click", () => {
+    appState.showAllRoutes = !appState.showAllRoutes;
+    renderRouteGrid();
+  });
+  document.getElementById("why-route-close").addEventListener("click", closeUiOverlays);
+  document.getElementById("comparison-open").addEventListener("click", event => {
+    appState.comparisonOpen = true;
+    appState.evidenceOpen = false;
+    renderComparison(appState.plannerResult?.alternatives || []);
+    syncUiOverlays();
+    focusOverlay("comparison-close", event.currentTarget);
+  });
+  document.getElementById("comparison-close").addEventListener("click", closeUiOverlays);
+  document.getElementById("ui-scrim").addEventListener("click", closeUiOverlays);
+  document.querySelector(".disruption-details")?.addEventListener("toggle", syncDisruptionDisclosure);
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeUiOverlays();
+  });
   document.getElementById("trip-planner-form").addEventListener("submit", event => {
     event.preventDefault();
     planTrip();
