@@ -1,7 +1,7 @@
 {
-  "measured_at": "2026-09-14T09:50:52Z",
+  "measured_at": "2026-09-14T10:42:00Z",
   "benchmark_version": "1.0",
-  "engine_version": "25B-browser-1.4",
+  "engine_version": "25B-browser-1.5",
   "environment": {
     "architecture": "arm64",
     "macos_version": "26.5.2",
@@ -12,14 +12,14 @@
   "failed_queries": 0,
   "success_rate": 1,
   "duration_ms": {
-    "p50": 76,
-    "p95": 484.3,
-    "maximum": 1399.3
+    "p50": 72.4,
+    "p95": 540.7,
+    "maximum": 1340.7
   },
   "candidate_count": {
     "p50": 17,
-    "p95": 129,
-    "maximum": 663
+    "p95": 143,
+    "maximum": 696
   },
   "network": {
     "routes": 68,

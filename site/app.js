@@ -24,7 +24,7 @@ const I18N = {
     observe: "Collect current updates", observeBody: "Check vehicle locations, arrival estimates, service notices, route paths, and when each source was updated.",
     diagnose: "Check each route direction", diagnoseBody: "Look for steady vehicle spacing, vehicles too close together, long waits, and limited live data in each direction.",
     build: "Build trips you may be able to make", buildBody: "Compare direct and one-transfer trips. When complete live predictions are available, check whether two specific trips connect; otherwise label the time as an estimate.",
-    compare: "Compare what matters to you", compareBody: "Fastest favors time. Balanced also considers steady service, walking, and transfers. Safety-first works only when location-level historical report data is available.",
+    compare: "Compare what matters to you", compareBody: "Fastest favors time. Balanced weighs time, steady service, walking, transfers, and only large historical differences. Safety-first gives those historical differences more weight.",
     boundariesTitle: "Important limits", boundarySafety: "Historical incident data cannot tell whether you will be safe.", boundaryRoad: "A nearby street event does not prove what caused a transit delay.", boundaryMissing: "No live update does not mean a route has stopped running.", boundaryCost: "A comparison score is not an arrival time.", boundaryTransfer: "Live predictions can change, so a possible transfer is not guaranteed.",
     explain: "Explain the recommendation", explainBody: "Show why one route ranks first, what the other options offer, and where the data is limited.",
     nearbyEyebrow: "Start from where you are", nearbyTitle: "Find Muni stops near you",
@@ -60,7 +60,7 @@ const I18N = {
     observe: "收集最新信息", observeBody: "查看车辆位置、预计到站时间、服务通知、线路路径，以及每份数据的更新时间。",
     diagnose: "分方向检查每条线路", diagnoseBody: "查看车辆间隔是否稳定、是否挤在一起、会不会等很久，以及实时信息是否足够。",
     build: "找出可能坐得上的路线", buildBody: "比较直达和一次换乘。有完整实时预测时，会检查两趟具体班次是否接得上；数据不足时会明确写成估算。",
-    compare: "按你的需要比较", compareBody: "最快到达优先看时间；综合推荐也考虑运行稳定性、步行和换乘；只有具备地点级历史报告数据时，安全优先才会开放。",
+    compare: "按你的需要比较", compareBody: "最快到达只优先看时间；综合推荐兼顾稳定性、步行和换乘，只轻微考虑明显偏高的历史差异；安全优先会更重视这项差异。",
     boundariesTitle: "请注意这些限制", boundarySafety: "历史事件记录不能判断你这次出行是否安全。", boundaryRoad: "附近有道路事件，不代表它一定造成了公交延误。", boundaryMissing: "没有实时信息，不代表这条线路已经停运。", boundaryCost: "路线比较分数不等于预计到达时间。", boundaryTransfer: "实时到站预测仍会变化，所以显示能换乘也不代表一定赶得上。",
     explain: "说明推荐理由", explainBody: "告诉你为什么这条路线排在前面、其他路线有什么不同，以及哪些数据仍然不足。",
     nearbyEyebrow: "从你现在的位置出发", nearbyTitle: "查找附近的 Muni 站点",
@@ -113,7 +113,7 @@ const appState = {
 function plannerWorkerCall(type, payload = {}) {
   if (!window.Worker) return Promise.reject(new Error("This browser does not support background route planning."));
   if (!plannerWorker) {
-    plannerWorker = new Worker("planner-worker.js?v=32", {type: "module"});
+    plannerWorker = new Worker("planner-worker.js?v=33", {type: "module"});
     plannerWorker.addEventListener("message", event => {
       const request = plannerWorkerRequests.get(event.data?.id);
       if (!request) return;
@@ -1188,13 +1188,13 @@ function modeExplanation(mode, available = true) {
   }
   const en = {
     FASTEST:"Gets you there soonest based on current estimates.",
-    BALANCED:"Balances time, steady service, walking, and transfers.",
-    SAFETY_FIRST:"Favors trips with fewer historical incident reports nearby. It does not predict personal safety."
+    BALANCED:"Balances time, steady service, walking, transfers, and only large historical differences.",
+    SAFETY_FIRST:"Gives more weight to historical report differences above the Muni-stop midpoint. It does not predict personal safety."
   };
   const zh = {
     FASTEST:"按当前估算，优先选择最快到达的路线。",
-    BALANCED:"同时考虑时间、等车稳定性、步行和换乘。",
-    SAFETY_FIRST:"优先考虑附近历史事件报告相对较少的路线，但不能预测你这次是否安全。"
+    BALANCED:"同时考虑时间、等车稳定性、步行和换乘，只轻微考虑明显偏高的历史差异。",
+    SAFETY_FIRST:"更重视高于全部 Muni 站点中间水平的历史报告差异，但不能预测你这次是否安全。"
   };
   return (language === "zh" ? zh : en)[key] || "";
 }
@@ -1407,9 +1407,10 @@ function renderJourneyEvidence(journey) {
   const safety = journey.safety || {};
   const safetyReady = safety.status === "JOURNEY_RELATIVE_CONTEXT" && hasNumber(safety.overall_percentile);
   document.getElementById("journey-safety-status").textContent = safetyReady
-    ? (language === "zh" ? `历史报告相对值：第 ${fmt(safety.overall_percentile)} 百分位` : `Historical report context: ${fmt(safety.overall_percentile)}th percentile`)
+    ? (language === "zh" ? `与全部 Muni 站点相比：第 ${fmt(safety.overall_percentile)} 百分位` : `Compared with all Muni stops: ${fmt(safety.overall_percentile)}th percentile`)
     : (language === "zh" ? "暂时没有行程级数据" : "No trip-level data yet");
   const segmentLabels = {
+    origin_boarding: language === "zh" ? "起点与上车区域" : "Origin and boarding area",
     origin: language === "zh" ? "起点区域" : "Origin area",
     boarding: language === "zh" ? "上车区域" : "Boarding area",
     along_route: language === "zh" ? "沿线路段" : "Along the route",
@@ -1426,7 +1427,10 @@ function renderJourneyEvidence(journey) {
   const segments = safety.segments?.length ? safety.segments : fallbackSegments;
   document.getElementById("journey-safety-detail").innerHTML = segments.map(segment => `
     <div class="evidence-row"><span>${escapeHtml(segmentLabels[segment.key] || segment.key)}</span><strong>${escapeHtml(historicalContextLevel(segment.percentile))}</strong></div>
-    <p class="fine-print">${hasNumber(segment.percentile) ? (language === "zh" ? `全市相对位置：第 ${fmt(segment.percentile)} 百分位` : `City-relative position: ${fmt(segment.percentile)}th percentile`) : ""}${hasNumber(segment.weight) ? (language === "zh" ? ` · 本次比较权重 ${fmt(segment.weight)}%` : ` · ${fmt(segment.weight)}% comparison weight`) : ""}${segment.trend === "RISING" ? (language === "zh" ? " · 最近 30 天报告有所增加" : " · Reports increased in the latest 30 days") : ""}</p>`).join("") +
+    <p class="fine-print">${hasNumber(segment.percentile) ? (language === "zh" ? `与全部 Muni 站点相比：第 ${fmt(segment.percentile)} 百分位` : `Compared with all Muni stops: ${fmt(segment.percentile)}th percentile`) : ""}${hasNumber(segment.weight) ? (language === "zh" ? ` · 本次比较权重 ${fmt(segment.weight)}%` : ` · ${fmt(segment.weight)}% comparison weight`) : ""}${segment.trend === "RISING" ? (language === "zh" ? " · 最近 30 天报告有所增加" : " · Reports increased in the latest 30 days") : ""}</p>`).join("") +
+    `<p class="evidence-note">${hasNumber(safety.ranking_effect?.excess_percentile_points) && safety.ranking_effect.excess_percentile_points > 0
+      ? (language === "zh" ? `只有高于第 50 百分位的 ${fmt(safety.ranking_effect.excess_percentile_points)} 个百分点参与排序。综合推荐的权衡成本为 ${fmt(safety.ranking_effect.balanced_penalty_min,2)} 分钟，安全优先为 ${fmt(safety.ranking_effect.safety_first_penalty_min,2)} 分钟；这不会改变预计行程时间。` : `Only the ${fmt(safety.ranking_effect.excess_percentile_points)} points above the 50th percentile affect ranking. The tradeoff cost is ${fmt(safety.ranking_effect.balanced_penalty_min,2)} min for Balanced and ${fmt(safety.ranking_effect.safety_first_penalty_min,2)} min for Safety-first; it does not change the ETA.`)
+      : (language === "zh" ? "这项历史参考没有高于全部 Muni 站点的中间水平，因此不会增加排序成本。" : "This historical context is at or below the Muni-stop midpoint, so it adds no ranking cost.")}</p>` +
     `<p class="evidence-note">${language === "zh" ? "比较会参考去重后的 30、90 和 365 天报告及事件类别，并限制单个极端地点的影响。它不能预测犯罪、判断地点是否安全，也不能保证个人安全。" : "The comparison uses deduplicated 30-, 90-, and 365-day reports and incident categories, while limiting the influence of one extreme location. It cannot predict crime, label a place safe or unsafe, or guarantee personal safety."}</p>`;
 
   const parking = journey.destination_parking || {};
@@ -1700,7 +1704,7 @@ function renderContext() {
     : (language === "zh" ? "停车付费记录可以反映附近活动多少，但不代表实际还有多少空位。" : "Parking payments can show nearby activity, but not the number of open spaces.");
   const safety = snapshot.safety || {};
   document.getElementById("safety-status").textContent = language === "zh" ? "过去 365 天的历史记录" : "Historical records from the past 365 days";
-  document.getElementById("safety-detail").textContent = language === "zh" ? "这些记录只能帮助比较不同区域的历史情况，不能预测犯罪，也不能判断某个地方是否安全。" : "These records only compare past conditions across areas. They do not predict crime or label a place safe or unsafe.";
+  document.getElementById("safety-detail").textContent = language === "zh" ? "每个行程区域会与全部 Muni 站点的历史报告情况比较。这不能预测犯罪，也不能判断某个地方是否安全。" : "Trip areas are compared with historical report context across all Muni stops. This cannot predict crime or label a place safe or unsafe.";
 }
 
 function renderRouteView() {

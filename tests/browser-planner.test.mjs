@@ -61,7 +61,8 @@ function realtimeEngine({transfer = false, safety = false, parking = false, road
         title: "Street work", route_ids: ["R1"], route_match_status: "MATCHED",
         lat: 37.705, lon: -122.400, geometry: [[37.705, -122.400]]
       }] : [],
-      safety: safety ? {status: "JOURNEY_RELATIVE_CONTEXT", cells: [
+      safety: safety ? {status: "JOURNEY_RELATIVE_CONTEXT", method_version: "3.0",
+        percentile_baseline: "ALL_MUNI_STOPS", stop_context_distribution: [0, 2, 8, 20], cells: [
         {lat: 37.700, lon: -122.400, reported_incidents_365d_cell: 2, reported_incidents_365d_nearby: 2},
         {lat: 37.710, lon: -122.400, reported_incidents_365d_cell: 8, reported_incidents_365d_nearby: 8},
         {lat: 37.720, lon: -122.400, reported_incidents_365d_cell: 20, reported_incidents_365d_nearby: 20}
@@ -137,8 +138,24 @@ test("browser engine exposes safety and fresh parking evidence", () => {
   const journey = result.alternatives.find(row => row.route_sequence === "R1 → R2");
   assert.equal(result.meta.safety_status, "JOURNEY_RELATIVE_CONTEXT");
   assert.equal(journey.safety.status, "JOURNEY_RELATIVE_CONTEXT");
+  assert.equal(journey.safety.percentile_baseline, "ALL_MUNI_STOPS");
+  assert.deepEqual(journey.safety.segments.map(row => row.weight), [20, 35, 30, 15]);
+  assert.ok(journey.safety.ranking_effect.balanced_penalty_min > 0);
+  assert.ok(journey.safety.ranking_effect.safety_first_penalty_min > journey.safety.ranking_effect.balanced_penalty_min);
   assert.equal(journey.destination_parking.status, "PAID_PARKING_PRESSURE_PROXY");
   assert.equal(journey.destination_parking.active_paid_sessions_proxy, 7);
+});
+
+test("historical context at or below the Muni midpoint adds no ranking cost", () => {
+  const engine = realtimeEngine({safety: true});
+  engine.realtime.safety.stop_context_distribution = [0, 0, 0, 0];
+  engine.realtime.safety.cells = [];
+  engine.updateRealtime(engine.realtime);
+  const journey = engine.plan("A", "X", "BALANCED").alternatives[0];
+  assert.equal(journey.safety.overall_percentile, 50);
+  assert.equal(journey.safety.ranking_effect.excess_percentile_points, 0);
+  assert.equal(journey.safety.ranking_effect.balanced_penalty_min, 0);
+  assert.equal(journey.safety.ranking_effect.safety_first_penalty_min, 0);
 });
 
 test("stale parking evidence is not labeled as current pressure", () => {

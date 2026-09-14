@@ -304,7 +304,7 @@
         <li><span>1</span><div><strong data-i18n="observe">Collect current updates</strong><p data-i18n="observeBody">Check vehicle locations, arrival estimates, service notices, route paths, and when each source was updated.</p></div></li>
         <li><span>2</span><div><strong data-i18n="diagnose">Check each route direction</strong><p data-i18n="diagnoseBody">Look for steady vehicle spacing, vehicles too close together, long waits, and limited live data in each direction.</p></div></li>
         <li><span>3</span><div><strong data-i18n="build">Build trips you may be able to make</strong><p data-i18n="buildBody">Compare direct and one-transfer trips. When complete live predictions are available, check whether two specific trips connect; otherwise label the time as an estimate.</p></div></li>
-        <li><span>4</span><div><strong data-i18n="compare">Compare what matters to you</strong><p data-i18n="compareBody">Fastest favors time. Balanced also considers steady service, walking, and transfers. Safety-first works only when location-level historical report data is available.</p></div></li>
+        <li><span>4</span><div><strong data-i18n="compare">Compare what matters to you</strong><p data-i18n="compareBody">Fastest favors time. Balanced weighs time, steady service, walking, transfers, and only large historical differences. Safety-first gives those historical differences more weight.</p></div></li>
         <li><span>5</span><div><strong data-i18n="explain">Explain the recommendation</strong><p data-i18n="explainBody">Show why one route ranks first, what the other options offer, and where the data is limited.</p></div></li>
       </ol>
       <div class="method-boundaries">
@@ -338,6 +338,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="nearby-stops.js?v=26" defer></script>
   <script src="stop-catalog.js?v=27" defer></script>
-  <script src="app.js?v=32" defer></script>
+  <script src="app.js?v=33" defer></script>
 </body>
 </html>

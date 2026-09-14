@@ -9,7 +9,7 @@ writes a credential-free JSON snapshot for GitHub Pages.
 from __future__ import annotations
 
 import csv
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 import io
 import json
 import math
@@ -37,7 +37,7 @@ SAFETY_CONTEXT_PATH = ROOT / "site" / "data" / "safety-context.json"
 REFRESH_HEALTH_PATH = ROOT / "site" / "data" / "refresh-health.json"
 PARKING_INVENTORY_PATH = ROOT / "data" / "parking-inventory.json"
 STATIC_INDEX_PATH = ROOT / "data" / "static-index.json"
-PIPELINE_VERSION = "1.6.0"
+PIPELINE_VERSION = "1.7.0"
 PARKING_INVENTORY_SCHEMA_VERSION = 2
 PARKING_MIN_MATCH_COVERAGE = 0.70
 USER_AGENT = "SF-Transit-Pulse/1.0 (+https://github.com/ksitcode00/sf-transit-pulse)"
@@ -506,6 +506,31 @@ def fetch_gtfs_rt(url: str, api_key: str) -> gtfs_realtime_pb2.FeedMessage:
 
 def inside_sf(lat: float, lon: float) -> bool:
     return SF_BOUNDS["south"] <= lat <= SF_BOUNDS["north"] and SF_BOUNDS["west"] <= lon <= SF_BOUNDS["east"]
+
+
+def geographic_distance_m(left: tuple[float, float], right: tuple[float, float]) -> float:
+    """Return great-circle distance for local evidence windows."""
+
+    lat1, lon1 = left
+    lat2, lon2 = right
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+    value = (
+        math.sin(delta_phi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+    )
+    return 2 * 6_371_000 * math.asin(math.sqrt(value))
+
+
+def midpoint_percentile_rank(ordered: list[float], value: float) -> float:
+    """Place tied values at the middle of their percentile interval."""
+
+    if not ordered:
+        return 0.0
+    below = bisect_left(ordered, value)
+    at_or_below = bisect_right(ordered, value)
+    return 100 * (below + (at_or_below - below) / 2) / len(ordered)
 
 
 def parse_vehicles(feed: gtfs_realtime_pb2.FeedMessage, trip_lookup: dict[str, Any]) -> list[dict[str, Any]]:
@@ -1312,7 +1337,10 @@ def safety_category_weight(category: Any) -> float:
     )
 
 
-def build_safety_context(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def build_safety_context(
+    rows: list[dict[str, Any]],
+    muni_stops: Iterable[tuple[float, float]] | None = None,
+) -> dict[str, Any]:
     """Create deduplicated, multi-window historical context for journey comparison."""
 
     # Feature 31 · Safety methodology upgrade / 历史事件方法升级
@@ -1406,7 +1434,38 @@ def build_safety_context(rows: list[dict[str, Any]]) -> dict[str, Any]:
         )
         nearby[(lat, lon)] = nearby_metrics
 
-    distribution = sorted(value["context_score"] for value in nearby.values())
+    local_context_scores = {
+        key: (
+            value["weighted_365"]
+            + value["count_90"] * 0.75
+            + value["count_30"] * 1.5
+        )
+        for key, value in metrics.items()
+    }
+
+    def context_score_at(lat: float, lon: float) -> float:
+        score = 0.0
+        rounded_lat, rounded_lon = round(lat, 3), round(lon, 3)
+        for lat_offset in range(-3, 4):
+            for lon_offset in range(-4, 5):
+                key = (
+                    round(rounded_lat + lat_offset / 1000, 3),
+                    round(rounded_lon + lon_offset / 1000, 3),
+                )
+                cell_score = local_context_scores.get(key)
+                if cell_score is None or geographic_distance_m((lat, lon), key) > 250:
+                    continue
+                score += cell_score
+        return round(score, 2)
+
+    stop_points = list(muni_stops or [])
+    if stop_points:
+        distribution = sorted(context_score_at(float(lat), float(lon)) for lat, lon in stop_points)
+        baseline = "ALL_MUNI_STOPS"
+    else:
+        # Backward-compatible fallback for isolated unit tests and older tools.
+        distribution = sorted(value["context_score"] for value in nearby.values())
+        baseline = "OBSERVED_INCIDENT_CELLS_FALLBACK"
     cells = []
     for lat, lon in sorted(metrics):
         local = metrics[(lat, lon)]
@@ -1434,14 +1493,14 @@ def build_safety_context(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "historical_context_score": round(area["context_score"], 2),
             "recent_trend": trend,
             "relative_percentile": round(
-                100 * bisect_right(distribution, area["context_score"]) / len(distribution)
+                midpoint_percentile_rank(distribution, area["context_score"])
             ),
         })
 
     total = int(sum(value["count_365"] for value in metrics.values()))
     return {
         "status": "JOURNEY_RELATIVE_CONTEXT",
-        "method_version": "2.0",
+        "method_version": "3.0",
         "detail": (
             f"{total:,} unique reported incidents summarized into {len(cells):,} location cells. "
             "Relative historical context only; not a crime forecast or safe/unsafe label."
@@ -1452,11 +1511,34 @@ def build_safety_context(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "raw_record_count": raw_count,
         "deduplicated_record_count": len(parsed_records) if parsed_records else total,
         "severity_weight_basis": "Transparent category groups from 1.0 to 5.0; descriptive comparison only.",
+        "percentile_baseline": baseline,
+        "baseline_stop_count": len(stop_points),
+        "stop_context_distribution": distribution,
         "cell_precision_degrees": 0.001,
         "nearby_window": "approximately 250 meters",
         "cell_count": len(cells),
         "cells": cells,
     }
+
+
+def load_muni_stop_points() -> list[tuple[float, float]]:
+    """Load one coordinate per Muni stop from the checked-in public GTFS network."""
+
+    network = json.loads(NETWORK_PATH.read_text(encoding="utf-8"))
+    patterns = network.get("patterns") or network.get("route_directions") or {}
+    stops: dict[str, tuple[float, float]] = {}
+    for pattern in patterns.values():
+        for row in pattern.get("stops", []):
+            stop_id = str(row.get("stop_id") or "")
+            try:
+                point = (float(row["lat"]), float(row["lon"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+            if stop_id and inside_sf(*point):
+                stops.setdefault(stop_id, point)
+    if not stops:
+        raise ValueError("Public Muni network contains no usable stop coordinates.")
+    return list(stops.values())
 
 
 def refresh_safety() -> dict[str, Any]:
@@ -1476,7 +1558,8 @@ ORDER BY incident_datetime DESC
 LIMIT 100000
 """.strip()
     return build_safety_context(
-        datasf_records("wg3w-h783", query, 5000, max_pages=20)
+        datasf_records("wg3w-h783", query, 5000, max_pages=20),
+        load_muni_stop_points(),
     )
 
 
@@ -1526,7 +1609,11 @@ def main() -> int:
     force_context = os.environ.get("SF_TRANSIT_FORCE_CONTEXT", "false").strip().lower() in {"1", "true", "yes"}
     refresh_service_context = source_refresh_due(previous, "alerts", timedelta(minutes=15), force=force_context)
     refresh_parking_context = source_refresh_due(previous, "parking", timedelta(minutes=30), force=force_context)
-    refresh_safety_context = source_refresh_due(previous, "safety", timedelta(hours=24), force=force_context)
+    previous_safety_method = str(previous.get("safety", {}).get("method_version", ""))
+    refresh_safety_context = (
+        previous_safety_method != "3.0"
+        or source_refresh_due(previous, "safety", timedelta(hours=24), force=force_context)
+    )
     previous_transit = previous.get("meta", {}).get("source_status", {}).get("transit", {})
     if static_only:
         if not api_key:

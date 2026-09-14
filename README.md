@@ -59,7 +59,7 @@ Each row explains the rider need, the implementation's practical value, and an e
 | Live vehicle map | Shows reported positions. Unmatched vehicles are counted separately instead of being assigned by guesswork. | Check where the next Route 5 vehicle appears along the corridor before leaving. | Live |
 | Direction-level service health | Turns raw predictions into plain-language states such as steady spacing or possible longer waits. | If one 14R direction has highly variable waits, compare Route 14 or rail. | Live |
 | Headways, bunching, and long gaps | Average arrival times can hide two vehicles together followed by a long wait. This feature exposes the spacing evidence. | See both a bunch ahead and the long gap behind it. | Live |
-| Current reported speed | Shows whether movement is below a transparent vehicle-type reference without presenting that reference as a historical average. | See a slowdown note when a corridor's median reported speed is unusually low. | Live when speed data exists |
+| Current reported speed | Shows whether movement is below a transparent vehicle-type reference without presenting that reference as a historical average. | See a slowdown note when a corridor's median reported speed is unusually low. | Live when speed data exists; corridor history planned for v1.1 |
 | Muni service notices | Places stop moves, elevator outages, and service changes beside route information. | Learn that a stop moved before walking to its usual location. | Live |
 | Street work and route context | Shows road events beside transit movement without claiming proximity proves causation. | Work near Market Street and a slower transit segment appear as possible context only. | Research beta |
 | Nearby stop location | After explicit permission, the browser calculates distance to every Muni stop. Coordinates are not uploaded or saved. | Choose 200 m and see every stop in range, its distance, and its routes. | Live beta |
@@ -72,8 +72,8 @@ Each row explains the rider need, the implementation's practical value, and an e
 | Transfer catch slack | Uses first-trip arrival, walking time, a one-minute boarding allowance, and second-trip departure to calculate remaining minutes. | An 8:20 arrival, two-minute walk, and 8:25 departure produces about two minutes of slack. | Live or clearly estimated |
 | Realtime-first transfer selection | Keeps every spatially feasible transfer pair until concrete trip predictions are compared, instead of trimming to the eight closest pairs first. | A ninth, slightly farther transfer can win when its next vehicle arrives much earlier. | Live with fresh complete predictions |
 | Fastest | Ranks the lowest door-to-door estimate. Preference scores never replace ETA. | Use Fastest when arrival time matters more than extra walking or variable service. | Live |
-| Balanced | Considers ETA, walking, transfer count, and current spacing reliability. | A slightly slower direct option may rank above a trip with more walking and a transfer. | Live, default mode |
-| Safety-first | Compares deduplicated 30-, 90-, and 365-day historical reports with transparent category weights. Origin, boarding, route, transfer, and destination use documented weights, and one extreme location is capped. | Use past area context as one extra input for a night trip. It is not a personal safety prediction. | Research beta |
+| Balanced | Considers ETA, walking, transfers, current spacing, and a small penalty only for historical context above the 50th percentile of all Muni stops. | A slightly slower direct option may rank above a trip with more walking, a transfer, or a clearly higher historical report context. | Live, default mode |
+| Safety-first | Compares deduplicated 30-, 90-, and 365-day reports against all Muni stops. Direct trips use 45/40/15 origin-route-destination weights; transfers use 20/35/30/15 origin-route-transfer-destination weights. | Use past area context as one extra input for a night trip. It is not a personal safety prediction. | Research beta · method 3.0 |
 | Option A vs Option B | Places any two displayed routes side by side with ETA, evidence level, walking, transfers, connection slack, reliability, historical context, and street context. | Compare a faster tight transfer with a steadier direct route without switching cards repeatedly. | Live beta |
 | Destination parking pressure | Combines meter inventory and recent paid sessions as a relative signal. If fewer than 70% of sessions match mapped meters, it withholds high/low labels. It is not occupancy or open-space availability. | Check whether paid activity near Mission is rising; if source coverage drops, read the evidence count without an overstated rating. | Research beta |
 | Freshness and failure labels | Each source distinguishes current, retained, outdated, and unavailable. “No events” appears only after a usable source returns no matching events. | If street data fails, the app says it is unavailable instead of implying the road is clear. | Live |
@@ -128,8 +128,12 @@ Every query builds one shared set of direct and one-transfer candidates. The thr
 | Mode | Ranking basis | Best used when |
 |---|---|---|
 | Fastest | Door-to-door ETA | Arrival time matters most |
-| Balanced | ETA + current reliability penalty + walking cost + transfer cost | You want a practical balance |
-| Safety-first | Balanced cost + relative historical report context along the trip | You want historical context as one input, not a safety prediction |
+| Balanced | ETA + current reliability + walking + transfer + `max(percentile − 50, 0) × 0.03` | You want a practical balance; only clearly above-midpoint historical differences should have a small effect |
+| Safety-first | ETA + current reliability + walking + transfer + `max(percentile − 50, 0) × 0.15` | You want historical context to matter more, while understanding it is not a safety prediction |
+
+Safety method 3.0 is frozen for the v1 line. The percentile baseline contains every Muni stop, not only cells where incidents were reported. A direct trip weights origin/boarding 45%, along-route context 40%, and destination 15%. A one-transfer trip uses 20%, 35%, 30%, and 15% respectively. Missing components are removed and the remaining weights are renormalized. Each component is capped at the 95th percentile so one extreme location cannot dominate the whole trip.
+
+The v1 planner intentionally supports at most one transfer. Corridor-specific historical travel-speed baselines are reserved for v1.1; the current speed message compares fresh reported movement with a transparent vehicle-type reference and does not call it a historical average.
 
 ## Evidence contract
 
@@ -139,6 +143,7 @@ Every query builds one shared set of direct and one-transfer candidates. The thr
 - An unavailable street-event source does not mean there are no disruptions.
 - A nearby road event and a slowdown are context, not proof that one caused the other.
 - Historical reports do not predict crime, label a place safe or unsafe, or guarantee personal safety.
+- Historical context at or below the Muni-stop midpoint adds no ranking penalty. Ranking costs never change the displayed ETA.
 - Paid parking sessions do not prove a vehicle is present. Parking pressure is not occupancy or open-space availability.
 - Preference costs rank routes. They are never shown as ETA.
 - Location is requested only after a rider selects the button. Coordinates stay on the current page and are neither uploaded nor saved.

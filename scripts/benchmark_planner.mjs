@@ -41,6 +41,7 @@ const random = () => {
 const timings = [];
 const candidateCounts = [];
 const failures = [];
+let measuredEngineVersion = null;
 for (let index = 0; index < runCount; index += 1) {
   const pattern = rawPatterns[Math.floor(random() * rawPatterns.length)];
   const stops = pattern.stops;
@@ -52,6 +53,7 @@ for (let index = 0; index < runCount; index += 1) {
   const started = performance.now();
   try {
     const result = engine.plan(origin, destination, "BALANCED");
+    measuredEngineVersion ||= result.meta.engine_version;
     timings.push(performance.now() - started);
     candidateCounts.push(result.candidate_count);
   } catch (error) {
@@ -67,7 +69,7 @@ const percentile = (values, fraction) => {
 const round = value => value == null ? null : Math.round(value * 10) / 10;
 const report = {
   benchmark_version: "1.0",
-  engine_version: "25B-browser-1.4",
+  engine_version: measuredEngineVersion,
   requested_queries: runCount,
   successful_queries: timings.length,
   failed_queries: failures.length,

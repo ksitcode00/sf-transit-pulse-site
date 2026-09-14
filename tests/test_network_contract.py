@@ -14,6 +14,7 @@ from scripts.refresh_data import (
     build_parking_pressure,
     build_safety_context,
     build_spacing_events,
+    midpoint_percentile_rank,
     parse_alerts,
     parse_road_events,
     parse_static_gtfs,
@@ -170,13 +171,32 @@ def test_safety_context_deduplicates_incidents_and_keeps_time_windows() -> None:
     context = build_safety_context(rows)
     cell = context["cells"][0]
 
-    assert context["method_version"] == "2.0"
+    assert context["method_version"] == "3.0"
     assert context["raw_record_count"] == 4
     assert context["deduplicated_record_count"] == 3
     assert cell["reported_incidents_30d_cell"] == 1
     assert cell["reported_incidents_90d_cell"] == 2
     assert cell["reported_incidents_365d_cell"] == 3
     assert cell["severity_weighted_365d_cell"] == 7
+
+
+def test_safety_percentiles_use_all_muni_stops_as_the_baseline() -> None:
+    now = datetime.now(timezone.utc)
+    context = build_safety_context(
+        [
+            {"incident_id": "I1", "incident_datetime": (now - timedelta(days=10)).isoformat(), "incident_category": "Assault", "latitude": "37.700", "longitude": "-122.400"},
+            {"incident_id": "I2", "incident_datetime": (now - timedelta(days=80)).isoformat(), "incident_category": "Larceny Theft", "latitude": "37.780", "longitude": "-122.420"},
+        ],
+        [(37.700, -122.400), (37.780, -122.420), (37.800, -122.450)],
+    )
+
+    assert context["method_version"] == "3.0"
+    assert context["percentile_baseline"] == "ALL_MUNI_STOPS"
+    assert context["baseline_stop_count"] == 3
+    assert len(context["stop_context_distribution"]) == 3
+    assert context["stop_context_distribution"][0] == 0
+
+    assert midpoint_percentile_rank([0, 0, 0, 0], 0) == 50
 
 
 def test_parking_pressure_uses_paid_sessions_without_claiming_open_spaces() -> None:

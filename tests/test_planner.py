@@ -144,6 +144,9 @@ def _realtime_test_engine(
     }
     safety_payload = {
         "status": "JOURNEY_RELATIVE_CONTEXT",
+        "method_version": "3.0",
+        "percentile_baseline": "ALL_MUNI_STOPS",
+        "stop_context_distribution": [0, 2, 8, 20],
         "lookback_days": 365,
         "cells": [
             {"lat": 37.700, "lon": -122.400, "reported_incidents_365d_cell": 2, "reported_incidents_365d_nearby": 2},
@@ -244,7 +247,25 @@ def test_journey_safety_context_enables_real_safety_first_contract() -> None:
     assert journey["safety"]["route_percentile"] is not None
     assert journey["safety"]["transfer_percentile"] is not None
     assert journey["safety"]["destination_percentile"] is not None
+    assert journey["safety"]["percentile_baseline"] == "ALL_MUNI_STOPS"
+    assert [row["weight"] for row in journey["safety"]["segments"]] == [20, 35, 30, 15]
+    assert journey["safety"]["ranking_effect"]["balanced_penalty_min"] > 0
+    assert (
+        journey["safety"]["ranking_effect"]["safety_first_penalty_min"]
+        > journey["safety"]["ranking_effect"]["balanced_penalty_min"]
+    )
     assert journey["costs"]["safety_first"] > journey["costs"]["balanced"]
+
+
+def test_low_parking_coverage_returns_limited_evidence_in_reference_engine() -> None:
+    engine = _realtime_test_engine(transfer=False, parking=True)
+    engine.parking_mapping_coverage = 0.2
+    engine.parking_evidence_sufficient = False
+
+    parking = engine.plan("A", "X", "BALANCED")["alternatives"][0]["destination_parking"]
+
+    assert parking["status"] == "LIMITED_EVIDENCE"
+    assert parking["pressure_label"] == "NOT_RATED"
 
 
 def test_destination_parking_context_is_a_pressure_proxy_not_availability() -> None:

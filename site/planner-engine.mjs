@@ -22,7 +22,10 @@ const VEHICLE_MAX_AGE_SEC = 10 * 60;
 const SERVICE_CONTEXT_MAX_AGE_SEC = 30 * 60;
 const PARKING_MAX_AGE_SEC = 3 * 60 * 60;
 const PARKING_MIN_MATCH_COVERAGE = 0.70;
-const ENGINE_VERSION = "25B-browser-1.4";
+const SAFETY_MIDPOINT_PERCENTILE = 50;
+const BALANCED_SAFETY_MIN_PER_POINT = 0.03;
+const SAFETY_FIRST_MIN_PER_POINT = 0.15;
+const ENGINE_VERSION = "25B-browser-1.5";
 const ROUTE_COLORS = ["#0066cc", "#34a853"];
 
 const HEALTH_SEVERITY = {
@@ -62,6 +65,24 @@ const bisectRight = (ordered, value) => {
     else low = middle + 1;
   }
   return low;
+};
+
+const bisectLeft = (ordered, value) => {
+  let low = 0;
+  let high = ordered.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (ordered[middle] < value) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+};
+
+const midpointPercentileRank = (ordered, value) => {
+  if (!ordered.length) return null;
+  const below = bisectLeft(ordered, value);
+  const atOrBelow = bisectRight(ordered, value);
+  return 100 * (below + (atOrBelow - below) / 2) / ordered.length;
 };
 
 const epochSeconds = value => {
@@ -211,10 +232,16 @@ export class BrowserPlannerEngine {
         contextScore: Number(row.historical_context_score_cell ?? row.reported_incidents_365d_cell ?? 0)
       });
     }
-    this.safetyDistribution = (realtime.safety?.cells || [])
-      .map(row => Number(row.historical_context_score ?? row.reported_incidents_365d_nearby ?? 0))
+    const networkSafetyDistribution = realtime.safety?.stop_context_distribution || [];
+    this.safetyDistribution = (networkSafetyDistribution.length
+      ? networkSafetyDistribution
+      : (realtime.safety?.cells || []).map(row => row.historical_context_score ?? row.reported_incidents_365d_nearby ?? 0))
+      .map(Number)
       .filter(Number.isFinite)
       .sort((a, b) => a - b);
+    this.safetyBaseline = networkSafetyDistribution.length
+      ? "ALL_MUNI_STOPS"
+      : "OBSERVED_INCIDENT_CELLS_FALLBACK";
     this.safetyStopCache = new Map();
     this.parkingFresh = this.sourceIsUsable("parking")
       && this.sourceIsFresh(this.parkingObservedEpoch, PARKING_MAX_AGE_SEC);
@@ -527,9 +554,8 @@ export class BrowserPlannerEngine {
         for (const field of Object.keys(nearby)) nearby[field] += Number(cell[field] || 0);
       }
     }
-    const percentileValue = this.safetyDistribution.length
-      ? round(100 * bisectRight(this.safetyDistribution, nearby.contextScore) / this.safetyDistribution.length)
-      : null;
+    const safetyRank = midpointPercentileRank(this.safetyDistribution, nearby.contextScore);
+    const percentileValue = safetyRank == null ? null : round(safetyRank);
     const priorMonthly = Math.max(0, nearby.count90 - nearby.count30) / 2;
     const trend = nearby.count30 >= priorMonthly + 2 && nearby.count30 >= priorMonthly * 1.25 ? "RISING"
       : priorMonthly >= nearby.count30 + 2 && nearby.count30 <= priorMonthly * 0.75 ? "FALLING" : "STEADY";
@@ -573,19 +599,28 @@ export class BrowserPlannerEngine {
     const transferValues = transferContexts.map(row => row.percentile).filter(value => value != null);
     const routePercentile = routeValues.length ? round(median(routeValues)) : null;
     const transferPercentile = transferValues.length ? round(median(transferValues)) : null;
-    const weightedComponents = [
-      {key: "origin", percentile: originContext.percentile, weight: 15, trend: originContext.recent_trend},
-      {key: "boarding", percentile: boardingContext.percentile, weight: 20, trend: boardingContext.recent_trend},
-      {key: "along_route", percentile: routePercentile, weight: 20, trend: routeContexts.map(row => row.recent_trend).includes("RISING") ? "RISING" : "STEADY"},
+    const originBoardingValues = [originContext.percentile, boardingContext.percentile]
+      .filter(value => value != null);
+    const originBoardingPercentile = originBoardingValues.length
+      ? round(median(originBoardingValues)) : null;
+    const isTransfer = transferContexts.length > 0;
+    const weightedComponents = (isTransfer ? [
+      {key: "origin_boarding", percentile: originBoardingPercentile, weight: 20, trend: [originContext.recent_trend, boardingContext.recent_trend].includes("RISING") ? "RISING" : "STEADY"},
+      {key: "along_route", percentile: routePercentile, weight: 35, trend: routeContexts.map(row => row.recent_trend).includes("RISING") ? "RISING" : "STEADY"},
       {key: "transfer", percentile: transferPercentile, weight: 30, trend: transferContexts.map(row => row.recent_trend).includes("RISING") ? "RISING" : "STEADY"},
       {key: "destination", percentile: destinationContext.percentile, weight: 15, trend: destinationContext.recent_trend}
-    ].filter(row => row.percentile != null);
+    ] : [
+      {key: "origin_boarding", percentile: originBoardingPercentile, weight: 45, trend: [originContext.recent_trend, boardingContext.recent_trend].includes("RISING") ? "RISING" : "STEADY"},
+      {key: "along_route", percentile: routePercentile, weight: 40, trend: routeContexts.map(row => row.recent_trend).includes("RISING") ? "RISING" : "STEADY"},
+      {key: "destination", percentile: destinationContext.percentile, weight: 15, trend: destinationContext.recent_trend}
+    ]).filter(row => row.percentile != null);
     // Cap each segment at the 95th percentile so one extreme stop can influence
     // the result without overwhelming every other part of the journey.
     const weightTotal = weightedComponents.reduce((sum, row) => sum + row.weight, 0);
     const overall = weightTotal ? round(weightedComponents.reduce(
       (sum, row) => sum + Math.min(95, row.percentile) * row.weight, 0
     ) / weightTotal) : null;
+    const safetyExcess = Math.max(0, Number(overall || 0) - SAFETY_MIDPOINT_PERCENTILE);
     return {
       status: "JOURNEY_RELATIVE_CONTEXT",
       overall_percentile: overall,
@@ -596,12 +631,21 @@ export class BrowserPlannerEngine {
       destination_percentile: destinationContext.percentile,
       segments: weightedComponents,
       extreme_value_cap_percentile: 95,
-      weighting_basis: "Origin 15%, boarding 20%, along route 20%, transfer 30%, destination 15%; available segments are renormalized.",
+      weighting_basis: isTransfer
+        ? "One transfer: origin/boarding 20%, along route 35%, transfer 30%, destination 15%; available segments are renormalized."
+        : "Direct: origin/boarding 45%, along route 40%, destination 15%; available segments are renormalized.",
+      percentile_baseline: this.safetyBaseline,
+      ranking_effect: {
+        midpoint_percentile: SAFETY_MIDPOINT_PERCENTILE,
+        excess_percentile_points: safetyExcess,
+        balanced_penalty_min: round(safetyExcess * BALANCED_SAFETY_MIN_PER_POINT, 2),
+        safety_first_penalty_min: round(safetyExcess * SAFETY_FIRST_MIN_PER_POINT, 2)
+      },
       label: this.relativeContextLabel(overall),
       lookback_days: this.realtime.safety?.lookback_days || 365,
       radius_m: 250,
       method_version: this.realtime.safety?.method_version || "1.0",
-      detail: "Relative 30/90/365-day reported-incident context with category weighting near journey areas, compared with other observed San Francisco cells.",
+      detail: "Relative 30/90/365-day reported-incident context near journey areas, compared with all Muni stops.",
       disclaimer: "Historical reported incidents do not predict crime, label a place safe or unsafe, or guarantee personal safety."
     };
   }
@@ -692,7 +736,8 @@ export class BrowserPlannerEngine {
     const reliability = this.reliability([pattern]);
     const disruption = this.legDisruption(pattern, board, alight);
     const safety = this.journeySafetyContext(origin, board, pattern.stops.slice(boardIndex, alightIndex + 1), [], destination);
-    const safetyPenalty = Number(safety.overall_percentile || 0) / 10;
+    const balancedSafetyPenalty = Number(safety.ranking_effect?.balanced_penalty_min || 0);
+    const safetyFirstPenalty = Number(safety.ranking_effect?.safety_first_penalty_min || 0);
     // Feature 30 · Stable itinerary identity / 稳定行程身份
     // 中文：线路结构决定 itinerary_id；具体班次另存为 trip_instance_id。
     // 刷新后即使下一班车替换了上一班，页面仍能保留用户正在比较的同一条走法。
@@ -709,8 +754,8 @@ export class BrowserPlannerEngine {
       destination_parking: this.destinationParkingContext(destination), transfer: null,
       costs: {
         fastest: round(etaMin, 3),
-        balanced: round(etaMin + reliability.penalty + walkingMin * 0.15, 3),
-        safety_first: round(etaMin + reliability.penalty + walkingMin * 0.15 + safetyPenalty, 3)
+        balanced: round(etaMin + reliability.penalty + walkingMin * 0.15 + balancedSafetyPenalty, 3),
+        safety_first: round(etaMin + reliability.penalty + walkingMin * 0.15 + safetyFirstPenalty, 3)
       },
       legs: [
         {type: "WALK", from: publicStop(origin), to: publicStop(board), duration_min: round(originWalkMin, 1), distance_m: round(originWalkM)},
@@ -777,7 +822,8 @@ export class BrowserPlannerEngine {
       ...first.stops.slice(firstBoardIndex, firstAlightIndex + 1),
       ...second.stops.slice(secondBoardIndex, finalAlightIndex + 1)
     ], [firstAlight, secondBoard], destination);
-    const safetyPenalty = Number(safety.overall_percentile || 0) / 10;
+    const balancedSafetyPenalty = Number(safety.ranking_effect?.balanced_penalty_min || 0);
+    const safetyFirstPenalty = Number(safety.ranking_effect?.safety_first_penalty_min || 0);
     const catchability = transferBuffer < 0 ? "MISS" : transferBuffer >= 3 ? "CATCHABLE" : "TIGHT";
     const routeSequence = `${first.route_id} → ${second.route_id}`;
     const journeyId = stableJourneyId(["transfer", first.key, second.key, firstBoard.stop_id, firstAlight.stop_id, secondBoard.stop_id, finalAlight.stop_id]);
@@ -801,8 +847,8 @@ export class BrowserPlannerEngine {
       },
       costs: {
         fastest: round(etaMin, 3),
-        balanced: round(etaMin + reliability.penalty + walkingMin * 0.15 + 3, 3),
-        safety_first: round(etaMin + reliability.penalty + walkingMin * 0.15 + 3 + safetyPenalty, 3)
+        balanced: round(etaMin + reliability.penalty + walkingMin * 0.15 + 3 + balancedSafetyPenalty, 3),
+        safety_first: round(etaMin + reliability.penalty + walkingMin * 0.15 + 3 + safetyFirstPenalty, 3)
       },
       legs: [
         {type: "WALK", from: publicStop(origin), to: publicStop(firstBoard), duration_min: round(originWalkMin, 1), distance_m: round(originWalkM)},
@@ -944,8 +990,8 @@ export class BrowserPlannerEngine {
         eta_status: winner.eta_status, reliability_label: winner.reliability,
         exposure_label: winner.exposure,
         explanation: modeName === "FASTEST" ? "Lowest estimated door-to-door travel time in the current candidate set."
-          : modeName === "BALANCED" ? "Balances ETA, walking, transfers, and current service-spacing evidence."
-          : this.safetyDistribution.length ? "Uses relative 30-, 90-, and 365-day reported-incident context when location cells are available; this is not a prediction of personal safety."
+          : modeName === "BALANCED" ? "Balances ETA, walking, transfers, current spacing, and a small adjustment only for historical context above the Muni-stop midpoint."
+          : this.safetyDistribution.length ? "Gives more weight to historical report context above the Muni-stop midpoint; this is not a prediction of personal safety."
           : "Stop-level historical context is not available, so this falls back to the reliability-aware ranking."
       });
     }
