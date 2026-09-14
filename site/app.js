@@ -27,7 +27,13 @@ const I18N = {
     compare: "Compare what matters to you", compareBody: "Fastest favors time. Balanced also considers steady service, walking, and transfers. Safety-first works only when location-level historical report data is available.",
     boundariesTitle: "Important limits", boundarySafety: "Historical incident data cannot tell whether you will be safe.", boundaryRoad: "A nearby street event does not prove what caused a transit delay.", boundaryMissing: "No live update does not mean a route has stopped running.", boundaryCost: "A comparison score is not an arrival time.", boundaryTransfer: "Live predictions can change, so a possible transfer is not guaranteed.",
     explain: "Explain the recommendation", explainBody: "Show why one route ranks first, what the other options offer, and where the data is limited.",
-    footerNote: "An independent research prototype. Not an official SFMTA service.", reportIssue: "Report an issue"
+    nearbyEyebrow: "Start from where you are", nearbyTitle: "Find Muni stops near you",
+    nearbyLead: "Choose a distance, then allow location access. We'll show every Muni stop inside that range and the routes you can take there.",
+    nearbyRadiusLabel: "Search within", nearbyButton: "Find nearby stops",
+    nearbyPrivacy: "Your location is used only on this page to calculate distance. It is not uploaded or saved.",
+    nearbyInitial: "Select “Find nearby stops” when you're ready to share your location with this page.",
+    footerNote: "An independent research prototype. Not an official SFMTA service.", footerVersion: "v1.1 · Nearby Stops Beta",
+    footerData: "Data: 511 SF Bay · DataSF · SFMTA", footerMap: "Map © OpenStreetMap contributors", reportIssue: "Report an issue"
   },
   zh: {
     navNetwork: "现在的 Muni", navJourney: "规划行程", navContext: "更多出行信息", refresh: "获取最新数据", skipToMuni: "跳到 Muni 实时信息",
@@ -57,11 +63,20 @@ const I18N = {
     compare: "按你的需要比较", compareBody: "最快到达优先看时间；综合推荐也考虑运行稳定性、步行和换乘；只有具备地点级历史报告数据时，安全优先才会开放。",
     boundariesTitle: "请注意这些限制", boundarySafety: "历史事件记录不能判断你这次出行是否安全。", boundaryRoad: "附近有道路事件，不代表它一定造成了公交延误。", boundaryMissing: "没有实时信息，不代表这条线路已经停运。", boundaryCost: "路线比较分数不等于预计到达时间。", boundaryTransfer: "实时到站预测仍会变化，所以显示能换乘也不代表一定赶得上。",
     explain: "说明推荐理由", explainBody: "告诉你为什么这条路线排在前面、其他路线有什么不同，以及哪些数据仍然不足。",
-    footerNote: "独立研究原型，并非 SFMTA 官方服务。", reportIssue: "报告问题"
+    nearbyEyebrow: "从你现在的位置出发", nearbyTitle: "查找附近的 Muni 站点",
+    nearbyLead: "先选择距离，再允许获取位置。我们会列出范围内的全部 Muni 站点，以及每个站可以乘坐的线路。",
+    nearbyRadiusLabel: "查找范围", nearbyButton: "查找附近站点",
+    nearbyPrivacy: "你的位置只会在这个页面中用于计算距离，不会上传或保存。",
+    nearbyInitial: "准备好后，点击“查找附近站点”并选择是否允许本页使用你的位置。",
+    footerNote: "独立研究原型，并非 SFMTA 官方服务。", footerVersion: "v1.1 · 附近站点测试版",
+    footerData: "数据：511 SF Bay · DataSF · SFMTA", footerMap: "地图 © OpenStreetMap 贡献者", reportIssue: "报告问题"
   }
 };
 
-let language = localStorage.getItem("sf-transit-language") || "en";
+const requestedLanguage = new URLSearchParams(window.location.search).get("lang");
+let language = ["en", "zh"].includes(requestedLanguage)
+  ? requestedLanguage
+  : (localStorage.getItem("sf-transit-language") || "en");
 let snapshot = null;
 let network = null;
 let map = null;
@@ -70,6 +85,8 @@ let journeyMap = null;
 let journeyLayer = null;
 let stopSearchIndex = new Map();
 let plannerStops = [];
+let userLocation = null;
+let nearbyFeedback = null;
 // Feature 25B · Scheme B worker bridge / 方案 B 浏览器线程连接
 // 中文：旧版在这里保存 Render 地址；现在主页面只和本地 Web Worker 通信。
 // 每次实时快照更新后，Worker 会收到新的无密钥数据并重新建立查询索引。
@@ -141,9 +158,14 @@ function timeAgo(value) {
   return `${days} ${language === "zh" ? "天前" : "days ago"}`;
 }
 
-function setLanguage(next) {
+function setLanguage(next, {syncUrl = false} = {}) {
   language = next;
   localStorage.setItem("sf-transit-language", language);
+  if (syncUrl) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("lang", language);
+    window.history.replaceState(null, "", url);
+  }
   document.documentElement.lang = language === "zh" ? "zh-Hans" : "en";
   document.querySelectorAll("[data-i18n]").forEach(node => {
     const key = node.dataset.i18n;
@@ -167,6 +189,12 @@ function setLanguage(next) {
   if (routeSelect) routeSelect.setAttribute("aria-label", language === "zh" ? "选择 Muni 线路" : "Choose a Muni route");
   if (directionSelect) directionSelect.setAttribute("aria-label", language === "zh" ? "选择线路方向" : "Choose a route direction");
   if (networkMap) networkMap.setAttribute("aria-label", language === "zh" ? "Muni 实时车辆位置地图" : "Map of current Muni vehicle locations");
+  document.querySelectorAll("#nearby-radius option").forEach(option => {
+    option.textContent = `${option.value} ${language === "zh" ? "米" : "m"}`;
+  });
+  if (nearbyFeedback) {
+    setNearbyStatus(nearbyCopy(nearbyFeedback.key, nearbyFeedback.values), nearbyFeedback.isError);
+  }
 }
 
 function initMap() {
@@ -698,6 +726,142 @@ function renderStopOptions() {
   });
 }
 
+// Feature 26 · Nearby stops / 附近站点
+// 中文：只有用户点击按钮后才向浏览器请求一次当前位置。坐标不会离开本页；
+// 页面直接在公开 GTFS 站点目录中计算球面距离，并按由近到远列出指定范围内的站点。
+// English: Location is requested only after a button click. Coordinates stay on
+// this page while the public GTFS stop catalog is filtered and sorted by distance.
+function nearbyCopy(key, values = {}) {
+  const copy = {
+    loading: {
+      en: "Getting your location… Your browser may ask for permission.",
+      zh: "正在获取你的位置……浏览器可能会询问是否允许。"
+    },
+    catalogLoading: {
+      en: "Your location is ready. The Muni stop list is still loading; results will appear here shortly.",
+      zh: "已经取得你的位置。Muni 站点资料仍在加载，完成后会在这里显示结果。"
+    },
+    found: {
+      en: `Found ${values.count} Muni ${values.count === 1 ? "stop" : "stops"} within ${values.radius} m, nearest first.`,
+      zh: `在附近 ${values.radius} 米内找到 ${values.count} 个 Muni 站点，已按距离从近到远排列。`
+    },
+    none: {
+      en: `No Muni stops were found within ${values.radius} m. Try a larger distance.`,
+      zh: `附近 ${values.radius} 米内没有找到 Muni 站点。可以试试更大的范围。`
+    },
+    unavailable: {
+      en: "This browser can't provide your location. You can still enter a stop name below.",
+      zh: "这个浏览器无法提供你的位置。你仍然可以在下方输入站名。"
+    },
+    insecure: {
+      en: "Location works only on a secure website. Open the HTTPS version of this page, then try again.",
+      zh: "定位功能只能在安全网站中使用。请打开这个页面的 HTTPS 版本后重试。"
+    },
+    denied: {
+      en: "Location access wasn't allowed. Allow location for this site in your browser settings, then try again—or enter a stop name below.",
+      zh: "没有获得位置权限。请在浏览器设置中允许这个网站使用位置后重试，或直接在下方输入站名。"
+    },
+    positionUnavailable: {
+      en: "Your device couldn't determine its location. Check location services and your connection, then try again.",
+      zh: "设备暂时无法确定你的位置。请检查定位服务和网络连接后重试。"
+    },
+    timeout: {
+      en: "Getting your location took too long. Move near a window or check location services, then try again.",
+      zh: "获取位置等待时间过长。可以移到靠近窗户的位置，或检查定位服务后重试。"
+    },
+    genericError: {
+      en: "We couldn't get your location. Check your browser's location setting, then try again.",
+      zh: "暂时无法获取你的位置。请检查浏览器的定位设置后重试。"
+    }
+  };
+  return copy[key]?.[language] || "";
+}
+
+function setNearbyStatus(message, isError = false) {
+  const status = document.getElementById("nearby-status");
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+}
+
+function setNearbyFeedback(key, values = {}, isError = false) {
+  nearbyFeedback = {key, values, isError};
+  setNearbyStatus(nearbyCopy(key, values), isError);
+}
+
+function useNearbyStop(stopId, role) {
+  const stop = plannerStops.find(row => String(row.stop_id) === String(stopId));
+  const input = document.getElementById(role === "destination" ? "destination-input" : "origin-input");
+  if (!stop || !input) return;
+  input.value = stopLabel(stop);
+  stopSearchIndex.set(input.value, stop.stop_id);
+  appState.plannerRequestKey = null;
+  input.focus({preventScroll: true});
+  document.getElementById("trip-planner-form")?.scrollIntoView({behavior: "smooth", block: "center"});
+}
+
+function renderNearbyStops() {
+  const results = document.getElementById("nearby-results");
+  const radius = Number(document.getElementById("nearby-radius")?.value || 200);
+  if (!results || !userLocation) return;
+  if (!plannerStops.length) {
+    results.innerHTML = "";
+    setNearbyFeedback("catalogLoading");
+    return;
+  }
+
+  const matches = window.SFNearbyStops?.findNearbyStops(plannerStops, userLocation, radius) || [];
+  setNearbyFeedback(matches.length ? "found" : "none", {count: matches.length, radius});
+  results.innerHTML = matches.map(stop => {
+    const routes = (stop.route_ids || []).join(" · ");
+    const routesText = routes
+      ? (language === "zh" ? `可乘线路：${routes}` : `Routes: ${routes}`)
+      : (language === "zh" ? "暂时没有线路资料" : "Route information unavailable");
+    return `<article class="nearby-stop-item">
+      <div>
+        <h4>${escapeHtml(stop.name || (language === "zh" ? "Muni 站点" : "Muni stop"))}</h4>
+        <p>${escapeHtml(routesText)}</p>
+      </div>
+      <strong class="nearby-distance">${Math.round(stop.distance_m)} ${language === "zh" ? "米" : "m"}</strong>
+      <div class="nearby-stop-actions">
+        <button type="button" data-nearby-stop="${escapeHtml(stop.stop_id)}" data-nearby-role="origin">${language === "zh" ? "设为起点" : "Use as start"}</button>
+        <button type="button" data-nearby-stop="${escapeHtml(stop.stop_id)}" data-nearby-role="destination">${language === "zh" ? "设为终点" : "Use as destination"}</button>
+      </div>
+    </article>`;
+  }).join("");
+  results.querySelectorAll("button[data-nearby-stop]").forEach(button => button.addEventListener("click", () => {
+    useNearbyStop(button.dataset.nearbyStop, button.dataset.nearbyRole);
+  }));
+}
+
+function requestUserLocation() {
+  const button = document.getElementById("nearby-location-button");
+  const results = document.getElementById("nearby-results");
+  if (!window.isSecureContext && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+    setNearbyFeedback("insecure", {}, true);
+    return;
+  }
+  if (!navigator.geolocation) {
+    setNearbyFeedback("unavailable", {}, true);
+    return;
+  }
+
+  button.disabled = true;
+  if (results) results.innerHTML = "";
+  setNearbyFeedback("loading");
+  navigator.geolocation.getCurrentPosition(position => {
+    userLocation = {lat: position.coords.latitude, lon: position.coords.longitude};
+    button.disabled = false;
+    renderNearbyStops();
+  }, error => {
+    button.disabled = false;
+    const errorKey = error.code === 1 ? "denied"
+      : error.code === 2 ? "positionUnavailable"
+        : error.code === 3 ? "timeout" : "genericError";
+    setNearbyFeedback(errorKey, {}, true);
+  }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000});
+}
+
 function localStopMatches(query, limit = 12) {
   const folded = query.trim().toLocaleLowerCase();
   if (folded.length < 2) return [];
@@ -1174,6 +1338,7 @@ function renderAll({networkChanged = false} = {}) {
   renderDirectionSelector();
   renderRouteView();
   if (networkChanged || plannerStops.length === 0) renderStopOptions();
+  if (userLocation) renderNearbyStops();
   renderJourney();
   renderContext();
 }
@@ -1207,8 +1372,13 @@ document.addEventListener("DOMContentLoaded", () => {
   setLanguage(language);
   initMap();
   document.getElementById("language-toggle").addEventListener("click", () => {
-    setLanguage(language === "en" ? "zh" : "en");
+    setLanguage(language === "en" ? "zh" : "en", {syncUrl: true});
     if (snapshot && network) renderAll();
+    else if (userLocation) renderNearbyStops();
+  });
+  document.getElementById("nearby-location-button").addEventListener("click", requestUserLocation);
+  document.getElementById("nearby-radius").addEventListener("change", () => {
+    if (userLocation) renderNearbyStops();
   });
   document.getElementById("refresh-button").addEventListener("click", () => loadData());
   document.querySelectorAll(".scope-button").forEach(button => button.addEventListener("click", () => setRouteScope(button.dataset.scope)));

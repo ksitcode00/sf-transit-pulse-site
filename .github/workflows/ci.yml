@@ -39,11 +39,12 @@ jobs:
       - name: Verify browser JavaScript
         run: |
           node --check site/app.js
+          node --check site/nearby-stops.js
           node --check site/planner-worker.js
           node --check site/planner-engine.mjs
 
       - name: Verify Scheme B browser planner contracts
-        run: node --test tests/browser-planner.test.mjs
+        run: node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs
 
       - name: Verify public JSON caches
         run: |

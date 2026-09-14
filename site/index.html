@@ -150,6 +150,29 @@
         <span class="prototype-chip" data-i18n="dynamicPlanner">Live predictions + estimates · Public Beta</span>
       </div>
 
+      <section class="nearby-stops-card" aria-labelledby="nearby-stops-title">
+        <div class="nearby-stops-copy">
+          <p class="eyebrow" data-i18n="nearbyEyebrow">Start from where you are</p>
+          <h3 id="nearby-stops-title" data-i18n="nearbyTitle">Find Muni stops near you</h3>
+          <p data-i18n="nearbyLead">Choose a distance, then allow location access. We'll show every Muni stop inside that range and the routes you can take there.</p>
+        </div>
+        <div class="nearby-stops-controls">
+          <label class="nearby-radius-control" for="nearby-radius">
+            <span data-i18n="nearbyRadiusLabel">Search within</span>
+            <select id="nearby-radius">
+              <option value="100">100 m</option>
+              <option value="200" selected>200 m</option>
+              <option value="300">300 m</option>
+              <option value="400">400 m</option>
+            </select>
+          </label>
+          <button class="primary-button nearby-location-button" id="nearby-location-button" type="button" data-i18n="nearbyButton">Find nearby stops</button>
+        </div>
+        <p class="nearby-privacy" data-i18n="nearbyPrivacy">Your location is used only on this page to calculate distance. It is not uploaded or saved.</p>
+        <p class="nearby-status" id="nearby-status" role="status" aria-live="polite" data-i18n="nearbyInitial">Select “Find nearby stops” when you're ready to share your location with this page.</p>
+        <div class="nearby-results" id="nearby-results"></div>
+      </section>
+
       <form class="planner-form" id="trip-planner-form">
         <label class="planner-field">
           <span data-i18n="fromStop">Starting stop</span>
@@ -277,15 +300,16 @@
     </div>
     <div class="footer-meta">
       <span id="generated-at">Page update time unavailable</span>
-      <span>v1.0 · Browser Planner Beta</span>
-      <span>Data: 511 SF Bay · DataSF · SFMTA</span>
-      <span>Map © OpenStreetMap contributors</span>
+      <span data-i18n="footerVersion">v1.1 · Nearby Stops Beta</span>
+      <span data-i18n="footerData">Data: 511 SF Bay · DataSF · SFMTA</span>
+      <span data-i18n="footerMap">Map © OpenStreetMap contributors</span>
       <a href="https://github.com/ksitcode00/sf-transit-pulse-site/issues/new" target="_blank" rel="noreferrer" data-i18n="reportIssue">Report an issue</a>
     </div>
   </footer>
 
   <div class="error-banner" id="error-banner" role="status" hidden></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="app.js?v=25b1" defer></script>
+  <script src="nearby-stops.js?v=26" defer></script>
+  <script src="app.js?v=26" defer></script>
 </body>
 </html>

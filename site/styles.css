@@ -193,6 +193,28 @@ button.issue-card { cursor: pointer; }
 
 .journey-heading { align-items: center; }
 .prototype-chip { padding: 9px 15px; border: 1px solid var(--hairline); border-radius: var(--radius-pill); color: var(--muted); background: var(--white); font-size: 14px; white-space: nowrap; }
+.nearby-stops-card { margin-bottom: 24px; padding: 28px; border: 1px solid var(--hairline); border-radius: var(--radius-card); background: rgba(255,255,255,.72); }
+.nearby-stops-copy { max-width: 760px; }
+.nearby-stops-copy .eyebrow { margin-bottom: 7px; }
+.nearby-stops-copy h3 { margin-bottom: 8px; }
+.nearby-stops-copy > p:last-child { margin: 0; color: var(--muted); }
+.nearby-stops-controls { display: flex; align-items: end; gap: 12px; margin-top: 22px; }
+.nearby-radius-control { display: grid; gap: 7px; color: var(--muted); font-size: 14px; }
+.nearby-radius-control select { min-width: 140px; height: 46px; padding: 0 38px 0 14px; border: 1px solid var(--hairline); border-radius: 12px; color: var(--ink); background: var(--white); }
+.nearby-location-button { min-height: 46px; }
+.nearby-location-button:disabled { opacity: .58; cursor: wait; }
+.nearby-privacy { margin: 14px 0 0; color: var(--muted); font-size: 13px; }
+.nearby-status { margin: 18px 0 0; color: var(--ink); font-size: 14px; font-weight: 600; }
+.nearby-status.error { color: #b42318; }
+.nearby-results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.nearby-results:empty { display: none; }
+.nearby-stop-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 18px; padding: 18px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--white); }
+.nearby-stop-item h4 { margin: 0; font-size: 16px; }
+.nearby-stop-item p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+.nearby-distance { color: var(--blue); font-size: 14px; white-space: nowrap; }
+.nearby-stop-actions { grid-column: 1 / -1; display: flex; gap: 8px; padding-top: 3px; }
+.nearby-stop-actions button { min-height: 36px; padding: 6px  10px; border: 1px solid var(--hairline); border-radius: var(--radius-pill); color: var(--blue); background: var(--white); cursor: pointer; }
+.nearby-stop-actions button:hover { background: #f5faff; }
 .planner-form { display: grid; grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr) auto; align-items: end; gap: 12px; margin-bottom: 12px; padding: 24px; border: 1px solid var(--hairline); border-radius: var(--radius-card); background: var(--white); }
 .planner-field { position: relative; display: grid; gap: 7px; color: var(--muted); font-size: 14px; }
 .planner-field input { width: 100%; height: 48px; padding: 0 16px; border: 1px solid var(--hairline); border-radius: 12px; color: var(--ink); background: var(--white); }
@@ -309,7 +331,7 @@ footer p { margin: 8px 0 0; }
   .section-heading, .route-list-header { align-items: stretch; flex-direction: column; }
   .route-controls { width: 100%; }
   .route-control { min-width: 0; }
-  .mode-grid, .journey-evidence-grid, .dark-columns, .method { grid-template-columns: 1fr; }
+  .mode-grid, .journey-evidence-grid, .nearby-results, .dark-columns, .method { grid-template-columns: 1fr; }
   .method { gap: 48px; }
   .method-boundaries ul { columns: 1; }
   #map { height: 420px; }
@@ -328,6 +350,8 @@ footer p { margin: 8px 0 0; }
   .hero-actions { flex-direction: column; align-items: stretch; }
   .route-controls { grid-template-columns: 1fr; }
   .planner-form { grid-template-columns: 1fr; }
+  .nearby-stops-controls { align-items: stretch; flex-direction: column; }
+  .nearby-radius-control select, .nearby-location-button { width: 100%; }
   .swap-button { justify-self: center; transform: rotate(90deg); }
   .planner-submit { grid-column: auto; }
   .hero-metrics { grid-template-columns: 1fr; }
