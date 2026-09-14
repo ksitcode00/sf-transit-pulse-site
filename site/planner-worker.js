@@ -7,7 +7,7 @@
  * responsive. Inputs are public, credential-free cache objects only.
  */
 
-import {BrowserPlannerEngine} from "./planner-engine.mjs?v=25b1";
+import {BrowserPlannerEngine} from "./planner-engine.mjs?v=28";
 
 let engine = null;
 
@@ -17,6 +17,11 @@ self.addEventListener("message", event => {
     if (type === "initialize") {
       engine = new BrowserPlannerEngine(payload.network, payload.realtime);
       self.postMessage({id, ok: true, result: {ready: true, ...engine.stats}});
+      return;
+    }
+    if (type === "update-realtime") {
+      if (!engine) throw new Error("The browser planner is still loading.");
+      self.postMessage({id, ok: true, result: {ready: true, ...engine.updateRealtime(payload.realtime)}});
       return;
     }
     if (type === "plan") {

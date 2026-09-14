@@ -18,7 +18,12 @@ const TRANSFER_RADIUS_M = 180;
 const MAX_ACCESS_STOPS = 10;
 const MAX_ALTERNATIVES = 12;
 const BOARDING_BUFFER_MIN = 1;
-const ENGINE_VERSION = "25B-browser-1.0";
+const TRIP_PREDICTION_MAX_AGE_SEC = 10 * 60;
+const VEHICLE_MAX_AGE_SEC = 10 * 60;
+const SERVICE_CONTEXT_MAX_AGE_SEC = 30 * 60;
+const PARKING_MAX_AGE_SEC = 3 * 60 * 60;
+const MAX_TRANSFER_PAIRS_PER_PATTERN_PAIR = 8;
+const ENGINE_VERSION = "25B-browser-1.1";
 const ROUTE_COLORS = ["#0066cc", "#34a853"];
 
 const HEALTH_SEVERITY = {
@@ -58,6 +63,11 @@ const bisectRight = (ordered, value) => {
     else low = middle + 1;
   }
   return low;
+};
+
+const epochSeconds = value => {
+  const millis = value == null || value === "" ? NaN : new Date(value).getTime();
+  return Number.isFinite(millis) ? millis / 1000 : null;
 };
 
 function publicStop(stop) {
@@ -154,7 +164,6 @@ export class BrowserPlannerEngine {
   constructor(network, realtime) {
     if (!network || !realtime) throw new Error("Planner data is incomplete.");
     this.network = network;
-    this.realtime = realtime;
     this.routeCatalog = new Map((network.routes || []).map(row => [String(row.route_id), row]));
     const rawPatterns = network.patterns || network.route_directions || {};
     this.patterns = Object.entries(rawPatterns)
@@ -165,6 +174,26 @@ export class BrowserPlannerEngine {
     for (const pattern of this.patterns) {
       for (const stop of pattern.stops) if (!this.stops.has(stop.stop_id)) this.stops.set(stop.stop_id, stop);
     }
+    this.updateRealtime(realtime);
+  }
+
+  // Feature 28 · Source-specific freshness gates / 按数据源限制实时有效期
+  // 中文：页面即使没有拿到新快照，也不会继续把旧 Trip Update、车辆速度、
+  // 道路事件或停车活动称作“实时”。静态路网只建立一次；刷新时只更新动态索引。
+  // English: An old public snapshot must never masquerade as live evidence.
+  // Static route patterns stay in memory while refreshes replace only dynamic indexes.
+  updateRealtime(realtime) {
+    if (!realtime) throw new Error("Realtime planner data is incomplete.");
+    this.realtime = realtime;
+    const sourceStatus = realtime.meta?.source_status || {};
+    this.transitObservedEpoch = epochSeconds(sourceStatus.transit?.observed_at)
+      ?? epochSeconds(realtime.meta?.generated_at);
+    this.alertsObservedEpoch = epochSeconds(sourceStatus.alerts?.observed_at)
+      ?? this.transitObservedEpoch;
+    this.roadsObservedEpoch = epochSeconds(sourceStatus.roads?.observed_at)
+      ?? this.transitObservedEpoch;
+    this.parkingObservedEpoch = epochSeconds(realtime.parking?.source_snapshot_time)
+      ?? epochSeconds(sourceStatus.parking?.observed_at);
     this.health = new Map((realtime.routes || []).map(row => [
       `${String(row.route_id)}|${String(row.direction_id)}`,
       row
@@ -181,21 +210,46 @@ export class BrowserPlannerEngine {
       .filter(Number.isFinite)
       .sort((a, b) => a - b);
     this.safetyStopCache = new Map();
-    this.parkingCells = [...(realtime.parking?.cells || [])];
+    this.parkingFresh = this.sourceIsFresh(this.parkingObservedEpoch, PARKING_MAX_AGE_SEC);
+    this.parkingCells = this.parkingFresh ? [...(realtime.parking?.cells || [])] : [];
     this.parkingPressureDistribution = this.parkingCells
       .map(row => Number(row.paid_session_pressure_ratio || 0))
       .filter(value => value > 0 && Number.isFinite(value))
       .sort((a, b) => a - b);
     this.parkingStopCache = new Map();
+    return this.stats;
   }
 
   get stats() {
     return {routes: this.routeCatalog.size, patterns: this.patterns.length, stops: this.stops.size};
   }
 
+  sourceIsFresh(observedEpoch, maxAgeSec, referenceEpoch = Date.now() / 1000) {
+    return Number.isFinite(observedEpoch)
+      && referenceEpoch >= observedEpoch - 120
+      && referenceEpoch - observedEpoch <= maxAgeSec;
+  }
+
+  transitIsFresh(referenceEpoch = Date.now() / 1000) {
+    return this.sourceIsFresh(this.transitObservedEpoch, TRIP_PREDICTION_MAX_AGE_SEC, referenceEpoch);
+  }
+
+  tripIsFresh(trip, referenceEpoch = Date.now() / 1000) {
+    const updateTimestamp = Number(trip?.update_timestamp);
+    const observedEpoch = Number.isFinite(updateTimestamp) && updateTimestamp > 0
+      ? updateTimestamp
+      : this.transitObservedEpoch;
+    return this.sourceIsFresh(observedEpoch, TRIP_PREDICTION_MAX_AGE_SEC, referenceEpoch);
+  }
+
   buildVehicleSpeeds() {
     const grouped = new Map();
     for (const row of this.realtime.vehicles || []) {
+      const sourceAge = Number(row.age_seconds || 0);
+      const observedEpoch = Number.isFinite(this.transitObservedEpoch)
+        ? this.transitObservedEpoch - Math.max(0, sourceAge)
+        : null;
+      if (!this.sourceIsFresh(observedEpoch, VEHICLE_MAX_AGE_SEC)) continue;
       const speedMps = Number(row.speed_mps);
       if (!Number.isFinite(speedMps) || speedMps < 1) continue;
       const key = `${String(row.route_id)}|${String(row.direction_id)}`;
@@ -229,6 +283,7 @@ export class BrowserPlannerEngine {
         update_timestamp: raw.update_timestamp ? Number(raw.update_timestamp) : null,
         stops
       };
+      if (!this.tripIsFresh(trip)) continue;
       const key = `${routeId}|${directionId}`;
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key).push(trip);
@@ -249,6 +304,7 @@ export class BrowserPlannerEngine {
     const candidates = exactShape.length ? exactShape : routeTrips.filter(trip => !trip.shape_id);
     let best = null;
     for (const trip of candidates) {
+      if (!this.tripIsFresh(trip)) continue;
       for (let boardIndex = 0; boardIndex < trip.stops.length; boardIndex += 1) {
         const board = trip.stops[boardIndex];
         if (board.stop_id !== boardStopId) continue;
@@ -302,7 +358,10 @@ export class BrowserPlannerEngine {
   }
 
   routeSpeedMph(pattern) {
-    return this.vehicleSpeeds.get(`${pattern.route_id}|${pattern.direction_id}`) ?? this.comparisonSpeedMph(pattern);
+    const current = this.transitIsFresh()
+      ? this.vehicleSpeeds.get(`${pattern.route_id}|${pattern.direction_id}`)
+      : null;
+    return current ?? this.comparisonSpeedMph(pattern);
   }
 
   waitMinutes(pattern) {
@@ -311,6 +370,7 @@ export class BrowserPlannerEngine {
   }
 
   healthFor(pattern) {
+    if (!this.transitIsFresh()) return "NO_DATA";
     return String(this.health.get(`${pattern.route_id}|${pattern.direction_id}`)?.health || "NO_DATA");
   }
 
@@ -350,7 +410,9 @@ export class BrowserPlannerEngine {
     for (const pattern of patterns) {
       const health = this.healthFor(pattern);
       if ((HEALTH_SEVERITY[health] ?? 2) > (HEALTH_SEVERITY[worst] ?? 0)) worst = health;
-      const row = this.health.get(`${pattern.route_id}|${pattern.direction_id}`) || {};
+      const row = this.transitIsFresh()
+        ? (this.health.get(`${pattern.route_id}|${pattern.direction_id}`) || {})
+        : {};
       evidence.push({
         route_id: pattern.route_id,
         direction_id: pattern.direction_id,
@@ -366,7 +428,9 @@ export class BrowserPlannerEngine {
   }
 
   legDisruption(pattern, start, end) {
-    const currentSpeed = this.vehicleSpeeds.get(`${pattern.route_id}|${pattern.direction_id}`);
+    const currentSpeed = this.transitIsFresh()
+      ? this.vehicleSpeeds.get(`${pattern.route_id}|${pattern.direction_id}`)
+      : null;
     const comparisonSpeed = this.comparisonSpeedMph(pattern);
     const speedRatio = currentSpeed == null ? null : currentSpeed / comparisonSpeed;
     const movementStatus = speedRatio == null ? "NO_LIVE_SPEED"
@@ -375,7 +439,9 @@ export class BrowserPlannerEngine {
       : "NEAR_COMPARISON";
     const legLine = this.shapeSlice(pattern, start, end);
     const roadContext = [];
-    for (const event of this.realtime.road_events || []) {
+    const roadEvents = this.sourceIsFresh(this.roadsObservedEpoch, SERVICE_CONTEXT_MAX_AGE_SEC)
+      ? (this.realtime.road_events || []) : [];
+    for (const event of roadEvents) {
       const routeIds = new Set((event.route_ids || []).map(String));
       let relation = null;
       let distanceM = null;
@@ -398,7 +464,9 @@ export class BrowserPlannerEngine {
         distance_m: distanceM == null ? null : round(distanceM)
       });
     }
-    const serviceNotices = (this.realtime.alerts || []).filter(alert => {
+    const activeAlerts = this.sourceIsFresh(this.alertsObservedEpoch, SERVICE_CONTEXT_MAX_AGE_SEC)
+      ? (this.realtime.alerts || []) : [];
+    const serviceNotices = activeAlerts.filter(alert => {
       const routeIds = new Set((alert.route_ids || []).map(String));
       const direction = alert.direction_id;
       return routeIds.has(pattern.route_id)
@@ -494,6 +562,18 @@ export class BrowserPlannerEngine {
 
   destinationParkingContext(destination) {
     if (this.parkingStopCache.has(destination.stop_id)) return this.parkingStopCache.get(destination.stop_id);
+    if (!this.parkingFresh) {
+      const stale = {
+        status: "STALE", radius_m: 400, pressure_label: "NOT_RATED",
+        relative_pressure_percentile: null, metered_spaces_represented: 0,
+        active_paid_sessions_proxy: 0, starts_15m: 0, starts_30m: 0, starts_60m: 0,
+        trend: "UNAVAILABLE", source_snapshot_time: this.realtime.parking?.source_snapshot_time || null,
+        detail: "The latest paid-parking source is too old for current parking-pressure guidance.",
+        disclaimer: "This does not measure physical occupancy or open spaces."
+      };
+      this.parkingStopCache.set(destination.stop_id, stale);
+      return stale;
+    }
     const matched = this.parkingCells.filter(row => Number.isFinite(Number(row.lat))
       && Number.isFinite(Number(row.lon))
       && haversineM(destination, [Number(row.lat), Number(row.lon)]) <= 400);
@@ -519,11 +599,14 @@ export class BrowserPlannerEngine {
     const percentileValue = ratio > 0 && this.parkingPressureDistribution.length
       ? round(100 * bisectRight(this.parkingPressureDistribution, ratio) / this.parkingPressureDistribution.length)
       : 0;
-    const pressureLabel = percentileValue >= 90 ? "VERY_HIGH" : percentileValue >= 70 ? "HIGH" : percentileValue >= 35 ? "MODERATE" : "LOW";
+    const hasRecentPaidActivity = active > 0 || starts60 > 0;
+    const pressureLabel = !hasRecentPaidActivity ? "NO_RECENT_PAID_ACTIVITY"
+      : percentileValue >= 90 ? "VERY_HIGH" : percentileValue >= 70 ? "HIGH" : percentileValue >= 35 ? "MODERATE" : "LOW";
     const trend = starts30 >= previous30 + 2 && starts30 >= previous30 * 1.2 ? "RISING"
       : previous30 >= starts30 + 2 && starts30 <= previous30 * 0.8 ? "FALLING" : "STEADY";
     const result = {
-      status: "PAID_PARKING_PRESSURE_PROXY", radius_m: 400, pressure_label: pressureLabel,
+      status: hasRecentPaidActivity ? "PAID_PARKING_PRESSURE_PROXY" : "NO_RECENT_PAID_ACTIVITY",
+      radius_m: 400, pressure_label: pressureLabel,
       relative_pressure_percentile: percentileValue, metered_spaces_represented: inventory,
       active_paid_sessions_proxy: active, paid_session_pressure_ratio: round(ratio, 3),
       starts_15m: starts15, starts_30m: starts30, starts_60m: starts60,
@@ -577,24 +660,22 @@ export class BrowserPlannerEngine {
     };
   }
 
-  bestTransferPair(first, firstBoardIndex, second, secondAlightIndex) {
-    let best = null;
-    let bestScore = Infinity;
+  transferPairs(first, firstBoardIndex, second, secondAlightIndex) {
+    const pairs = [];
     for (let firstIndex = firstBoardIndex + 1; firstIndex < first.stops.length; firstIndex += 1) {
       for (let secondIndex = 0; secondIndex < secondAlightIndex; secondIndex += 1) {
         const firstStop = first.stops[firstIndex];
         const secondStop = second.stops[secondIndex];
         const transferM = haversineM(firstStop, secondStop);
         if (transferM > TRANSFER_RADIUS_M) continue;
-        const score = this.distanceBetween(first, firstBoardIndex, firstIndex)
+        const staticScore = this.distanceBetween(first, firstBoardIndex, firstIndex)
           + this.distanceBetween(second, secondIndex, secondAlightIndex) + transferM * 2.5;
-        if (score < bestScore) {
-          bestScore = score;
-          best = {firstStop, firstIndex, secondStop, secondIndex, transferM};
-        }
+        pairs.push({firstStop, firstIndex, secondStop, secondIndex, transferM, staticScore});
       }
     }
-    return best;
+    return pairs
+      .sort((left, right) => left.staticScore - right.staticScore || left.transferM - right.transferM)
+      .slice(0, MAX_TRANSFER_PAIRS_PER_PATTERN_PAIR);
   }
 
   transferCandidate(origin, destination, first, firstBoardOption, second, finalAlightOption, transferPair, planningEpoch) {
@@ -687,46 +768,53 @@ export class BrowserPlannerEngine {
       const alightOptions = destinationAccess.get(key);
       if (!alightOptions) continue;
       const pattern = this.patternByKey.get(key);
-      let bestPair = null;
-      let bestScore = Infinity;
       for (const boardOption of boardOptions) {
         for (const alightOption of alightOptions) {
           if (alightOption.index <= boardOption.index) continue;
-          const score = boardOption.distance_m + alightOption.distance_m + this.distanceBetween(pattern, boardOption.index, alightOption.index);
-          if (score < bestScore) { bestScore = score; bestPair = {boardOption, alightOption}; }
+          candidates.push(this.directCandidate(origin, destination, pattern, boardOption, alightOption, planningEpoch));
         }
       }
-      if (bestPair) candidates.push(this.directCandidate(origin, destination, pattern, bestPair.boardOption, bestPair.alightOption, planningEpoch));
     }
 
     // Feature 25B.2 · One transfer / 一次换乘
     // 中文：仅连接 180 米内的换乘站，并禁止同一路线自己换自己。
     // English: Transfer platforms must be within 180 m and the route must actually change.
-    const transferBest = new Map();
     for (const [firstKey, firstOptions] of originAccess) {
       const first = this.patternByKey.get(firstKey);
       for (const [secondKey, secondOptions] of destinationAccess) {
         const second = this.patternByKey.get(secondKey);
         if (first.route_id === second.route_id) continue;
-        let bestCandidate = null;
+        const pairCandidates = [];
         for (const firstOption of firstOptions) {
           for (const secondOption of secondOptions) {
-            const transferPair = this.bestTransferPair(first, firstOption.index, second, secondOption.index);
-            if (!transferPair) continue;
-            const candidate = this.transferCandidate(origin, destination, first, firstOption, second, secondOption, transferPair, planningEpoch);
-            if (!bestCandidate || candidate.eta_min < bestCandidate.eta_min) bestCandidate = candidate;
+            const transferPairs = this.transferPairs(first, firstOption.index, second, secondOption.index);
+            for (const transferPair of transferPairs) {
+              pairCandidates.push(this.transferCandidate(
+                origin, destination, first, firstOption, second, secondOption, transferPair, planningEpoch
+              ));
+            }
           }
         }
-        if (bestCandidate) transferBest.set(`${firstKey}|${secondKey}`, bestCandidate);
+        candidates.push(...this.modeDiverseCandidates(pairCandidates));
       }
     }
-    candidates.push(...transferBest.values());
-    const bestBySequence = new Map();
+    const bySequence = new Map();
     for (const candidate of candidates) {
-      const current = bestBySequence.get(candidate.route_sequence);
-      if (!current || candidate.costs.balanced < current.costs.balanced) bestBySequence.set(candidate.route_sequence, candidate);
+      if (!bySequence.has(candidate.route_sequence)) bySequence.set(candidate.route_sequence, []);
+      bySequence.get(candidate.route_sequence).push(candidate);
     }
-    return [...bestBySequence.values()];
+    return [...bySequence.values()].flatMap(rows => this.modeDiverseCandidates(rows));
+  }
+
+  modeDiverseCandidates(candidates) {
+    const selected = new Map();
+    for (const costKey of ["fastest", "balanced", "safety_first"]) {
+      const winner = [...candidates].sort((left, right) =>
+        left.costs[costKey] - right.costs[costKey] || left.eta_min - right.eta_min
+      )[0];
+      if (winner) selected.set(winner.journey_id, winner);
+    }
+    return [...selected.values()];
   }
 
   markPareto(candidates) {
@@ -741,6 +829,29 @@ export class BrowserPlannerEngine {
     }
   }
 
+  // Feature 29 · Independent mode winners / 三种模式独立选冠军
+  // 中文：先让三个模式查看完整候选集合，再把各自冠军、Pareto 候选和各模式前列
+  // 合并为最多 12 条展示。这样 Safety-first 不会被 Balanced 的预裁剪误删。
+  // English: Rank the full feasible pool first. Only after all three winners are
+  // known do we build the compact UI list from winners, Pareto rows, and mode leaders.
+  displayCandidates(candidates, winners) {
+    const selected = new Map();
+    const add = candidate => {
+      if (candidate && selected.size < MAX_ALTERNATIVES) selected.set(candidate.journey_id, candidate);
+    };
+    [winners.FASTEST, winners.BALANCED, winners.SAFETY_FIRST].forEach(add);
+    [...candidates]
+      .filter(candidate => candidate.pareto_efficient)
+      .sort((left, right) => left.costs.balanced - right.costs.balanced || left.eta_min - right.eta_min)
+      .forEach(add);
+    for (const costKey of ["fastest", "balanced", "safety_first"]) {
+      [...candidates]
+        .sort((left, right) => left.costs[costKey] - right.costs[costKey] || left.eta_min - right.eta_min)
+        .forEach(add);
+    }
+    return [...selected.values()];
+  }
+
   plan(originStopId, destinationStopId, mode = "BALANCED") {
     const origin = this.stops.get(String(originStopId));
     const destination = this.stops.get(String(destinationStopId));
@@ -751,11 +862,9 @@ export class BrowserPlannerEngine {
     const modeKeys = {FASTEST: "fastest", BALANCED: "balanced", SAFETY_FIRST: "safety_first"};
     if (!modeKeys[selectedMode]) throw new Error(`Unsupported mode: ${mode}`);
     const planningEpoch = Date.now() / 1000;
-    let candidates = this.generateCandidates(origin, destination, planningEpoch);
+    const candidates = this.generateCandidates(origin, destination, planningEpoch);
     if (!candidates.length) throw new Error("No direct or one-transfer journey was found within the current access limits.");
     this.markPareto(candidates);
-    candidates.sort((left, right) => left.costs.balanced - right.costs.balanced || left.eta_min - right.eta_min);
-    candidates = candidates.slice(0, MAX_ALTERNATIVES);
     const modes = [];
     const winners = {};
     for (const [modeName, costKey] of Object.entries(modeKeys)) {
@@ -773,6 +882,7 @@ export class BrowserPlannerEngine {
       });
     }
     const selected = winners[selectedMode];
+    const displayCandidates = this.displayCandidates(candidates, winners);
     return {
       meta: {
         engine_version: ENGINE_VERSION,
@@ -785,8 +895,12 @@ export class BrowserPlannerEngine {
         freshness: {
           realtime_generated_at: this.realtime.meta?.generated_at || null,
           realtime_status: this.realtime.meta?.status || null,
+          transit_realtime_usable: this.transitIsFresh(planningEpoch),
+          trip_prediction_max_age_seconds: TRIP_PREDICTION_MAX_AGE_SEC,
+          service_context_max_age_seconds: SERVICE_CONTEXT_MAX_AGE_SEC,
           network_feed_version: this.network.meta?.feed_version || null,
           parking_source_time: this.realtime.parking?.source_snapshot_time || null,
+          parking_context_usable: this.parkingFresh,
           safety_basis: this.realtime.safety?.status || null
         }
       },
@@ -795,8 +909,8 @@ export class BrowserPlannerEngine {
       selected_mode: selectedMode,
       selected_journey_id: selected.journey_id,
       modes,
-      alternatives: candidates
+      candidate_count: candidates.length,
+      alternatives: displayCandidates
     };
   }
 }
-

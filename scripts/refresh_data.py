@@ -30,16 +30,22 @@ from google.transit import gtfs_realtime_pb2
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = ROOT / "site" / "data" / "latest.json"
 NETWORK_PATH = ROOT / "site" / "data" / "network.json"
-PARKING_INVENTORY_PATH = ROOT / "site" / "data" / "parking-inventory.json"
-PIPELINE_VERSION = "1.4.0"
+LIVE_TRANSIT_PATH = ROOT / "site" / "data" / "live-transit.json"
+ALERTS_ROADS_PATH = ROOT / "site" / "data" / "alerts-roads.json"
+PARKING_CONTEXT_PATH = ROOT / "site" / "data" / "parking-context.json"
+SAFETY_CONTEXT_PATH = ROOT / "site" / "data" / "safety-context.json"
+PARKING_INVENTORY_PATH = ROOT / "data" / "parking-inventory.json"
+STATIC_INDEX_PATH = ROOT / "data" / "static-index.json"
+PIPELINE_VERSION = "1.5.0"
 USER_AGENT = "SF-Transit-Pulse/1.0 (+https://github.com/ksitcode00/sf-transit-pulse)"
 SF_BOUNDS = {"south": 37.68, "north": 37.84, "west": -122.55, "east": -122.33}
 REQUEST_BUDGET = {
     "default_limit_per_hour": 60,
     "core_runs_per_hour": 12,
-    "core_requests_per_run": 3,
+    "core_requests_per_run": 2,
     "context_runs_per_hour": 4,
     "context_extra_requests_per_run": 2,
+    "static_requests_per_day": 1,
 }
 
 
@@ -72,6 +78,52 @@ def write_snapshot(payload: dict[str, Any]) -> None:
     # English: Trip-level stop predictions add useful rows, so compact the public
     # payload to reduce page weight without changing its JSON contract.
     write_json(payload, OUTPUT_PATH, compact=True)
+    source_status = payload.get("meta", {}).get("source_status", {})
+    # Feature 30 · Source-sized public files / 按数据源拆分公开快照
+    # 中文：兼容用的 latest.json 仍保留，但页面的 5 分钟刷新只需下载
+    # 公交核心文件。道路、停车和安全文件只在各自版本变化时重新读取。
+    # English: Keep latest.json for compatibility, while the browser's frequent
+    # refresh downloads only transit data and reloads slower contexts on change.
+    write_json(
+        {
+            "meta": payload.get("meta", {}),
+            "system": payload.get("system", {}),
+            "vehicles": payload.get("vehicles", []),
+            "routes": payload.get("routes", []),
+            "trip_predictions": payload.get("trip_predictions", []),
+            "journey": payload.get("journey", {}),
+        },
+        LIVE_TRANSIT_PATH,
+        compact=True,
+    )
+    write_json(
+        {
+            "source_status": {
+                "alerts": source_status.get("alerts", {}),
+                "roads": source_status.get("roads", {}),
+            },
+            "alerts": payload.get("alerts", []),
+            "road_events": payload.get("road_events", []),
+        },
+        ALERTS_ROADS_PATH,
+        compact=True,
+    )
+    write_json(
+        {
+            "source_status": {"parking": source_status.get("parking", {})},
+            "parking": payload.get("parking", {}),
+        },
+        PARKING_CONTEXT_PATH,
+        compact=True,
+    )
+    write_json(
+        {
+            "source_status": {"safety": source_status.get("safety", {})},
+            "safety": payload.get("safety", {}),
+        },
+        SAFETY_CONTEXT_PATH,
+        compact=True,
+    )
 
 
 def request(url: str, *, params: dict[str, Any] | None = None, timeout: int = 45) -> requests.Response:
@@ -345,6 +397,33 @@ def fetch_static_gtfs(api_key: str) -> dict[str, Any]:
 def load_static_gtfs(path: Path) -> dict[str, Any]:
     with zipfile.ZipFile(path) as archive:
         return parse_static_gtfs(archive)
+
+
+def write_static_index(static: dict[str, Any]) -> None:
+    """Persist routing lookups outside site/ so Pages visitors never download them."""
+
+    write_json(
+        {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "feed_version": static.get("network", {}).get("meta", {}).get("feed_version"),
+            "trip_lookup": static["trip_lookup"],
+            "route_lookup": static["route_lookup"],
+            "stop_lookup": static["stop_lookup"],
+        },
+        STATIC_INDEX_PATH,
+        compact=True,
+    )
+
+
+def load_static_index() -> dict[str, Any]:
+    cached = json.loads(STATIC_INDEX_PATH.read_text(encoding="utf-8"))
+    network = json.loads(NETWORK_PATH.read_text(encoding="utf-8"))
+    return {
+        "trip_lookup": cached["trip_lookup"],
+        "route_lookup": cached["route_lookup"],
+        "stop_lookup": cached["stop_lookup"],
+        "network": network,
+    }
 
 
 def fetch_gtfs_rt(url: str, api_key: str) -> gtfs_realtime_pb2.FeedMessage:
@@ -750,6 +829,10 @@ def parse_road_events(payload: Any) -> list[dict[str, Any]]:
         )
         lat, lon = geometry_center(raw)
         geometry = geometry_points(raw)
+        # Keep every spatially relevant SF event. Items with no SF geometry and
+        # no explicit transit route cannot affect a journey and only inflate the cache.
+        if not route_ids and lat is None and not geometry:
+            continue
         rows.append(
             {
                 "route_ids": route_ids,
@@ -761,7 +844,7 @@ def parse_road_events(payload: Any) -> list[dict[str, Any]]:
                 "geometry": geometry,
             }
         )
-    return rows[:20]
+    return rows
 
 
 def datasf_records(
@@ -953,6 +1036,26 @@ def build_parking_pressure(
             "cells": [],
         }
 
+    raw_session_count = len(parsed)
+    # Feature 29 · Parking renewal deduplication / 停车续费去重
+    # 中文：同一车位的重叠付费区间通常是续费，不能在同一时刻重复算作两辆车。
+    # English: Overlapping paid intervals for one meter post are merged so a
+    # renewal cannot look like two simultaneously occupied spaces.
+    sessions_by_post: dict[str, list[tuple[datetime, datetime | None, str]]] = defaultdict(list)
+    for started, ended, post_id, street in sorted(parsed, key=lambda row: (row[2], row[0])):
+        existing = sessions_by_post[post_id]
+        if existing and existing[-1][1] is not None and started <= existing[-1][1]:
+            prior_start, prior_end, prior_street = existing[-1]
+            merged_end = max(value for value in (prior_end, ended) if value is not None)
+            existing[-1] = (prior_start, merged_end, prior_street or street)
+        else:
+            existing.append((started, ended, street))
+    parsed = [
+        (started, ended, post_id, street)
+        for post_id, sessions in sessions_by_post.items()
+        for started, ended, street in sessions
+    ]
+
     newest = max(row[0] for row in parsed)
     block_counts = Counter()
     unmatched = 0
@@ -1012,7 +1115,11 @@ def build_parking_pressure(
             else 0
         )
         cell["relative_pressure_percentile"] = percentile_value
-        if percentile_value >= 90:
+        if not cell["active_paid_sessions_proxy"] and not cell["starts_60m"]:
+            # Zero transactions may mean the meter is outside charging hours;
+            # it is not evidence that parking demand is low.
+            cell["pressure_label"] = "NO_RECENT_PAID_ACTIVITY"
+        elif percentile_value >= 90:
             cell["pressure_label"] = "VERY_HIGH"
         elif percentile_value >= 70:
             cell["pressure_label"] = "HIGH"
@@ -1029,6 +1136,8 @@ def build_parking_pressure(
             "This does not measure physical occupancy or open spaces."
         ),
         "source_snapshot_time": newest.isoformat(),
+        "raw_session_count": raw_session_count,
+        "deduplicated_session_count": len(parsed),
         "meter_inventory_count": len(meters),
         "matched_transaction_count": len(parsed) - unmatched,
         "unmatched_transaction_count": unmatched,
@@ -1042,13 +1151,32 @@ def build_parking_pressure(
 
 
 def refresh_parking() -> dict[str, Any]:
-    query = """
+    latest_rows = datasf_records(
+        "imvp-dq3v",
+        "SELECT max(session_start_dt) AS latest_session_start WHERE session_start_dt IS NOT NULL",
+        1,
+    )
+    latest_value = next(
+        (
+            value
+            for key, value in (latest_rows[0] if latest_rows else {}).items()
+            if "latest" in str(key).casefold() and value
+        ),
+        None,
+    )
+    if not latest_value:
+        raise ValueError("Parking source did not report its latest session timestamp.")
+    latest = datetime.fromisoformat(str(latest_value).replace("Z", "+00:00"))
+    if latest.tzinfo is None:
+        latest = latest.replace(tzinfo=timezone.utc)
+    since = (latest - timedelta(hours=3)).isoformat()
+    query = f"""
 SELECT session_start_dt, session_end_dt, post_id, street_block
-WHERE session_start_dt IS NOT NULL
+WHERE session_start_dt >= '{since}'
 ORDER BY session_start_dt DESC
-LIMIT 5000
+LIMIT 50000
 """.strip()
-    rows = datasf_records("imvp-dq3v", query, 5000)
+    rows = datasf_records("imvp-dq3v", query, 5000, max_pages=10)
     return build_parking_pressure(rows, load_parking_inventory())
 
 
@@ -1139,6 +1267,30 @@ LIMIT 20000
     )
 
 
+def source_refresh_due(
+    previous: dict[str, Any],
+    source_name: str,
+    interval: timedelta,
+    *,
+    force: bool = False,
+) -> bool:
+    """Use the last check time, not the source's own delayed observation time."""
+
+    if force:
+        return True
+    status = previous.get("meta", {}).get("source_status", {}).get(source_name, {})
+    raw = status.get("checked_at") or status.get("refreshed_at")
+    if not raw:
+        return True
+    try:
+        checked = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        if checked.tzinfo is None:
+            checked = checked.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return True
+    return datetime.now(timezone.utc) - checked >= interval
+
+
 def main() -> int:
     previous = load_previous()
     payload = previous or {
@@ -1152,12 +1304,26 @@ def main() -> int:
     }
     errors: list[str] = []
     configured_sources = 0
+    service_context_refreshed = False
     parking_refreshed = False
     safety_refreshed = False
     api_key = os.environ.get("SF_TRANSIT_511_API_KEY", "").strip()
     local_gtfs_path = os.environ.get("SF_TRANSIT_GTFS_PATH", "").strip()
-    refresh_context = os.environ.get("SF_TRANSIT_REFRESH_CONTEXT", "true").strip().lower() in {"1", "true", "yes"}
+    static_only = os.environ.get("SF_TRANSIT_STATIC_ONLY", "false").strip().lower() in {"1", "true", "yes"}
+    force_context = os.environ.get("SF_TRANSIT_FORCE_CONTEXT", "false").strip().lower() in {"1", "true", "yes"}
+    refresh_service_context = source_refresh_due(previous, "alerts", timedelta(minutes=15), force=force_context)
+    refresh_parking_context = source_refresh_due(previous, "parking", timedelta(minutes=30), force=force_context)
+    refresh_safety_context = source_refresh_due(previous, "safety", timedelta(hours=24), force=force_context)
     previous_transit = previous.get("meta", {}).get("source_status", {}).get("transit", {})
+    if static_only:
+        if not api_key:
+            raise RuntimeError("SF_TRANSIT_511_API_KEY is required for the daily static GTFS refresh.")
+        static = fetch_static_gtfs(api_key)
+        write_json(static["network"], NETWORK_PATH, compact=True)
+        write_static_index(static)
+        print(json.dumps({"status": "static_refreshed", "trips": len(static["trip_lookup"])}))
+        return 0
+
     contains_demo = any(str(row.get("vehicle_id", "")).startswith("demo-") for row in payload.get("vehicles", []))
     transit_source = {
         "status": "retained_sample" if contains_demo else "retained",
@@ -1166,15 +1332,19 @@ def main() -> int:
 
     if api_key:
         try:
-            static = fetch_static_gtfs(api_key)
-            write_json(static["network"], NETWORK_PATH, compact=True)
+            try:
+                static = load_static_index()
+            except (OSError, KeyError, ValueError, json.JSONDecodeError):
+                static = fetch_static_gtfs(api_key)
+                write_json(static["network"], NETWORK_PATH, compact=True)
+                write_static_index(static)
             vehicle_feed = fetch_gtfs_rt("https://api.511.org/transit/vehiclepositions", api_key)
             trip_feed = fetch_gtfs_rt("https://api.511.org/transit/tripupdates", api_key)
             vehicles = parse_vehicles(vehicle_feed, static["trip_lookup"])
             routes = parse_route_health(trip_feed, static["trip_lookup"], vehicles, static["stop_lookup"])
             trip_predictions = parse_trip_predictions(trip_feed, static["trip_lookup"])
             payload.update({"vehicles": vehicles, "routes": routes, "trip_predictions": trip_predictions})
-            if refresh_context:
+            if refresh_service_context:
                 alert_feed = fetch_gtfs_rt("https://api.511.org/transit/servicealerts", api_key)
                 road_payload = request(
                     "https://api.511.org/traffic/events",
@@ -1187,6 +1357,7 @@ def main() -> int:
                 ).json()
                 payload["alerts"] = parse_alerts(alert_feed)
                 payload["road_events"] = parse_road_events(road_payload)
+                service_context_refreshed = True
             payload["system"] = {
                 "vehicle_count": len(vehicles),
                 "route_count": len({row["route_id"] for row in routes}),
@@ -1195,9 +1366,17 @@ def main() -> int:
                 "alert_count": len(payload.get("alerts", [])),
                 "road_event_count": len(payload.get("road_events", [])),
             }
+            feed_timestamps = [
+                int(feed.header.timestamp or 0)
+                for feed in (vehicle_feed, trip_feed)
+                if int(feed.header.timestamp or 0) > 0
+            ]
+            observed_at = datetime.fromtimestamp(
+                min(feed_timestamps), tz=timezone.utc
+            ).isoformat() if feed_timestamps else datetime.now(timezone.utc).isoformat()
             transit_source = {
                 "status": "live",
-                "observed_at": datetime.now(timezone.utc).isoformat(),
+                "observed_at": observed_at,
             }
             configured_sources += 1
         except Exception as exc:  # Preserve last valid public snapshot on source failure.
@@ -1224,7 +1403,7 @@ def main() -> int:
             "road_event_count": len(payload.get("road_events", [])),
         }
 
-    if refresh_context:
+    if refresh_parking_context:
         try:
             payload["parking"] = refresh_parking()
             parking_refreshed = True
@@ -1232,6 +1411,7 @@ def main() -> int:
         except Exception as exc:
             errors.append(f"Parking refresh failed: {type(exc).__name__}: {exc}")
 
+    if refresh_safety_context:
         try:
             payload["safety"] = refresh_safety()
             safety_refreshed = True
@@ -1240,24 +1420,38 @@ def main() -> int:
             errors.append(f"Safety refresh failed: {type(exc).__name__}: {exc}")
 
     status = "live" if api_key and not errors else "partial_live" if configured_sources else "demo"
+    checked_at = datetime.now(timezone.utc).isoformat()
+    previous_sources = previous.get("meta", {}).get("source_status", {})
     payload["meta"] = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": checked_at,
         "status": status,
         "pipeline_version": PIPELINE_VERSION,
         "errors": errors,
         "sources": ["511 SF Bay", "DataSF", "SFMTA"],
         "source_status": {
-            "transit": transit_source,
+            "transit": {**transit_source, "checked_at": checked_at},
+            "alerts": {
+                "status": "refreshed" if service_context_refreshed else "retained" if payload.get("alerts") else "unavailable",
+                "observed_at": checked_at if service_context_refreshed else previous_sources.get("alerts", {}).get("observed_at") or previous_transit.get("observed_at"),
+                "checked_at": checked_at if refresh_service_context else previous_sources.get("alerts", {}).get("checked_at"),
+            },
+            "roads": {
+                "status": "refreshed" if service_context_refreshed else "retained" if payload.get("road_events") else "unavailable",
+                "observed_at": checked_at if service_context_refreshed else previous_sources.get("roads", {}).get("observed_at") or previous_transit.get("observed_at"),
+                "checked_at": checked_at if refresh_service_context else previous_sources.get("roads", {}).get("checked_at"),
+            },
             "parking": {
                 "status": "refreshed" if parking_refreshed else "retained" if payload.get("parking") else "unavailable",
                 "observed_at": payload.get("parking", {}).get("source_snapshot_time")
-                or previous.get("meta", {}).get("source_status", {}).get("parking", {}).get("observed_at"),
+                or previous_sources.get("parking", {}).get("observed_at"),
+                "checked_at": checked_at if refresh_parking_context else previous_sources.get("parking", {}).get("checked_at"),
             },
             "safety": {
                 "status": "refreshed" if safety_refreshed else "retained" if payload.get("safety") else "unavailable",
-                "observed_at": datetime.now(timezone.utc).isoformat()
+                "observed_at": checked_at
                 if safety_refreshed
-                else previous.get("meta", {}).get("source_status", {}).get("safety", {}).get("observed_at"),
+                else previous_sources.get("safety", {}).get("observed_at"),
+                "checked_at": checked_at if refresh_safety_context else previous_sources.get("safety", {}).get("checked_at"),
             },
         },
         "request_budget": {
@@ -1267,7 +1461,7 @@ def main() -> int:
                 + REQUEST_BUDGET["context_runs_per_hour"] * REQUEST_BUDGET["context_extra_requests_per_run"]
             ),
         },
-        "refresh_policy": "Vehicles and trip updates every 5 minutes; alerts and road context every 15 minutes via GitHub Actions",
+        "refresh_policy": "Vehicles and trip updates every 5 minutes; alerts/roads every 15 minutes; parking every 30 minutes; safety and static GTFS daily",
     }
     write_snapshot(payload)
     print(json.dumps({"status": status, "errors": len(errors), "vehicles": len(payload.get("vehicles", [])), "routes": len(payload.get("routes", []))}))

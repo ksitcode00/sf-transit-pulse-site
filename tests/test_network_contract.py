@@ -4,12 +4,13 @@ import json
 import io
 import zipfile
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from google.transit import gtfs_realtime_pb2
 
 from scripts.refresh_data import (
+    REQUEST_BUDGET,
     build_parking_pressure,
     build_safety_context,
     build_spacing_events,
@@ -17,6 +18,7 @@ from scripts.refresh_data import (
     parse_road_events,
     parse_static_gtfs,
     parse_trip_predictions,
+    source_refresh_due,
 )
 
 
@@ -183,6 +185,33 @@ def test_parking_pressure_uses_paid_sessions_without_claiming_open_spaces() -> N
     assert "does not measure physical occupancy or open spaces" in context["detail"]
 
 
+def test_parking_renewals_do_not_double_count_one_meter() -> None:
+    meters = [{"post_id": "P1", "parking_space_id": "S1", "lat": 37.780, "lon": -122.420}]
+    rows = [
+        {"post_id": "P1", "session_start_dt": "2026-09-13T12:00:00", "session_end_dt": "2026-09-13T12:30:00"},
+        {"post_id": "P1", "session_start_dt": "2026-09-13T12:25:00", "session_end_dt": "2026-09-13T13:00:00"},
+    ]
+
+    context = build_parking_pressure(rows, meters)
+
+    assert context["raw_session_count"] == 2
+    assert context["deduplicated_session_count"] == 1
+    assert context["cells"][0]["active_paid_sessions_proxy"] == 1
+
+
+def test_no_parking_payments_is_not_labeled_low_pressure() -> None:
+    meters = [
+        {"post_id": "P1", "parking_space_id": "S1", "lat": 37.780, "lon": -122.420},
+        {"post_id": "P2", "parking_space_id": "S2", "lat": 37.790, "lon": -122.430},
+    ]
+    rows = [{"post_id": "P1", "session_start_dt": "2026-09-13T12:00:00", "session_end_dt": "2026-09-13T12:30:00"}]
+
+    context = build_parking_pressure(rows, meters)
+    inactive = next(row for row in context["cells"] if row["lat"] == 37.79)
+
+    assert inactive["pressure_label"] == "NO_RECENT_PAID_ACTIVITY"
+
+
 def test_parking_inventory_contract_allows_stable_row_id_fallback() -> None:
     script = (ROOT / "scripts/refresh_data.py").read_text(encoding="utf-8")
 
@@ -209,26 +238,57 @@ def test_road_event_without_transit_match_remains_explicit_context() -> None:
     assert event["geometry"] == [[37.77, -122.42]]
 
 
+def test_all_spatially_relevant_sf_road_events_are_kept() -> None:
+    events = parse_road_events({
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [-122.42, 37.77]},
+                "properties": {"event_type": f"Construction {index}"},
+            }
+            for index in range(25)
+        ]
+    })
+
+    assert len(events) == 25
+
+
 def test_refresh_plan_stays_below_default_511_rate_limit() -> None:
-    snapshot = json.loads((ROOT / "site/data/latest.json").read_text(encoding="utf-8"))
-    budget = snapshot["meta"]["request_budget"]
+    budget = REQUEST_BUDGET
 
     calculated = (
         budget["core_runs_per_hour"] * budget["core_requests_per_run"]
         + budget["context_runs_per_hour"] * budget["context_extra_requests_per_run"]
     )
-    assert calculated == budget["planned_requests_per_hour"] == 44
+    assert calculated == 32
     assert calculated < budget["default_limit_per_hour"] == 60
 
 
 def test_workflow_runs_core_every_five_minutes_and_context_every_fifteen() -> None:
     workflow = (ROOT / ".github/workflows/refresh-data.yml").read_text(encoding="utf-8")
 
-    assert 'cron: "3,18,33,48 * * * *"' in workflow
-    assert 'cron: "8,13,23,28,38,43,53,58 * * * *"' in workflow
-    assert "SF_TRANSIT_REFRESH_CONTEXT" in workflow
-    assert "site/data/parking-inventory.json" in workflow
-    assert 'github.event_name == \'push\'' in workflow
+    assert 'cron: "3-59/5 * * * *"' in workflow
+    assert "cancel-in-progress: false" in workflow
+    assert "SF_TRANSIT_FORCE_CONTEXT" in workflow
+    assert "data/parking-inventory.json" in workflow
+    assert "data/static-index.json" in workflow
+    assert "site/data/live-transit.json" in workflow
+    assert "site/data/alerts-roads.json" in workflow
+    assert "site/data/parking-context.json" in workflow
+    assert "site/data/safety-context.json" in workflow
+
+    static_workflow = (ROOT / ".github/workflows/refresh-static.yml").read_text(encoding="utf-8")
+    assert 'cron: "37 11 * * *"' in static_workflow
+    assert 'SF_TRANSIT_STATIC_ONLY: "true"' in static_workflow
+
+
+def test_slow_sources_use_last_check_time_for_refresh_cadence() -> None:
+    now = datetime.now(timezone.utc)
+    recent = {"meta": {"source_status": {"parking": {"checked_at": now.isoformat()}}}}
+    old = {"meta": {"source_status": {"parking": {"checked_at": (now - timedelta(minutes=31)).isoformat()}}}}
+
+    assert not source_refresh_due(recent, "parking", timedelta(minutes=30))
+    assert source_refresh_due(old, "parking", timedelta(minutes=30))
 
 
 def test_public_beta_removes_misleading_planner_fallbacks() -> None:

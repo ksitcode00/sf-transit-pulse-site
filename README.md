@@ -54,11 +54,11 @@ Each row explains the rider need, the implementation's practical value, and an e
 | Stop search | Finds origin and destination stops and shows routes serving each stop using the public GTFS catalog in the browser. | Enter “4th St & Market” and choose the correct stop ID. | Live |
 | Browse every stop | Opens the complete alphabetized Muni stop catalog without requiring any typing. Stops load 100 at a time while scrolling, so the full list remains available without freezing the page. | Select “Browse all stops,” scroll through the catalog, and choose a stop with its route list. | Live |
 | Direct and one-transfer planning | Finds feasible boarding and alighting stops while rejecting wrong-direction and distant fake transfers. | Compare direct and one-transfer options from SoMa to Fillmore. | Public beta |
-| Trip-level live boarding and arrival | A leg is labeled live only when one concrete trip has valid predictions at both stops. Otherwise it is estimated. | Show predicted 8:12 boarding, 8:27 arrival, and a trip ID instead of a vague 15 minutes. | Live with complete predictions |
+| Trip-level live boarding and arrival | A leg is labeled live only when one concrete trip has valid predictions at both stops and the update is no more than 10 minutes old. Otherwise it is estimated. | Show predicted 8:12 boarding, 8:27 arrival, and a trip ID instead of a vague 15 minutes. | Live with fresh complete predictions |
 | Transfer catch slack | Uses first-trip arrival, walking time, a one-minute boarding allowance, and second-trip departure to calculate remaining minutes. | An 8:20 arrival, two-minute walk, and 8:25 departure produces about two minutes of slack. | Live or clearly estimated |
 | Fastest | Ranks the lowest door-to-door estimate. Preference scores never replace ETA. | Use Fastest when arrival time matters more than extra walking or variable service. | Live |
 | Balanced | Considers ETA, walking, transfer count, and current spacing reliability. | A slightly slower direct option may rank above a trip with more walking and a transfer. | Live, default mode |
-| Safety-first | Compares relative historical incident reports near candidates over the past 365 days. It is context, not a personal safety prediction. | Use past area context as one extra input for a night trip. | Research beta |
+| Safety-first | Compares relative historical incident reports near candidates over the past 365 days. All three modes choose from the full feasible pool before the page trims the display list. | Use past area context as one extra input for a night trip. It is not a personal safety prediction. | Research beta |
 | Destination parking pressure | Combines meter inventory and recent paid sessions as a relative signal; it is not occupancy or open-space availability. | Check whether paid activity near Mission is rising before driving there for pickup. | Research beta |
 | Freshness and failure labels | Shows source update times and never presents demo or stale data as current service without a warning. | If 511 pauses, the app says it is showing the last successful update or limited live evidence. | Live |
 | Separate English and Chinese UI | URLs can select a language, and controls, states, errors, and method copy switch together. The preference is also stored locally. | `?lang=en` opens English and `?lang=zh` opens Chinese. | Live |
@@ -143,7 +143,7 @@ Every query builds one shared set of direct and one-transfer candidates. The thr
        trip planning, ranking, and nearby stops
 ```
 
-Core vehicle positions and trip predictions are scheduled every five minutes. Service and road context refresh every 15 minutes. The plan uses an estimated 44 of the default 60 hourly 511 requests, leaving a 16-request margin. GitHub Actions can run late, so the product shows actual update times instead of promising second-level freshness.
+Core vehicle positions and trip predictions are scheduled every five minutes. Service and road context refresh every 15 minutes, parking every 30 minutes, and safety plus static GTFS daily. The core plan uses an estimated 32 of the default 60 hourly 511 requests, leaving a 28-request margin. GitHub Actions may delay or drop scheduled runs, so predictions older than 10 minutes automatically become estimates and the page shows the actual source age.
 
 User searches do not call 511 and do not need Render. `SF_TRANSIT_511_API_KEY` belongs only in the encrypted GitHub Actions Secret. It must not appear in code, browser storage, Notebook output, or public data files.
 
@@ -166,6 +166,10 @@ scripts/
 backend/
   planner.py             Python reference implementation for parity tests
   main.py                Legacy API boundary, unused by the live app
+
+data/
+  static-index.json      Non-site lookup used only by scheduled refreshes
+  parking-inventory.json Non-site meter locations used only by refreshes
 
 tests/
   browser-planner.test.mjs  Browser planner contracts
@@ -211,6 +215,6 @@ python3 -m pytest -q tests
 
 ## Version
 
-Current public release: `v1.2 · All Stops Picker Beta`
+Current public release: `v1.3 · Live Data Safeguards Beta`
 
 The private analytical Notebook is intentionally not published here. This repository contains only the deployable application, credential-free snapshots, refresh workflow, reference implementation, and tests.
