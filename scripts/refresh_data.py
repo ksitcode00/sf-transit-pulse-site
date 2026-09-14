@@ -37,7 +37,7 @@ SAFETY_CONTEXT_PATH = ROOT / "site" / "data" / "safety-context.json"
 REFRESH_HEALTH_PATH = ROOT / "site" / "data" / "refresh-health.json"
 PARKING_INVENTORY_PATH = ROOT / "data" / "parking-inventory.json"
 STATIC_INDEX_PATH = ROOT / "data" / "static-index.json"
-PIPELINE_VERSION = "1.8.0"
+PIPELINE_VERSION = "1.8.1"
 PARKING_INVENTORY_SCHEMA_VERSION = 2
 PARKING_MIN_MATCH_COVERAGE = 0.70
 USER_AGENT = "SF-Transit-Pulse/1.0 (+https://github.com/ksitcode00/sf-transit-pulse)"
@@ -884,7 +884,18 @@ def identifier_list(value: Any) -> list[str]:
 def geometry_points(raw: dict[str, Any], max_points: int = 80) -> list[list[float]]:
     """Return an ordered, compact SF-only road-event geometry."""
 
-    geometry = raw.get("geometry") if isinstance(raw.get("geometry"), dict) else {}
+    properties = raw.get("properties") if isinstance(raw.get("properties"), dict) else {}
+    # GeoJSON/WZDx uses `geometry`; Open511 Traffic Events uses `geography`.
+    # Enhanced closure shapes have appeared under both closure spellings.
+    geometry = next(
+        (
+            candidate
+            for container in (raw, properties)
+            for key in ("geometry", "geography", "closure_geography", "closure_geometry")
+            if isinstance((candidate := container.get(key)), dict)
+        ),
+        {},
+    )
     coordinates = geometry.get("coordinates")
     points: list[tuple[float, float]] = []
 
@@ -1721,6 +1732,10 @@ def main() -> int:
                 ).json()
                 raw_road_events = road_event_collection(road_payload)
                 parsed_road_events = parse_road_events(raw_road_events)
+                if raw_road_events and not parsed_road_events:
+                    raise ValueError(
+                        f"511 road feed returned {len(raw_road_events)} events, but none passed spatial parsing."
+                    )
                 road_feed_counts = {
                     "raw_event_count": len(raw_road_events),
                     "parsed_event_count": len(parsed_road_events),

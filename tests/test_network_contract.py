@@ -343,6 +343,26 @@ def test_all_spatially_relevant_sf_road_events_are_kept() -> None:
     assert len(events) == 25
 
 
+def test_open511_geography_field_is_parsed_as_sf_event_location() -> None:
+    events = parse_road_events({
+        "events": [
+            {
+                "id": "511.org/example",
+                "headline": "Construction on US-101 Northbound",
+                "description": "Right lane closed",
+                "geography": {"type": "Point", "coordinates": [-122.405, 37.775]},
+                "roads": [{"name": "US-101", "direction": "Northbound"}],
+            }
+        ]
+    })
+
+    assert len(events) == 1
+    assert events[0]["title"] == "Construction on US-101 Northbound"
+    assert events[0]["description"].startswith("US-101 · Right lane closed")
+    assert (events[0]["lat"], events[0]["lon"]) == (37.775, -122.405)
+    assert events[0]["geometry"] == [[37.775, -122.405]]
+
+
 def test_road_feed_distinguishes_valid_zero_events_from_unknown_schema() -> None:
     assert road_event_collection({"Events": []}) == []
 
