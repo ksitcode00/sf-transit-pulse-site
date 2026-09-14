@@ -40,11 +40,12 @@ jobs:
         run: |
           node --check site/app.js
           node --check site/nearby-stops.js
+          node --check site/stop-catalog.js
           node --check site/planner-worker.js
           node --check site/planner-engine.mjs
 
       - name: Verify Scheme B browser planner contracts
-        run: node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs
+        run: node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs tests/stop-catalog.test.cjs
 
       - name: Verify public JSON caches
         run: |

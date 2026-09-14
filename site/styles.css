@@ -217,9 +217,16 @@ button.issue-card { cursor: pointer; }
 .nearby-stop-actions button:hover { background: #f5faff; }
 .planner-form { display: grid; grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr) auto; align-items: end; gap: 12px; margin-bottom: 12px; padding: 24px; border: 1px solid var(--hairline); border-radius: var(--radius-card); background: var(--white); }
 .planner-field { position: relative; display: grid; gap: 7px; color: var(--muted); font-size: 14px; }
+.planner-field-heading { min-height: 30px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.planner-field-heading label { color: var(--muted); }
+.stop-browse-button { min-height: 30px; padding: 3px 8px; border: 0; border-radius: 8px; color: var(--blue); background: transparent; font: inherit; font-weight: 600; cursor: pointer; }
+.stop-browse-button:hover, .stop-browse-button[aria-expanded="true"] { background: #eaf4ff; }
 .planner-field input { width: 100%; height: 48px; padding: 0 16px; border: 1px solid var(--hairline); border-radius: 12px; color: var(--ink); background: var(--white); }
 .stop-suggestions { position: absolute; z-index: 800; top: calc(100% + 6px); left: 0; right: 0; max-height: 330px; overflow-y: auto; padding: 6px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--white); box-shadow: 0 18px 50px rgba(0,0,0,.14); }
 .stop-suggestions[hidden] { display: none; }
+.stop-list-summary { position: sticky; z-index: 1; top: -6px; margin: -6px -6px 4px; padding: 10px 12px; border-bottom: 1px solid var(--soft-divider); color: var(--muted); background: rgba(255,255,255,.96); font-size: 12px; }
+.stop-list-empty { margin: 0; padding: 14px 12px; color: var(--muted); }
+.stop-options { display: grid; }
 .stop-suggestions button { width: 100%; display: grid; gap: 2px; padding: 11px 12px; border: 0; border-radius: 9px; color: var(--ink); background: transparent; text-align: left; cursor: pointer; }
 .stop-suggestions button:hover, .stop-suggestions button:focus-visible { background: var(--parchment); }
 .stop-suggestions strong { font-size: 14px; }

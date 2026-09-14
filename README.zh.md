@@ -52,6 +52,7 @@ SF Transit Pulse 是一个为普通乘客设计的 Muni 出行决策工具。它
 | 100–400 米范围选择 | 查找范围只提供 100、200、300、400 米四档。改变范围不需要再次授权定位。 | 100 米没有站点时，把范围改为 300 米重新查看。 | 已上线 |
 | 附近站点设为起点或终点 | 找到站点后不必重新输入站名，减少移动端操作。 | 点击“设为起点”，再输入目的地进行路线比较。 | 已上线 |
 | 站点搜索 | 输入站名即可选择起点和终点，并查看该站经过的线路；搜索在浏览器中读取公开 GTFS。 | 输入“4th St & Market”，再选择正确的站点编号。 | 已上线 |
+| 浏览全部站点 | 不输入任何文字也能打开按名称排序的完整 Muni 站点目录。滚动时每次加载 100 个，既能选到全部站点，也不会让页面卡住。 | 点击“浏览全部站点”，在列表中滚动，再根据站名和经过线路选择。 | 已上线 |
 | 直达和一次换乘规划 | 寻找可上车与下车的站点，并排除反方向、先下后上和距离过远的假换乘。 | 从 SoMa 去 Fillmore 时，同时比较直达和一次换乘方案。 | 已上线，测试版 |
 | 具体班次实时上下车时间 | 只有同一具体班次在上下车站都有有效预测时才标成实时，否则明确写成估算。 | 显示预计 8:12 上车、8:27 下车和班次编号，而不是只给模糊的 15 分钟。 | 有完整预测时上线 |
 | 换乘余量 | 用第一趟到达时间、换乘步行、一分钟上车余量和第二趟离开时间，计算还剩几分钟。 | 8:20 到、步行 2 分钟、8:25 开，会显示约 2 分钟余量并标成较紧。 | 实时或明确估算 |
@@ -154,6 +155,7 @@ site/
   styles.css             响应式视觉系统
   app.js                 界面状态、地图、搜索、定位与双语文案
   nearby-stops.js        距离计算和附近站点筛选
+  stop-catalog.js        站点搜索与完整目录分批加载
   planner-engine.mjs     浏览器路线引擎与排序规则
   planner-worker.js      后台计算线程
   data/                  不含 API 密钥的公开快照
@@ -168,6 +170,7 @@ backend/
 tests/
   browser-planner.test.mjs  浏览器规划器功能测试
   nearby-stops.test.cjs     附近站点距离与范围测试
+  stop-catalog.test.cjs      站点搜索与完整目录分批测试
   test_planner.py           Python 参考测试
 ```
 
@@ -182,7 +185,7 @@ python3 -m http.server 8765 --directory site
 ### 测试
 
 ```bash
-node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs
+node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs tests/stop-catalog.test.cjs
 python3 -m pytest -q tests
 ```
 
@@ -208,6 +211,6 @@ python3 -m pytest -q tests
 
 ## 版本
 
-当前公开版本：`v1.1 · 附近站点测试版`
+当前公开版本：`v1.2 · 全部站点选择测试版`
 
 私有分析 Notebook 不在这个仓库中。仓库只包含可部署网页、无密钥数据快照、自动刷新流程、参考实现与测试。

@@ -12,7 +12,7 @@ const I18N = {
     causalityNote: "A street event near a route may affect service, but it does not prove what caused a delay.",
     serviceNotices: "Muni service updates", roadEvents: "Nearby street work", journeyDecision: "Plan your trip",
     whereGoing: "Where do you want to go?", plannerLead: "Choose two Muni stops. We'll compare direct trips and trips with one transfer using the latest available data.",
-    dynamicPlanner: "Live predictions + on-device planning · Public Beta", fromStop: "Starting stop", toStop: "Destination stop", findRoute: "Compare routes", tryExample: "Try a sample trip",
+    dynamicPlanner: "Live predictions + on-device planning · Public Beta", fromStop: "Starting stop", toStop: "Destination stop", browseAllStops: "Browse all stops", findRoute: "Compare routes", tryExample: "Try a sample trip",
     journeyMapHint: "Transit legs are solid; walking connections are dotted.", journeyTimeline: "Your trip",
     journeyReliability: "How steady is this trip?", journeySafety: "Historical incident context", journeyParking: "Parking near your destination",
     threeWays: "Choose what matters most.", referenceCase: "Reference trip", alternatives: "Other routes",
@@ -32,7 +32,7 @@ const I18N = {
     nearbyRadiusLabel: "Search within", nearbyButton: "Find nearby stops",
     nearbyPrivacy: "Your location is used only on this page to calculate distance. It is not uploaded or saved.",
     nearbyInitial: "Select “Find nearby stops” when you're ready to share your location with this page.",
-    footerNote: "An independent research prototype. Not an official SFMTA service.", footerVersion: "v1.1 · Nearby Stops Beta",
+    footerNote: "An independent research prototype. Not an official SFMTA service.", footerVersion: "v1.2 · All Stops Picker Beta",
     footerData: "Data: 511 SF Bay · DataSF · SFMTA", footerMap: "Map © OpenStreetMap contributors", reportIssue: "Report an issue"
   },
   zh: {
@@ -48,7 +48,7 @@ const I18N = {
     causalityNote: "线路附近的道路事件可能影响公交，但不能单凭位置接近就认定它造成了延误。",
     serviceNotices: "Muni 服务更新", roadEvents: "附近道路施工与事件", journeyDecision: "规划行程",
     whereGoing: "你想从哪里去哪里？", plannerLead: "选择两个 Muni 站点。我们会用最新数据比较直达和一次换乘的路线。",
-    dynamicPlanner: "实时预测与本机计算 · 测试版", fromStop: "起点站", toStop: "终点站", findRoute: "比较路线", tryExample: "试试示例行程",
+    dynamicPlanner: "实时预测与本机计算 · 测试版", fromStop: "起点站", toStop: "终点站", browseAllStops: "浏览全部站点", findRoute: "比较路线", tryExample: "试试示例行程",
     journeyMapHint: "实线是公交路段，虚线是步行连接。", journeyTimeline: "行程步骤",
     journeyReliability: "这趟行程稳不稳定？", journeySafety: "历史事件参考", journeyParking: "目的地附近停车情况",
     threeWays: "按你最在意的事情来选。", referenceCase: "参考行程", alternatives: "其他路线",
@@ -68,7 +68,7 @@ const I18N = {
     nearbyRadiusLabel: "查找范围", nearbyButton: "查找附近站点",
     nearbyPrivacy: "你的位置只会在这个页面中用于计算距离，不会上传或保存。",
     nearbyInitial: "准备好后，点击“查找附近站点”并选择是否允许本页使用你的位置。",
-    footerNote: "独立研究原型，并非 SFMTA 官方服务。", footerVersion: "v1.1 · 附近站点测试版",
+    footerNote: "独立研究原型，并非 SFMTA 官方服务。", footerVersion: "v1.2 · 全部站点选择测试版",
     footerData: "数据：511 SF Bay · DataSF · SFMTA", footerMap: "地图 © OpenStreetMap 贡献者", reportIssue: "报告问题"
   }
 };
@@ -85,6 +85,7 @@ let journeyMap = null;
 let journeyLayer = null;
 let stopSearchIndex = new Map();
 let plannerStops = [];
+const stopBrowseState = new WeakMap();
 let userLocation = null;
 let nearbyFeedback = null;
 // Feature 25B · Scheme B worker bridge / 方案 B 浏览器线程连接
@@ -176,8 +177,8 @@ function setLanguage(next, {syncUrl = false} = {}) {
   const originInput = document.getElementById("origin-input");
   const destinationInput = document.getElementById("destination-input");
   const swapButton = document.getElementById("swap-stops");
-  if (originInput) originInput.placeholder = language === "zh" ? "输入站名，再从列表中选择" : "Enter a stop name, then choose from the list";
-  if (destinationInput) destinationInput.placeholder = language === "zh" ? "输入站名，再从列表中选择" : "Enter a stop name, then choose from the list";
+  if (originInput) originInput.placeholder = language === "zh" ? "输入站名，或浏览全部站点" : "Search by name, or browse all stops";
+  if (destinationInput) destinationInput.placeholder = language === "zh" ? "输入站名，或浏览全部站点" : "Search by name, or browse all stops";
   if (swapButton) {
     const label = language === "zh" ? "交换起点和终点" : "Swap starting and destination stops";
     swapButton.setAttribute("aria-label", label);
@@ -189,6 +190,11 @@ function setLanguage(next, {syncUrl = false} = {}) {
   if (routeSelect) routeSelect.setAttribute("aria-label", language === "zh" ? "选择 Muni 线路" : "Choose a Muni route");
   if (directionSelect) directionSelect.setAttribute("aria-label", language === "zh" ? "选择线路方向" : "Choose a route direction");
   if (networkMap) networkMap.setAttribute("aria-label", language === "zh" ? "Muni 实时车辆位置地图" : "Map of current Muni vehicle locations");
+  const originList = document.getElementById("origin-suggestions");
+  const destinationList = document.getElementById("destination-suggestions");
+  if (originList) originList.setAttribute("aria-label", language === "zh" ? "起点站选项" : "Starting stop choices");
+  if (destinationList) destinationList.setAttribute("aria-label", language === "zh" ? "终点站选项" : "Destination stop choices");
+  updateStopBrowseButtons();
   document.querySelectorAll("#nearby-radius option").forEach(option => {
     option.textContent = `${option.value} ${language === "zh" ? "米" : "m"}`;
   });
@@ -724,6 +730,8 @@ function renderStopOptions() {
     stopSearchIndex.set(stopLabel(stop), stop.stop_id);
     stopSearchIndex.set(stop.stop_id, stop.stop_id);
   });
+  closeAllStopLists();
+  updateStopBrowseButtons();
 }
 
 // Feature 26 · Nearby stops / 附近站点
@@ -863,14 +871,131 @@ function requestUserLocation() {
 }
 
 function localStopMatches(query, limit = 12) {
-  const folded = query.trim().toLocaleLowerCase();
-  if (folded.length < 2) return [];
-  return plannerStops
-    .filter(stop => String(stop.name || "").toLocaleLowerCase().includes(folded) || String(stop.stop_id).includes(folded))
-    .slice(0, limit);
+  return window.SFStopCatalog?.searchStops(plannerStops, query, limit) || [];
+}
+
+// Feature 27 · Full stop picker / 完整站点选择器
+// 中文：用户可以输入站名搜索，也可以直接打开完整站点目录。目录每次加载
+// 100 个站点，滚动到底会继续加载，直到全部站点都可以选择。
+// English: Riders can search by name or browse the complete stop catalog. The
+// list adds 100 rows near the scroll boundary until every stop is reachable.
+function browseButtonForInput(input) {
+  return document.getElementById(input.id === "origin-input" ? "origin-browse-button" : "destination-browse-button");
+}
+
+function updateStopBrowseButtons() {
+  const total = plannerStops.length;
+  const formattedTotal = total.toLocaleString(language === "zh" ? "zh-CN" : "en-US");
+  [
+    ["origin-browse-button", language === "zh" ? "作为起点" : "starting"],
+    ["destination-browse-button", language === "zh" ? "作为终点" : "destination"]
+  ].forEach(([id, role]) => {
+    const button = document.getElementById(id);
+    if (!button) return;
+    button.textContent = total ? `${I18N[language].browseAllStops} (${formattedTotal})` : I18N[language].browseAllStops;
+    button.setAttribute("aria-label", total
+      ? (language === "zh" ? `浏览全部 ${formattedTotal} 个站点${role}` : `Browse all ${formattedTotal} ${role} stops`)
+      : I18N[language].browseAllStops);
+  });
+}
+
+function stopOptionMarkup(stop, position, total) {
+  const routes = (stop.route_ids || []).join(" · ");
+  const detail = routes
+    ? (language === "zh" ? `线路：${routes}` : `Routes: ${routes}`)
+    : (language === "zh" ? `站点编号：${stop.stop_id}` : `Stop ID: ${stop.stop_id}`);
+  return `<button type="button" role="option" aria-posinset="${position}" aria-setsize="${total}" data-stop-id="${escapeHtml(stop.stop_id)}" data-stop-label="${escapeHtml(stopLabel(stop))}">
+    <strong>${escapeHtml(stop.name || (language === "zh" ? "Muni 站点" : "Muni stop"))}</strong>
+    <span>${escapeHtml(detail)}</span>
+  </button>`;
+}
+
+function chooseStopOption(option, input, list) {
+  input.value = option.dataset.stopLabel;
+  stopSearchIndex.set(input.value, option.dataset.stopId);
+  appState.plannerRequestKey = null;
+  input.focus({preventScroll: true});
+  closeStopList(input, list);
+}
+
+function bindStopOptionButtons(input, list) {
+  list.querySelectorAll("button[data-stop-id]:not([data-stop-bound])").forEach(option => {
+    option.dataset.stopBound = "true";
+    option.addEventListener("click", event => {
+      event.preventDefault();
+      chooseStopOption(option, input, list);
+    });
+  });
+}
+
+function closeStopList(input, list) {
+  list.hidden = true;
+  input.setAttribute("aria-expanded", "false");
+  const browseButton = browseButtonForInput(input);
+  if (browseButton) browseButton.setAttribute("aria-expanded", "false");
+  stopBrowseState.delete(list);
+}
+
+function closeAllStopLists(exceptList = null) {
+  [
+    [document.getElementById("origin-input"), document.getElementById("origin-suggestions")],
+    [document.getElementById("destination-input"), document.getElementById("destination-suggestions")]
+  ].forEach(([input, list]) => {
+    if (input && list && list !== exceptList) closeStopList(input, list);
+  });
+}
+
+function browseProgressCopy(shown, total, done) {
+  const shownText = shown.toLocaleString(language === "zh" ? "zh-CN" : "en-US");
+  const totalText = total.toLocaleString(language === "zh" ? "zh-CN" : "en-US");
+  if (done) return language === "zh" ? `已显示全部 ${totalText} 个站点` : `All ${totalText} stops shown`;
+  return language === "zh"
+    ? `正在显示 ${totalText} 个站点中的 ${shownText} 个，向下滚动查看更多`
+    : `Showing ${shownText} of ${totalText} stops. Scroll for more`;
+}
+
+function appendStopBrowseBatch(input, list) {
+  const state = stopBrowseState.get(list);
+  if (!state || state.done) return;
+  const batch = window.SFStopCatalog?.nextBrowseBatch(state.rows, state.nextOffset);
+  if (!batch) return;
+  const options = list.querySelector(".stop-options");
+  const startingPosition = state.nextOffset;
+  options.insertAdjacentHTML("beforeend", batch.rows.map((stop, index) => (
+    stopOptionMarkup(stop, startingPosition + index + 1, batch.total)
+  )).join(""));
+  state.nextOffset = batch.nextOffset;
+  state.done = batch.done;
+  list.querySelector(".stop-list-summary").textContent = browseProgressCopy(state.nextOffset, batch.total, batch.done);
+  bindStopOptionButtons(input, list);
+}
+
+function openAllStops(input, list) {
+  const browseButton = browseButtonForInput(input);
+  if (!list.hidden && stopBrowseState.has(list)) {
+    closeStopList(input, list);
+    return;
+  }
+  closeAllStopLists(list);
+  if (!plannerStops.length) {
+    list.innerHTML = `<p class="stop-list-empty">${language === "zh" ? "站点目录仍在加载，请稍后再试。" : "The stop list is still loading. Try again in a moment."}</p>`;
+    list.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    if (browseButton) browseButton.setAttribute("aria-expanded", "true");
+    return;
+  }
+  list.innerHTML = `<div class="stop-list-summary" role="status"></div><div class="stop-options"></div>`;
+  stopBrowseState.set(list, {rows: plannerStops, nextOffset: 0, done: false});
+  list.hidden = false;
+  list.scrollTop = 0;
+  input.setAttribute("aria-expanded", "true");
+  if (browseButton) browseButton.setAttribute("aria-expanded", "true");
+  appendStopBrowseBatch(input, list);
 }
 
 function renderStopSuggestions(input, list, rows) {
+  closeAllStopLists(list);
+  stopBrowseState.delete(list);
   const unique = new Map();
   rows.forEach(stop => {
     const normalized = {...stop, stop_id: String(stop.stop_id)};
@@ -880,27 +1005,18 @@ function renderStopSuggestions(input, list, rows) {
     stopSearchIndex.set(normalized.stop_id, normalized.stop_id);
   });
   const suggestions = [...unique.values()].slice(0, 12);
-  list.innerHTML = suggestions.map(stop => `
-    <button type="button" role="option" data-stop-id="${escapeHtml(stop.stop_id)}" data-stop-label="${escapeHtml(stopLabel(stop))}">
-      <strong>${escapeHtml(stop.name || "Muni stop")}</strong>
-      <span>${escapeHtml((stop.route_ids || []).slice(0, 6).join(" · ") || `Stop ${stop.stop_id}`)}</span>
-    </button>`).join("");
+  list.innerHTML = suggestions.map((stop, index) => stopOptionMarkup(stop, index + 1, suggestions.length)).join("");
   list.hidden = suggestions.length === 0;
   input.setAttribute("aria-expanded", String(suggestions.length > 0));
-  list.querySelectorAll("button[data-stop-id]").forEach(option => option.addEventListener("mousedown", event => {
-    event.preventDefault();
-    input.value = option.dataset.stopLabel;
-    stopSearchIndex.set(input.value, option.dataset.stopId);
-    list.hidden = true;
-    input.setAttribute("aria-expanded", "false");
-  }));
+  const browseButton = browseButtonForInput(input);
+  if (browseButton) browseButton.setAttribute("aria-expanded", "false");
+  bindStopOptionButtons(input, list);
 }
 
 function scheduleStopSearch(input, list) {
   const query = input.value.trim();
   if (query.length < 2) {
-    list.hidden = true;
-    input.setAttribute("aria-expanded", "false");
+    closeStopList(input, list);
     return;
   }
   renderStopSuggestions(input, list, localStopMatches(query));
@@ -1372,6 +1488,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setLanguage(language);
   initMap();
   document.getElementById("language-toggle").addEventListener("click", () => {
+    closeAllStopLists();
     setLanguage(language === "en" ? "zh" : "en", {syncUrl: true});
     if (snapshot && network) renderAll();
     else if (userLocation) renderNearbyStops();
@@ -1399,15 +1516,23 @@ document.addEventListener("DOMContentLoaded", () => {
     appState.plannerRequestKey = null;
   });
   [
-    [document.getElementById("origin-input"), document.getElementById("origin-suggestions")],
-    [document.getElementById("destination-input"), document.getElementById("destination-suggestions")]
-  ].forEach(([input, list]) => {
+    [document.getElementById("origin-input"), document.getElementById("origin-suggestions"), document.getElementById("origin-browse-button")],
+    [document.getElementById("destination-input"), document.getElementById("destination-suggestions"), document.getElementById("destination-browse-button")]
+  ].forEach(([input, list, browseButton]) => {
     input.addEventListener("input", () => scheduleStopSearch(input, list));
     input.addEventListener("focus", () => scheduleStopSearch(input, list));
-    input.addEventListener("blur", () => setTimeout(() => {
-      list.hidden = true;
-      input.setAttribute("aria-expanded", "false");
-    }, 150));
+    browseButton.addEventListener("click", () => openAllStops(input, list));
+    list.addEventListener("scroll", () => {
+      if (list.scrollTop + list.clientHeight >= list.scrollHeight - 80) appendStopBrowseBatch(input, list);
+    });
+  });
+  document.addEventListener("pointerdown", event => {
+    document.querySelectorAll(".planner-field").forEach(field => {
+      if (field.contains(event.target)) return;
+      const input = field.querySelector("input[role='combobox']");
+      const list = field.querySelector(".stop-suggestions");
+      if (input && list) closeStopList(input, list);
+    });
   });
   document.getElementById("example-trip-button").addEventListener("click", () => {
     const origin = plannerStops.find(stop => stop.stop_id === "13161");

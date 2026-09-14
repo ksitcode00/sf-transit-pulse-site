@@ -174,17 +174,23 @@
       </section>
 
       <form class="planner-form" id="trip-planner-form">
-        <label class="planner-field">
-          <span data-i18n="fromStop">Starting stop</span>
+        <div class="planner-field">
+          <div class="planner-field-heading">
+            <label for="origin-input" data-i18n="fromStop">Starting stop</label>
+            <button class="stop-browse-button" id="origin-browse-button" type="button" aria-controls="origin-suggestions" aria-expanded="false" data-i18n="browseAllStops">Browse all stops</button>
+          </div>
           <input id="origin-input" autocomplete="off" placeholder="Enter a stop name, then choose from the list" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="origin-suggestions" required>
-          <span class="stop-suggestions" id="origin-suggestions" role="listbox" hidden></span>
-        </label>
+          <div class="stop-suggestions" id="origin-suggestions" role="listbox" aria-label="Starting stop choices" hidden></div>
+        </div>
         <button class="swap-button" id="swap-stops" type="button" aria-label="Swap origin and destination" title="Swap origin and destination">⇅</button>
-        <label class="planner-field">
-          <span data-i18n="toStop">Destination stop</span>
+        <div class="planner-field">
+          <div class="planner-field-heading">
+            <label for="destination-input" data-i18n="toStop">Destination stop</label>
+            <button class="stop-browse-button" id="destination-browse-button" type="button" aria-controls="destination-suggestions" aria-expanded="false" data-i18n="browseAllStops">Browse all stops</button>
+          </div>
           <input id="destination-input" autocomplete="off" placeholder="Enter a stop name, then choose from the list" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="destination-suggestions" required>
-          <span class="stop-suggestions" id="destination-suggestions" role="listbox" hidden></span>
-        </label>
+          <div class="stop-suggestions" id="destination-suggestions" role="listbox" aria-label="Destination stop choices" hidden></div>
+        </div>
         <button class="primary-button planner-submit" id="plan-trip-button" type="submit" data-i18n="findRoute">Compare routes</button>
       </form>
       <button class="text-action example-trip-button" id="example-trip-button" type="button" data-i18n="tryExample">Try a sample trip</button>
@@ -300,7 +306,7 @@
     </div>
     <div class="footer-meta">
       <span id="generated-at">Page update time unavailable</span>
-      <span data-i18n="footerVersion">v1.1 · Nearby Stops Beta</span>
+      <span data-i18n="footerVersion">v1.2 · All Stops Picker Beta</span>
       <span data-i18n="footerData">Data: 511 SF Bay · DataSF · SFMTA</span>
       <span data-i18n="footerMap">Map © OpenStreetMap contributors</span>
       <a href="https://github.com/ksitcode00/sf-transit-pulse-site/issues/new" target="_blank" rel="noreferrer" data-i18n="reportIssue">Report an issue</a>
@@ -310,6 +316,7 @@
   <div class="error-banner" id="error-banner" role="status" hidden></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="nearby-stops.js?v=26" defer></script>
-  <script src="app.js?v=26" defer></script>
+  <script src="stop-catalog.js?v=27" defer></script>
+  <script src="app.js?v=27" defer></script>
 </body>
 </html>

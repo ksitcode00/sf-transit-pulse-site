@@ -52,6 +52,7 @@ Each row explains the rider need, the implementation's practical value, and an e
 | 100–400 meter range | Provides exactly four predictable choices: 100, 200, 300, and 400 m. Changing the range does not request permission again. | Increase the range from 100 m to 300 m when no stop is close enough. | Live |
 | Use nearby stop as start or destination | Removes the need to retype a stop name, especially on mobile. | Select “Use as start,” then enter a destination and compare routes. | Live |
 | Stop search | Finds origin and destination stops and shows routes serving each stop using the public GTFS catalog in the browser. | Enter “4th St & Market” and choose the correct stop ID. | Live |
+| Browse every stop | Opens the complete alphabetized Muni stop catalog without requiring any typing. Stops load 100 at a time while scrolling, so the full list remains available without freezing the page. | Select “Browse all stops,” scroll through the catalog, and choose a stop with its route list. | Live |
 | Direct and one-transfer planning | Finds feasible boarding and alighting stops while rejecting wrong-direction and distant fake transfers. | Compare direct and one-transfer options from SoMa to Fillmore. | Public beta |
 | Trip-level live boarding and arrival | A leg is labeled live only when one concrete trip has valid predictions at both stops. Otherwise it is estimated. | Show predicted 8:12 boarding, 8:27 arrival, and a trip ID instead of a vague 15 minutes. | Live with complete predictions |
 | Transfer catch slack | Uses first-trip arrival, walking time, a one-minute boarding allowance, and second-trip departure to calculate remaining minutes. | An 8:20 arrival, two-minute walk, and 8:25 departure produces about two minutes of slack. | Live or clearly estimated |
@@ -154,6 +155,7 @@ site/
   styles.css             Responsive visual system
   app.js                 UI state, maps, search, location, and bilingual copy
   nearby-stops.js        Distance calculation and nearby-stop filtering
+  stop-catalog.js        Search and progressive full-catalog browsing
   planner-engine.mjs     Browser routing engine and ranking rules
   planner-worker.js      Background calculation thread
   data/                  Public snapshots with no API key
@@ -168,6 +170,7 @@ backend/
 tests/
   browser-planner.test.mjs  Browser planner contracts
   nearby-stops.test.cjs     Nearby distance and radius contracts
+  stop-catalog.test.cjs      Search and full-catalog batching contracts
   test_planner.py           Python reference contracts
 ```
 
@@ -182,7 +185,7 @@ Open `http://127.0.0.1:8765/?lang=en`. Do not open `index.html` directly because
 ### Tests
 
 ```bash
-node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs
+node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs tests/stop-catalog.test.cjs
 python3 -m pytest -q tests
 ```
 
@@ -208,6 +211,6 @@ python3 -m pytest -q tests
 
 ## Version
 
-Current public release: `v1.1 · Nearby Stops Beta`
+Current public release: `v1.2 · All Stops Picker Beta`
 
 The private analytical Notebook is intentionally not published here. This repository contains only the deployable application, credential-free snapshots, refresh workflow, reference implementation, and tests.
