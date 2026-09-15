@@ -288,6 +288,9 @@ function setLanguage(next, {syncUrl = false} = {}) {
   });
   document.getElementById("language-toggle").textContent = language === "en" ? "中文" : "EN";
   document.getElementById("language-toggle").setAttribute("aria-label", language === "zh" ? "Switch to English" : "切换到中文");
+  document.querySelector(".global-nav")?.setAttribute("aria-label", language === "zh" ? "主要导航" : "Global navigation");
+  document.querySelector(".global-nav nav")?.setAttribute("aria-label", language === "zh" ? "页面栏目" : "Page sections");
+  document.querySelector(".route-scope")?.setAttribute("aria-label", language === "zh" ? "选择线路显示范围" : "Choose route catalog scope");
   const originInput = document.getElementById("origin-input");
   const destinationInput = document.getElementById("destination-input");
   const swapButton = document.getElementById("swap-stops");
@@ -320,6 +323,10 @@ function setLanguage(next, {syncUrl = false} = {}) {
   if (destinationList) destinationList.setAttribute("aria-label", language === "zh" ? "终点站选项" : "Destination stop choices");
   const nearbyMapElement = document.getElementById("nearby-map");
   if (nearbyMapElement) nearbyMapElement.setAttribute("aria-label", language === "zh" ? "你的位置和附近 Muni 站点地图" : "Map of your location and nearby Muni stops");
+  const journeyMapElement = document.getElementById("journey-map");
+  if (journeyMapElement) journeyMapElement.setAttribute("aria-label", language === "zh" ? "所选行程地图" : "Selected journey map");
+  const nearbyRadius = document.getElementById("nearby-radius");
+  if (nearbyRadius) nearbyRadius.setAttribute("aria-label", language === "zh" ? "附近站点查找范围" : "Nearby stop search radius");
   const localizedLabels = {
     "route-detail-close": language === "zh" ? "关闭线路详情" : "Close route details",
     "why-route-close": language === "zh" ? "关闭推荐依据" : "Close recommendation evidence",

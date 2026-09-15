@@ -16,6 +16,16 @@ test("mobile browser layout has reachable navigation and no page-wide overflow",
   assert.match(css, /bottom:\s*calc\(78px \+ env\(safe-area-inset-bottom\)\)/);
 });
 
+test("English and Chinese navigation remain accessible to screen readers", () => {
+  assert.match(html, /src="app\.js\?v=41"/);
+  assert.match(html, /id="mobile-recommendation" role="status" aria-live="polite"/);
+  assert.match(app, /"主要导航" : "Global navigation"/);
+  assert.match(app, /"页面栏目" : "Page sections"/);
+  assert.match(app, /"选择线路显示范围" : "Choose route catalog scope"/);
+  assert.match(app, /"所选行程地图" : "Selected journey map"/);
+  assert.match(app, /"附近站点查找范围" : "Nearby stop search radius"/);
+});
+
 test("network keeps a visible service and street update summary", () => {
   assert.match(html, /id="network-update-summary"/);
   assert.match(app, /function renderNetworkUpdateSummary/);
