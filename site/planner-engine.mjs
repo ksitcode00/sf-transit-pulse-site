@@ -794,7 +794,7 @@ export class BrowserPlannerEngine {
       }
     }
     // Do not trim by static walking distance here. A slightly farther transfer
-    // can catch a much earlier concrete trip and win the true door-to-door ETA.
+    // can catch a much earlier concrete trip and win the true stop-to-stop ETA.
     return pairs.sort((left, right) => left.staticScore - right.staticScore || left.transferM - right.transferM);
   }
 
@@ -961,7 +961,7 @@ export class BrowserPlannerEngine {
 
   // Feature 29 · Independent mode winners / 三种模式独立选冠军
   // 中文：先让三个模式查看完整候选集合，再把各自冠军、Pareto 候选和各模式前列
-  // 合并为最多 12 条展示。这样 Safety-first 不会被 Balanced 的预裁剪误删。
+  // 合并为最多 12 条展示。这样“历史背景”不会被“综合推荐”的预裁剪误删。
   // English: Rank the full feasible pool first. Only after all three winners are
   // known do we build the compact UI list from winners, Pareto rows, and mode leaders.
   displayCandidates(candidates, winners) {
@@ -1005,7 +1005,7 @@ export class BrowserPlannerEngine {
         eta_min: winner.eta_min, walking_min: winner.walking_min, transfer_count: winner.transfer_count,
         eta_status: winner.eta_status, reliability_label: winner.reliability,
         exposure_label: winner.exposure,
-        explanation: modeName === "FASTEST" ? "Lowest estimated door-to-door travel time in the current candidate set."
+        explanation: modeName === "FASTEST" ? "Lowest estimated transit journey time in the current candidate set."
           : modeName === "BALANCED" ? "Balances ETA, walking, transfers, current spacing, and a small adjustment only for historical context above the Muni-stop midpoint."
           : this.safetyDistribution.length ? "Gives more weight to historical report context above the Muni-stop midpoint; this is not a prediction of personal safety."
           : "Stop-level historical context is not available, so this falls back to the reliability-aware ranking."

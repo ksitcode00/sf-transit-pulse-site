@@ -31,7 +31,7 @@ const I18N = {
     observe: "Collect current updates", observeBody: "Check vehicle locations, arrival estimates, service notices, route paths, and when each source was updated.",
     diagnose: "Check each route direction", diagnoseBody: "Look for steady vehicle spacing, vehicles too close together, long waits, and limited live data in each direction.",
     build: "Build trips you may be able to make", buildBody: "Compare direct and one-transfer trips. When complete live predictions are available, check whether two specific trips connect; otherwise label the time as an estimate.",
-    compare: "Compare what matters to you", compareBody: "Fastest favors time. Balanced weighs time, steady service, walking, transfers, and only large historical differences. Historical context gives those past differences more weight.",
+    compare: "Compare what matters to you", compareBody: "Fastest favors transit time. Balanced weighs time, steady service, walking, transfers, and only large historical differences. Historical context gives those past differences more weight.",
     boundariesTitle: "Important limits", boundarySafety: "Historical incident data cannot tell whether you will be safe.", boundaryRoad: "A nearby street event does not prove what caused a transit delay.", boundaryMissing: "No live update does not mean a route has stopped running.", boundaryCost: "A comparison score is not an arrival time.", boundaryTransfer: "Live predictions can change, so a possible transfer is not guaranteed.",
     explain: "Explain the recommendation", explainBody: "Show why one route ranks first, what the other options offer, and where the data is limited.",
     nearbyEyebrow: "Start from where you are", nearbyTitle: "Find Muni stops near you",
@@ -44,7 +44,7 @@ const I18N = {
     highlightDirection: "Direction health", highlightDirectionBody: "Check each direction separately for uneven spacing and longer waits.",
     highlightTransfer: "Can you catch the transfer?", highlightTransferBody: "See the expected connection buffer when two concrete trips are available.",
     highlightWhy: "Why this route?", highlightWhyBody: "Open the evidence only when you want to understand the recommendation.",
-    decisionStoryEyebrow: "A useful tradeoff", decisionStoryTitle: "Fastest isn't always the easiest trip.",
+    decisionStoryEyebrow: "Illustrative example · A useful tradeoff", decisionStoryTitle: "Fastest isn't always the easiest trip.",
     storyFastest: "FASTEST", storyFastMeta: "8 min walk · 1 transfer · Watch",
     storyBalanced: "BALANCED", storyBalancedMeta: "3 min walk · Direct · Stable",
     decisionStoryMiddle: "Less walking. No transfer. Steadier service.",
@@ -86,7 +86,7 @@ const I18N = {
     observe: "收集最新信息", observeBody: "查看车辆位置、预计到站时间、服务通知、线路路径，以及每份数据的更新时间。",
     diagnose: "分方向检查每条线路", diagnoseBody: "查看车辆间隔是否稳定、是否挤在一起、会不会等很久，以及实时信息是否足够。",
     build: "找出可能坐得上的路线", buildBody: "比较直达和一次换乘。有完整实时预测时，会检查两趟具体班次是否接得上；数据不足时会明确写成估算。",
-    compare: "按你的需要比较", compareBody: "最快到达只优先看时间；综合推荐兼顾稳定性、步行和换乘，只轻微考虑明显偏高的历史差异；历史背景优先会更重视过去记录的差异。",
+    compare: "按你的需要比较", compareBody: "最快到达优先看公交行程时间；综合推荐兼顾稳定性、步行和换乘，只轻微考虑明显偏高的历史差异；历史背景会更重视过去记录的差异。",
     boundariesTitle: "请注意这些限制", boundarySafety: "历史事件记录不能判断你这次出行是否安全。", boundaryRoad: "附近有道路事件，不代表它一定造成了公交延误。", boundaryMissing: "没有实时信息，不代表这条线路已经停运。", boundaryCost: "路线比较分数不等于预计到达时间。", boundaryTransfer: "实时到站预测仍会变化，所以显示能换乘也不代表一定赶得上。",
     explain: "说明推荐理由", explainBody: "告诉你为什么这条路线排在前面、其他路线有什么不同，以及哪些数据仍然不足。",
     nearbyEyebrow: "从你现在的位置出发", nearbyTitle: "查找附近的 Muni 站点",
@@ -99,7 +99,7 @@ const I18N = {
     highlightDirection: "分方向看运行情况", highlightDirectionBody: "两个方向分开检查车辆间隔和可能的长时间等待。",
     highlightTransfer: "这次换乘赶得上吗？", highlightTransferBody: "有具体班次预测时，直接显示预计可用的换乘余量。",
     highlightWhy: "为什么推荐这条？", highlightWhyBody: "需要了解理由时再展开证据，平时不用面对所有技术细节。",
-    decisionStoryEyebrow: "更实用的取舍", decisionStoryTitle: "最快，不一定是最省事。",
+    decisionStoryEyebrow: "示例行程 · 一种实用取舍", decisionStoryTitle: "最快，不一定是最省事。",
     storyFastest: "最快到达", storyFastMeta: "步行 8 分钟 · 换乘 1 次 · 需留意",
     storyBalanced: "综合推荐", storyBalancedMeta: "步行 3 分钟 · 直达 · 较稳定",
     decisionStoryMiddle: "少走路、不换乘，运行也更稳定。",
@@ -477,7 +477,7 @@ function renderMeta() {
     : sourceLabel;
   document.getElementById("freshness-label").textContent = topSourceLabel + transitAge;
   document.getElementById("freshness-label").title = transitStale && (transit.isLive || transit.isCached)
-    ? (language === "zh" ? "网页仍会每 5 分钟检查一次新数据；过旧数据不会用于实时判断。" : "The page still checks for new data every 5 minutes; outdated data is not used for live judgments.")
+    ? (language === "zh" ? "网页仍会每 90 秒检查一次新数据；过旧数据不会用于实时判断。" : "The page still checks for new data every 90 seconds; outdated data is not used for live judgments.")
     : sourceLabel;
   document.querySelector(".live-dot")?.classList.toggle("delayed", Boolean(transitStale || !transit.isCurrent));
   document.getElementById("generated-at").textContent = generated ? `${language === "zh" ? "页面更新时间" : "Page updated"}: ${generated.toLocaleString()}` : (language === "zh" ? "页面更新时间不明" : "Page update time unavailable");
@@ -1540,7 +1540,7 @@ function recommendedJourneyForMode() {
 function modeName(mode) {
   const key = String(mode || "BALANCED");
   const en = {FASTEST:"Fastest", BALANCED:"Balanced", SAFETY_FIRST:"Historical context"};
-  const zh = {FASTEST:"最快到达", BALANCED:"综合推荐", SAFETY_FIRST:"历史背景优先"};
+  const zh = {FASTEST:"最快到达", BALANCED:"综合推荐", SAFETY_FIRST:"历史背景"};
   return (language === "zh" ? zh : en)[key] || key.replaceAll("_", "-");
 }
 
@@ -1932,7 +1932,7 @@ function renderJourneyEvidence(journey) {
     <div class="evidence-row"><span>${escapeHtml(historicalSegmentLabel(segment.key))}</span><strong>${escapeHtml(historicalContextLevel(segment.percentile))}</strong></div>
     <p class="fine-print">${hasNumber(segment.percentile) ? (language === "zh" ? `与全部 Muni 站点相比：第 ${fmt(segment.percentile)} 百分位` : `Compared with all Muni stops: ${ordinal(segment.percentile)} percentile`) : ""}${hasNumber(segment.weight) ? (language === "zh" ? ` · 本次比较权重 ${fmt(segment.weight)}%` : ` · ${fmt(segment.weight)}% comparison weight`) : ""}${segment.trend === "RISING" ? (language === "zh" ? " · 最近 30 天报告有所增加" : " · Reports increased in the latest 30 days") : ""}</p>`).join("") +
     `<p class="evidence-note">${hasNumber(safety.ranking_effect?.excess_percentile_points) && safety.ranking_effect.excess_percentile_points > 0
-      ? (language === "zh" ? `只有高于第 50 百分位的 ${fmt(safety.ranking_effect.excess_percentile_points)} 个百分点参与排序。综合推荐的权衡成本为 ${fmt(safety.ranking_effect.balanced_penalty_min,2)} 分钟，历史背景优先为 ${fmt(safety.ranking_effect.safety_first_penalty_min,2)} 分钟；这不会改变预计行程时间。` : `Only the ${fmt(safety.ranking_effect.excess_percentile_points)} points above the 50th percentile affect ranking. The tradeoff cost is ${fmt(safety.ranking_effect.balanced_penalty_min,2)} min for Balanced and ${fmt(safety.ranking_effect.safety_first_penalty_min,2)} min for Historical context; it does not change the ETA.`)
+      ? (language === "zh" ? `只有高于第 50 百分位的 ${fmt(safety.ranking_effect.excess_percentile_points)} 个百分点参与排序。综合推荐的权衡成本为 ${fmt(safety.ranking_effect.balanced_penalty_min,2)} 分钟，历史背景为 ${fmt(safety.ranking_effect.safety_first_penalty_min,2)} 分钟；这不会改变预计行程时间。` : `Only the ${fmt(safety.ranking_effect.excess_percentile_points)} points above the 50th percentile affect ranking. The tradeoff cost is ${fmt(safety.ranking_effect.balanced_penalty_min,2)} min for Balanced and ${fmt(safety.ranking_effect.safety_first_penalty_min,2)} min for Historical context; it does not change the ETA.`)
       : (language === "zh" ? "这项历史参考没有高于全部 Muni 站点的中间水平，因此不会增加排序成本。" : "This historical context is at or below the Muni-stop midpoint, so it adds no ranking cost.")}</p>` +
     `<p class="evidence-note">${language === "zh" ? "比较会参考去重后的 30、90 和 365 天报告及事件类别，并限制单个极端地点的影响。它不能预测犯罪、判断地点是否安全，也不能保证个人安全。" : "The comparison uses deduplicated 30-, 90-, and 365-day reports and incident categories, while limiting the influence of one extreme location. It cannot predict crime, label a place safe or unsafe, or guarantee personal safety."}</p>`;
 

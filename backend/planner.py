@@ -1696,7 +1696,7 @@ class PlannerEngine:
             winner = min(candidates, key=lambda row: (row["costs"][cost_key], row["eta_min"]))
             winners[mode_name] = winner
             if mode_name == "FASTEST":
-                explanation = "Lowest estimated door-to-door travel time in the current candidate set."
+                explanation = "Lowest estimated transit journey time in the current candidate set."
             elif mode_name == "BALANCED":
                 explanation = (
                     "Balances ETA, walking, transfers, current spacing, and a small "

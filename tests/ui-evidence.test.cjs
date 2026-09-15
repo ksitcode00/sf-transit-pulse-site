@@ -30,15 +30,36 @@ test("recommendation shows transfer buffer and restores the mobile bar", () => {
 test("stale realtime data is labeled as delayed and auto-checked", () => {
   assert.match(app, /Update delayed · checking automatically/);
   assert.match(app, /The page checks for updates every 90 seconds/);
+  assert.doesNotMatch(app, /every 5 minutes/);
+  assert.doesNotMatch(app, /每 5 分钟/);
   assert.match(css, /\.live-dot\.delayed/);
 });
 
 test("trip planning accepts places while keeping stop mapping explicit", () => {
-  assert.match(html, /src="place-search\.js\?v=39"/);
+  assert.match(html, /src="place-search\.js\?v=40"/);
   assert.match(html, /id="origin-place-match"/);
   assert.match(html, /id="destination-place-match"/);
   assert.match(app, /function placeOptionMarkup/);
   assert.match(app, /This walk is not included in the transit ETA/);
+});
+
+test("the fixed home comparison is explicitly labeled as an example", () => {
+  assert.match(html, /Illustrative example · A useful tradeoff/);
+  assert.match(app, /示例行程 · 一种实用取舍/);
+});
+
+test("social sharing metadata uses a repository-owned preview", () => {
+  assert.match(html, /property="og:title" content="SF Transit Pulse"/);
+  assert.match(html, /property="og:image" content="https:\/\/ksitcode00\.github\.io\/sf-transit-pulse-site\/assets\/social-preview\.png"/);
+  assert.match(html, /name="twitter:card" content="summary_large_image"/);
+  assert.ok(fs.existsSync(path.join(root, "site", "assets", "social-preview.png")));
+});
+
+test("rider-facing modes use evidence-appropriate historical context wording", () => {
+  assert.match(app, /SAFETY_FIRST:"Historical context"/);
+  assert.match(app, /SAFETY_FIRST:"历史背景"/);
+  assert.doesNotMatch(app, /Safety-first/);
+  assert.doesNotMatch(app, /安全优先/);
 });
 
 test("nearby stops include an on-page location map", () => {

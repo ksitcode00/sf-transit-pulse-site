@@ -15,6 +15,13 @@
 
 ![SF Transit Pulse live Muni dashboard and trip planner](artifacts/ui-v1.5/desktop-home.png)
 
+## At a glance
+
+- **Realtime:** Muni vehicles and arrival predictions refresh every three minutes.
+- **Decision engine:** Fastest, Balanced, and Historical Context rank the same feasible trips.
+- **Explainable:** Transfer time, service reliability, data freshness, and limits appear beside each recommendation.
+- **Production-style pipeline:** 511 and DataSF → scheduled ingestion → public snapshots → browser Web Worker.
+
 SF Transit Pulse is a Muni decision tool for everyday riders. It goes beyond departure times by explaining vehicle spacing, possible long gaps, transfer timing, and why one route ranks above another.
 
 > This is an independent research prototype, not an official SFMTA service. Live predictions can change, so leave extra time for important trips.
@@ -24,7 +31,7 @@ SF Transit Pulse is a Muni decision tool for everyday riders. It goes beyond dep
 1. Open the [English live app](https://ksitcode00.github.io/sf-transit-pulse-site/?lang=en).
 2. Choose a route and direction under “Muni now,” then inspect vehicle positions, spacing, and service notices.
 3. Under “Plan a trip,” type a stop, address, or landmark such as “Ferry Building”—or select “Find nearby stops” and choose a 100, 200, 300, or 400 meter range.
-4. Choose the matched Muni stop, review any walk-to-stop distance, then compare Fastest, Balanced, and Safety-first.
+4. Choose the matched Muni stop, review any walk-to-stop distance, then compare Fastest, Balanced, and Historical Context.
 
 ## Product goal
 
@@ -47,7 +54,7 @@ The project follows one end-to-end production-style path:
 | Cache and freshness | Credential-free files are split by update cadence. A second workflow checks whether transit observations are actually current and recovers stale snapshots. | A successful script run cannot disguise an old transit feed. |
 | Route diagnostics | Vehicles, headways, bunching, long gaps, and service health are calculated by route and direction. | A problem in one direction does not incorrectly label the other direction. |
 | Realtime candidate generation | The planner keeps every stop inside the 250 m access radius and every feasible transfer pair until concrete trips are evaluated. | Static walking distance cannot discard an 11th nearby stop or a ninth transfer option when it catches the fastest real trip. |
-| Multi-objective scoring | Fastest, Balanced, and Safety-first rank the same feasible pool using documented inputs. | Preference changes affect ranking, not the underlying ETA. |
+| Multi-objective scoring | Fastest, Balanced, and Historical Context rank the same feasible pool using documented inputs. | Preference changes affect ranking, not the underlying ETA. |
 | Explainable browser UI | A Web Worker calculates on the visitor's device. Timing evidence, transfer slack, A/B comparison, freshness, and limitations appear beside the recommendation. | Riders can understand both the choice and the uncertainty behind it. |
 
 ## Feature catalog
@@ -61,7 +68,7 @@ Each row explains the rider need, the implementation's practical value, and an e
 | Live vehicle map | Shows reported positions. Unmatched vehicles are counted separately instead of being assigned by guesswork. | Check where the next Route 5 vehicle appears along the corridor before leaving. | Live |
 | Direction-level service health | Turns raw predictions into plain-language states such as steady spacing or possible longer waits. | If one 14R direction has highly variable waits, compare Route 14 or rail. | Live |
 | Headways, bunching, and long gaps | Average arrival times can hide two vehicles together followed by a long wait. This feature exposes the spacing evidence. | See both a bunch ahead and the long gap behind it. | Live |
-| Current reported speed | Shows whether movement is below a transparent vehicle-type reference without presenting that reference as a historical average. | See a slowdown note when a corridor's median reported speed is unusually low. | Live when speed data exists; corridor history planned for v1.1 |
+| Current reported speed | Shows whether movement is below a transparent vehicle-type reference without presenting that reference as a historical average. | See a slowdown note when a corridor's median reported speed is unusually low. | Live when speed data exists; corridor history planned for a future release |
 | Muni service notices | Places stop moves, elevator outages, and service changes beside route information. | Learn that a stop moved before walking to its usual location. | Live |
 | Street work and route context | Shows road events beside transit movement without claiming proximity proves causation. | Work near Market Street and a slower transit segment appear as possible context only. | Research beta |
 | Nearby stop location | After explicit permission, the browser calculates distance to every Muni stop. Coordinates are not uploaded or saved. | Choose 200 m and see every stop in range, its distance, and its routes. | Live beta |
@@ -75,9 +82,9 @@ Each row explains the rider need, the implementation's practical value, and an e
 | Trip-level live boarding and arrival | A leg is labeled live only when one concrete trip has valid predictions at both stops and the update is no more than 10 minutes old. Otherwise it is estimated. | Show predicted 8:12 boarding, 8:27 arrival, and a trip ID instead of a vague 15 minutes. | Live with fresh complete predictions |
 | Transfer catch slack | Uses first-trip arrival, walking time, a one-minute boarding allowance, and second-trip departure to calculate remaining minutes. | An 8:20 arrival, two-minute walk, and 8:25 departure produces about two minutes of slack. | Live or clearly estimated |
 | Realtime-first transfer selection | Keeps every spatially feasible transfer pair until concrete trip predictions are compared, instead of trimming to the eight closest pairs first. | A ninth, slightly farther transfer can win when its next vehicle arrives much earlier. | Live with fresh complete predictions |
-| Fastest | Ranks the lowest door-to-door estimate. Preference scores never replace ETA. | Use Fastest when arrival time matters more than extra walking or variable service. | Live |
+| Fastest | Ranks the lowest estimated transit journey time. A place-to-stop walk is shown separately and is not included in this ETA. | Use Fastest when arrival time matters more than extra walking or variable service. | Live |
 | Balanced | Considers ETA, walking, transfers, current spacing, and a small penalty only for historical context above the 50th percentile of all Muni stops. | A slightly slower direct option may rank above a trip with more walking, a transfer, or a clearly higher historical report context. | Live, default mode |
-| Safety-first | Compares deduplicated 30-, 90-, and 365-day reports against all Muni stops. Direct trips use 45/40/15 origin-route-destination weights; transfers use 20/35/30/15 origin-route-transfer-destination weights. | Use past area context as one extra input for a night trip. It is not a personal safety prediction. | Research beta · method 3.0 |
+| Historical Context | Compares deduplicated 30-, 90-, and 365-day reports against all Muni stops. Direct trips use 45/40/15 origin-route-destination weights; transfers use 20/35/30/15 origin-route-transfer-destination weights. | Give past area reports more influence when comparing a trip. This mode does not predict personal safety. | Research beta · method 3.0 |
 | Option A vs Option B | Places any two displayed routes side by side with ETA, evidence level, walking, transfers, connection slack, reliability, historical context, and street context. | Compare a faster tight transfer with a steadier direct route without switching cards repeatedly. | Live beta |
 | Destination parking activity | Combines meter inventory and the latest available paid sessions as a relative signal. If the newest source record is over three hours old, or fewer than 70% of sessions match mapped meters, it withholds high/low labels. It is not occupancy or open-space availability. | Check whether recent paid activity near Mission is rising; when DataSF is delayed, the app shows the source age instead of calling it realtime. | Research beta |
 | Freshness and failure labels | Each source distinguishes current, retained, outdated, and unavailable. “No events” appears only after a usable source returns no matching events. | If street data fails, the app says it is unavailable instead of implying the road is clear. | Live |
@@ -132,13 +139,13 @@ Every query builds one shared set of direct and one-transfer candidates. The thr
 
 | Mode | Ranking basis | Best used when |
 |---|---|---|
-| Fastest | Door-to-door ETA | Arrival time matters most |
+| Fastest | Estimated transit journey time; any place-to-stop walk is shown separately | Arrival time matters most |
 | Balanced | ETA + current reliability + walking + transfer + `max(percentile − 50, 0) × 0.03` | You want a practical balance; only clearly above-midpoint historical differences should have a small effect |
-| Safety-first | ETA + current reliability + walking + transfer + `max(percentile − 50, 0) × 0.15` | You want historical context to matter more, while understanding it is not a safety prediction |
+| Historical Context | ETA + current reliability + walking + transfer + `max(percentile − 50, 0) × 0.15` | You want historical context to matter more, while understanding it is not a safety prediction |
 
-Safety method 3.0 is frozen for the v1 line. The percentile baseline contains every Muni stop, not only cells where incidents were reported. A direct trip weights origin/boarding 45%, along-route context 40%, and destination 15%. A one-transfer trip uses 20%, 35%, 30%, and 15% respectively. Missing components are removed and the remaining weights are renormalized. Each component is capped at the 95th percentile so one extreme location cannot dominate the whole trip.
+Historical Context method 3.0 is frozen for the v1 line. The percentile baseline contains every Muni stop, not only cells where incidents were reported. A direct trip weights origin/boarding 45%, along-route context 40%, and destination 15%. A one-transfer trip uses 20%, 35%, 30%, and 15% respectively. Missing components are removed and the remaining weights are renormalized. Each component is capped at the 95th percentile so one extreme location cannot dominate the whole trip.
 
-The v1 planner intentionally supports at most one transfer. Corridor-specific historical travel-speed baselines are reserved for v1.1; the current speed message compares fresh reported movement with a transparent vehicle-type reference and does not call it a historical average.
+The v1 planner intentionally supports at most one transfer. Corridor-specific historical travel-speed baselines are planned for a future release; the current speed message compares fresh reported movement with a transparent vehicle-type reference and does not call it a historical average.
 
 ## Evidence contract
 
@@ -270,9 +277,9 @@ python3 -m pytest -q tests
 | Address and landmark search with transparent nearest-stop mapping | Accessible routing only when evidence is complete |
 | Current location and nearby-stop map within 100–400 meters | Future leave and arrive times |
 | Direct and one-transfer planning | Corridor-level historical speed baselines |
-| Fastest, Balanced, and Safety-first | Favorites and alerts |
+| Fastest, Balanced, and Historical Context | Favorites and alerts |
 | Live trips and transfer slack | Step-by-step guidance |
-| Transit, road, historical incident, and parking context | Favorites, alerts, and step-by-step guidance |
+| Transit, road, historical incident, and parking context | Expanded historical corridor baselines |
 
 ## Data sources
 
