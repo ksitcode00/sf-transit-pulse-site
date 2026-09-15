@@ -20,7 +20,7 @@ test("external watchdog treats missing source time as stale", () => {
 test("place proxy keeps searches inside San Francisco and normalizes results", () => {
   const url = new URL(buildPlaceSearchUrl("Ferry Building", "zh"));
   assert.equal(url.hostname, "photon.komoot.io");
-  assert.equal(url.searchParams.get("lang"), "zh");
+  assert.equal(url.searchParams.get("lang"), "en");
   assert.ok(url.searchParams.get("bbox"));
 
   const places = normalizePhotonResults({features: [

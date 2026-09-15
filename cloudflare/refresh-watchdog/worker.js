@@ -37,7 +37,9 @@ function buildPlaceSearchUrl(query, language = "en") {
   const url = new URL(PHOTON_SEARCH_URL);
   url.searchParams.set("q", query);
   url.searchParams.set("limit", "6");
-  url.searchParams.set("lang", language === "zh" ? "zh" : "en");
+  // Photon does not currently accept zh as a response language. Chinese UI
+  // copy stays localized while place names use its supported English index.
+  url.searchParams.set("lang", "en");
   url.searchParams.set("bbox", PLACE_SEARCH_BBOX);
   url.searchParams.set("lat", "37.7749");
   url.searchParams.set("lon", "-122.4194");
