@@ -100,8 +100,19 @@ test("reference trip returns all three real ranking modes", async () => {
 
 test("preferences rank the same candidate set without material ETA drift", async () => {
   const engine = await publicEngine();
-  const fastest = engine.plan("13161", "15659", "FASTEST");
-  const balanced = engine.plan("13161", "15659", "BALANCED");
+  // Freeze the planning instant so a live prediction crossing a rounding
+  // boundary cannot replace only the twelfth display candidate between calls.
+  const originalNow = Date.now;
+  const planningNow = originalNow();
+  Date.now = () => planningNow;
+  let fastest;
+  let balanced;
+  try {
+    fastest = engine.plan("13161", "15659", "FASTEST");
+    balanced = engine.plan("13161", "15659", "BALANCED");
+  } finally {
+    Date.now = originalNow;
+  }
   const fastestEta = new Map(fastest.alternatives.map(row => [row.journey_id, row.eta_min]));
   assert.deepEqual(
     new Set(balanced.alternatives.map(row => row.journey_id)),
