@@ -1,6 +1,6 @@
 const I18N = {
   en: {
-    navNetwork: "Muni now", navJourney: "Plan a trip", navContext: "More travel info", refresh: "Get latest update", skipToMuni: "Skip to Muni updates",
+    navNetwork: "Muni now", navJourney: "Plan a trip", navContext: "More travel info", refresh: "Check now", skipToMuni: "Skip to Muni updates",
     eyebrow: "SF Transit Pulse", heroTitle: "Know what to take. Know why.",
     heroLead: "Live Muni reliability and explainable journey recommendations.",
     planJourney: "Plan a trip", viewNetwork: "Explore Muni →", howWorks: "See how results are made", vehiclesReporting: "vehicle locations found",
@@ -9,6 +9,7 @@ const I18N = {
     routePulse: "What's happening", vehicles: "Vehicle locations", medianGap: "Time between vehicles", bunching: "Vehicles close together", serviceGaps: "Long waits", currentSpeed: "Reported speed", evidence: "Arrival estimates checked",
     routeOverview: "Routes needing attention", directionNote: "Each direction can run differently, so we check them separately.",
     viewRouteDetails: "View details →", viewAllRoutes: "View all routes →", showFewerRoutes: "Show fewer routes", openUpdates: "Open updates ＋", closeUpdates: "Close updates −",
+    currentUpdates: "Current trip context", currentUpdatesTitle: "Service and street updates you can see now", viewAllUpdates: "View all updates →",
     streetsService: "What may affect your ride", explainWhy: "See service and street updates together.",
     causalityNote: "A street event near a route may affect service, but it does not prove what caused a delay.",
     serviceNotices: "Muni service updates", roadEvents: "Nearby street work", journeyDecision: "Plan your trip",
@@ -16,6 +17,9 @@ const I18N = {
     dynamicPlanner: "Latest predictions + on-device planning · Public Beta", fromStop: "Starting stop", toStop: "Destination stop", browseAllStops: "Browse all stops", findRoute: "Compare routes", tryExample: "Try a sample trip",
     findingOptions: "Finding your best options…", loadingTrips: "Feasible Muni trips", loadingPredictions: "Current predictions", loadingTransfers: "Transfers", loadingReliability: "Route reliability",
     whyRoute: "Why this route?", exploreTrip: "Explore full trip →", recommendationEvidence: "Recommendation evidence", compareTwo: "Compare two options",
+    quickComparison: "Quick comparison", recommendedVsFastest: "Recommended route vs fastest route", compareOtherOptions: "Compare any two routes →",
+    visibleEvidence: "What may affect this trip", visibleEvidenceTitle: "Current movement, street work, and historical context",
+    movementStreetTitle: "Current movement and street updates", historicalAreasTitle: "Historical context by trip area",
     journeyMapHint: "Transit legs are solid; walking connections are dotted.", journeyTimeline: "Your trip",
     journeyReliability: "How steady is this trip?", journeySafety: "Historical incident context", journeyParking: "Parking near your destination",
     threeWays: "Choose what matters most.", referenceCase: "Reference trip", alternatives: "Other routes",
@@ -50,7 +54,7 @@ const I18N = {
     footerData: "Data: 511 SF Bay · DataSF · SFMTA", footerMap: "Map © OpenStreetMap contributors", reportIssue: "Report an issue"
   },
   zh: {
-    navNetwork: "现在的 Muni", navJourney: "规划行程", navContext: "更多出行信息", refresh: "获取最新数据", skipToMuni: "跳到 Muni 实时信息",
+    navNetwork: "现在的 Muni", navJourney: "规划行程", navContext: "更多出行信息", refresh: "立即检查", skipToMuni: "跳到 Muni 实时信息",
     eyebrow: "SF Transit Pulse", heroTitle: "知道坐什么，也知道为什么。",
     heroLead: "查看 Muni 当前运行情况，并获得说得清理由的行程推荐。",
     planJourney: "规划行程", viewNetwork: "查看 Muni →", howWorks: "看看结果怎么来的", vehiclesReporting: "个车辆位置",
@@ -59,6 +63,7 @@ const I18N = {
     routePulse: "现在运行得怎么样", vehicles: "车辆位置", medianGap: "车辆通常相隔多久", bunching: "几辆车挤在一起", serviceGaps: "两班车间隔过长", currentSpeed: "回报速度", evidence: "已查看的到站信息",
     routeOverview: "需要留意的线路", directionNote: "同一条线路的两个方向可能不一样，所以会分开查看。",
     viewRouteDetails: "查看详情 →", viewAllRoutes: "查看全部线路 →", showFewerRoutes: "收起线路", openUpdates: "展开更新 ＋", closeUpdates: "收起更新 −",
+    currentUpdates: "当前出行背景", currentUpdatesTitle: "现在可查看的公交与道路更新", viewAllUpdates: "查看全部更新 →",
     streetsService: "可能影响行程的情况", explainWhy: "把公交和道路更新放在一起看。",
     causalityNote: "线路附近的道路事件可能影响公交，但不能单凭位置接近就认定它造成了延误。",
     serviceNotices: "Muni 服务更新", roadEvents: "附近道路施工与事件", journeyDecision: "规划行程",
@@ -66,6 +71,9 @@ const I18N = {
     dynamicPlanner: "最新预测与本机计算 · 测试版", fromStop: "起点站", toStop: "终点站", browseAllStops: "浏览全部站点", findRoute: "比较路线", tryExample: "试试示例行程",
     findingOptions: "正在寻找适合你的路线…", loadingTrips: "可以乘坐的 Muni 路线", loadingPredictions: "当前到站预测", loadingTransfers: "换乘是否接得上", loadingReliability: "线路运行稳定性",
     whyRoute: "为什么推荐这条？", exploreTrip: "查看完整行程 →", recommendationEvidence: "推荐依据", compareTwo: "比较两个方案",
+    quickComparison: "快速比较", recommendedVsFastest: "推荐路线与最快路线", compareOtherOptions: "任意比较两条路线 →",
+    visibleEvidence: "可能影响这趟行程的情况", visibleEvidenceTitle: "当前行驶、道路施工与历史背景",
+    movementStreetTitle: "当前行驶与道路更新", historicalAreasTitle: "行程各区域的历史背景",
     journeyMapHint: "实线是公交路段，虚线是步行连接。", journeyTimeline: "行程步骤",
     journeyReliability: "这趟行程稳不稳定？", journeySafety: "历史事件参考", journeyParking: "目的地附近停车情况",
     threeWays: "按你最在意的事情来选。", referenceCase: "参考行程", alternatives: "其他路线",
@@ -191,6 +199,14 @@ function syncPlannerEngine({networkChanged = false} = {}) {
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[ch]));
 const hasNumber = (value) => value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value));
 const fmt = (value, digits = 0) => hasNumber(value) ? Number(value).toFixed(digits) : "—";
+const minutesCopy = (value, digits = 1) => language === "zh" ? `${fmt(value, digits)} 分钟` : `${fmt(value, digits)} min`;
+const ordinal = value => {
+  if (!hasNumber(value)) return "—";
+  const number = Math.round(Number(value));
+  const remainder = number % 100;
+  const suffix = remainder >= 11 && remainder <= 13 ? "th" : ({1:"st", 2:"nd", 3:"rd"}[number % 10] || "th");
+  return `${number}${suffix}`;
+};
 
 function timeAgo(value) {
   const date = value ? new Date(value) : null;
@@ -435,7 +451,14 @@ function renderMeta() {
     transit.isSample ? (language === "zh" ? "演示数据 · 不是当前车辆" : "Demo data · not current vehicles") :
     (language === "zh" ? "上一次成功获取的数据 · 目前尚未更新" : "Last successful update · not current");
   const transitAge = transit.observed_at ? ` · ${timeAgo(transit.observed_at)}` : "";
-  document.getElementById("freshness-label").textContent = sourceLabel + transitAge;
+  const topSourceLabel = transitStale && (transit.isLive || transit.isCached)
+    ? (language === "zh" ? "数据更新延迟 · 正在自动检查" : "Update delayed · checking automatically")
+    : sourceLabel;
+  document.getElementById("freshness-label").textContent = topSourceLabel + transitAge;
+  document.getElementById("freshness-label").title = transitStale && (transit.isLive || transit.isCached)
+    ? (language === "zh" ? "网页仍会每 5 分钟检查一次新数据；过旧数据不会用于实时判断。" : "The page still checks for new data every 5 minutes; outdated data is not used for live judgments.")
+    : sourceLabel;
+  document.querySelector(".live-dot")?.classList.toggle("delayed", Boolean(transitStale || !transit.isCurrent));
   document.getElementById("generated-at").textContent = generated ? `${language === "zh" ? "页面更新时间" : "Page updated"}: ${generated.toLocaleString()}` : (language === "zh" ? "页面更新时间不明" : "Page update time unavailable");
   document.getElementById("quality-status").textContent = sourceLabel;
   const failures = meta.errors || [];
@@ -445,7 +468,7 @@ function renderMeta() {
   const retainedSources = Object.values(meta.source_status || {})
     .filter(source => String(source?.status || "").toLowerCase().startsWith("retained"));
   const sourceCheckMessage = transitStale && (transit.isLive || transit.isCached)
-    ? (language === "zh" ? "最新公交数据已超过 10 分钟，因此不会用于实时到站或当前车速判断。" : "The latest transit data is more than 10 minutes old, so it is not used for live arrivals or current speed.")
+    ? (language === "zh" ? "最新公交数据已超过 10 分钟，因此不会用于实时到站或当前车速判断。网页会每 5 分钟自动检查更新。" : "The latest transit data is more than 10 minutes old, so it is not used for live arrivals or current speed. The page checks for updates every 5 minutes.")
     : failures.length || unavailableSources.length ?
     (language === "zh" ? `${Math.max(failures.length, unavailableSources.length)} 项数据暂时无法更新。页面不会把“没拿到数据”说成“没有事件”。` : `${Math.max(failures.length, unavailableSources.length)} data source${Math.max(failures.length, unavailableSources.length) === 1 ? " is" : "s are"} temporarily unavailable. Missing data is not presented as “no events.”`) : retainedSources.length ?
     (language === "zh" ? "公交数据已更新；更新较慢的来源沿用上一次成功结果，并按各自时间判断是否还能使用。" : "Transit is updated. Slower sources use their latest successful update and remain subject to their own freshness limits.") :
@@ -886,10 +909,69 @@ function roadEventTitleCopy(item) {
   return `${road}${direction ? ` ${direction}` : ""}${activity}${location ? `，位置：${location}` : ""}${closure}。`;
 }
 
+function normalizedEventRouteIds(item) {
+  const explicit = (item.route_ids || []).map(String).filter(Boolean);
+  if (explicit.length) return explicit;
+  const legacy = String(item.title || "").match(/^Route\s+([^ ·:]+)/i);
+  return legacy ? [legacy[1]] : [];
+}
+
+function eventMatchesSelection(item, routeId = appState.selectedRoute, directionId = appState.selectedDirection) {
+  if (routeId === "all") return true;
+  const ids = normalizedEventRouteIds(item);
+  if (!ids.length) return true;
+  if (!ids.includes(String(routeId))) return false;
+  return directionId === "all" || item.direction_id === undefined || item.direction_id === null || String(item.direction_id) === String(directionId);
+}
+
+function currentEventsForSelection(routeId = appState.selectedRoute, directionId = appState.selectedDirection) {
+  const alertsAvailable = !sourceStatusUnavailable(snapshot?.meta?.source_status?.alerts);
+  const roadsAvailable = !sourceStatusUnavailable(snapshot?.meta?.source_status?.roads);
+  const alertsFresh = alertsAvailable && !isOlderThan(snapshot?.meta?.source_status?.alerts?.observed_at, 30);
+  const roadsFresh = roadsAvailable && !isOlderThan(snapshot?.meta?.source_status?.roads?.observed_at, 30);
+  return {
+    alertsAvailable,
+    roadsAvailable,
+    alertsFresh,
+    roadsFresh,
+    alerts: alertsFresh ? (snapshot.alerts || []).filter(item => eventMatchesSelection(item, routeId, directionId)) : [],
+    roads: roadsFresh ? (snapshot.road_events || []).filter(item => eventMatchesSelection(item, routeId, directionId)) : []
+  };
+}
+
+function renderNetworkUpdateSummary(routeId = appState.selectedRoute, directionId = appState.selectedDirection) {
+  const container = document.getElementById("network-update-items");
+  if (!container) return;
+  const events = currentEventsForSelection(routeId, directionId);
+  const scope = routeId === "all"
+    ? (language === "zh" ? "全部线路" : "All routes")
+    : `${language === "zh" ? "线路" : "Route"} ${routeId}${directionId === "all" ? "" : ` · ${language === "zh" ? "方向" : "direction"} ${directionId}`}`;
+  const rows = [];
+  if (events.alerts.length) {
+    const alert = events.alerts[0];
+    rows.push(`<article class="network-update-item"><span>${language === "zh" ? "公交服务" : "Muni service"}</span><strong>${escapeHtml(eventTextCopy(alert.title || alert.description || "Service update"))}</strong><p>${escapeHtml(scope)}</p></article>`);
+  }
+  if (events.roads.length) {
+    const road = events.roads[0];
+    rows.push(`<article class="network-update-item"><span>${language === "zh" ? "道路情况" : "Street context"}</span><strong>${escapeHtml(roadEventTitleCopy(road))}</strong><p>${escapeHtml(scope)} · ${language === "zh" ? "位置接近不代表它造成了公交延误" : "Nearby does not prove it caused a transit delay"}</p></article>`);
+  }
+  if (!rows.length) {
+    const unavailable = !events.alertsAvailable || !events.roadsAvailable;
+    const stale = !events.alertsFresh || !events.roadsFresh;
+    const message = unavailable
+      ? (language === "zh" ? "部分更新来源暂时不可用。这不表示目前没有服务变化或道路事件。" : "Some update sources are temporarily unavailable. This does not mean service and streets are unchanged.")
+      : stale
+        ? (language === "zh" ? "更新已超过可用时限，旧消息已隐藏。网页会继续检查新数据。" : "Updates are beyond their usable time limit, so old messages are hidden. The page will keep checking.")
+        : (language === "zh" ? `${scope}目前没有匹配到新的公交或道路更新。` : `No new Muni or street update matched ${scope.toLowerCase()}.`);
+    rows.push(`<p class="network-update-empty">${escapeHtml(message)}</p>`);
+  }
+  container.innerHTML = rows.join("");
+}
+
 function renderEvents(routeId = appState.selectedRoute, directionId = appState.selectedDirection) {
   const list = (id, events, emptyText) => {
     document.getElementById(id).innerHTML = events.length ? events.slice(0,5).map(item => {
-      const ids = normalizedRouteIds(item);
+      const ids = normalizedEventRouteIds(item);
       const scope = ids.length ? `${language === "zh" ? "可能影响线路" : "May affect route"} ${ids.join(", ")}` : (item.route_match_status === "UNAVAILABLE" ? (language === "zh" ? "暂时无法确定具体线路" : "Specific routes not identified yet") : (language === "zh" ? "可能影响多条线路" : "May affect several routes"));
       const title = id === "road-list" ? roadEventTitleCopy(item) : eventTextCopy(item.title || item.route_id || (language === "zh" ? "出行提示" : "Travel update"));
       const sourceDetail = item.description || item.status || "";
@@ -898,25 +980,7 @@ function renderEvents(routeId = appState.selectedRoute, directionId = appState.s
       return `<article class="event-item"><span class="event-scope">${escapeHtml(scope)}</span><strong>${escapeHtml(title)}</strong>${showDetail ? `<p>${escapeHtml(detail)}</p>` : ""}</article>`;
     }).join("") : `<p class="empty-state">${escapeHtml(emptyText)}</p>`;
   };
-  const normalizedRouteIds = item => {
-    const explicit = (item.route_ids || []).map(String).filter(Boolean);
-    if (explicit.length) return explicit;
-    const legacy = String(item.title || "").match(/^Route\s+([^ ·:]+)/i);
-    return legacy ? [legacy[1]] : [];
-  };
-  const matchesRoute = item => {
-    if (routeId === "all") return true;
-    const ids = normalizedRouteIds(item);
-    if (!ids.length) return true;
-    if (!ids.includes(String(routeId))) return false;
-    return directionId === "all" || item.direction_id === undefined || item.direction_id === null || String(item.direction_id) === String(directionId);
-  };
-  const alertsAvailable = !sourceStatusUnavailable(snapshot?.meta?.source_status?.alerts);
-  const roadsAvailable = !sourceStatusUnavailable(snapshot?.meta?.source_status?.roads);
-  const alertsFresh = alertsAvailable && !isOlderThan(snapshot?.meta?.source_status?.alerts?.observed_at, 30);
-  const roadsFresh = roadsAvailable && !isOlderThan(snapshot?.meta?.source_status?.roads?.observed_at, 30);
-  const alerts = alertsFresh ? (snapshot.alerts || []).filter(matchesRoute) : [];
-  const roads = roadsFresh ? (snapshot.road_events || []).filter(matchesRoute) : [];
+  const {alertsAvailable, roadsAvailable, alertsFresh, roadsFresh, alerts, roads} = currentEventsForSelection(routeId, directionId);
   list(
     "alert-list",
     alerts,
@@ -1289,6 +1353,12 @@ function selectedJourney() {
   return alternatives.find(row => row.journey_id === appState.selectedJourneyId) || alternatives[0] || null;
 }
 
+function recommendedJourneyForMode() {
+  const result = appState.plannerResult;
+  const winnerId = (result?.modes || []).find(row => row.mode === appState.selectedMode)?.winner_journey_id;
+  return (result?.alternatives || []).find(row => row.journey_id === winnerId) || selectedJourney();
+}
+
 function modeName(mode) {
   const key = String(mode || "BALANCED");
   const en = {FASTEST:"Fastest", BALANCED:"Balanced", SAFETY_FIRST:"Historical context"};
@@ -1441,7 +1511,7 @@ function renderJourneyMap(journey) {
 function timelineRow(leg) {
   if (leg.type === "WALK") {
     const transfer = leg.transfer ? (language === "zh" ? "换乘步行" : "Transfer walk") : (language === "zh" ? "步行" : "Walk");
-    return {title: `${transfer} → ${leg.to?.name || "next stop"}`, detail: `${fmt(leg.duration_min,1)} min · ${fmt(leg.distance_m)} m`};
+    return {title: `${transfer} → ${leg.to?.name || "next stop"}`, detail: `${minutesCopy(leg.duration_min)} · ${fmt(leg.distance_m)} ${language === "zh" ? "米" : "m"}`};
   }
   if (leg.type === "WAIT") {
     const departure = sfTime(leg.predicted_departure);
@@ -1450,7 +1520,7 @@ function timelineRow(leg) {
       : "";
     const time = departure
       ? (language === "zh" ? `预计 ${departure} 发车` : `Predicted departure ${departure}`)
-      : `${fmt(leg.duration_min,1)} min`;
+      : minutesCopy(leg.duration_min);
     return {
       title: `${language === "zh" ? "等候" : "Wait for"} ${leg.route_id || "Muni"}`,
       detail: `${time}${slack} · ${timingSource(leg.timing_status)}`
@@ -1464,7 +1534,7 @@ function timelineRow(leg) {
     const trip = leg.trip_id ? (language === "zh" ? ` · 班次 ${leg.trip_id}` : ` · Trip ${leg.trip_id}`) : "";
     return {
       title: `${language === "zh" ? "乘坐" : "Ride"} ${leg.route_id}${toward}`,
-      detail: `${leg.from?.name || "—"} → ${leg.to?.name || "—"} · ${clock}${fmt(leg.duration_min,1)} min · ${fmt(leg.stop_count)} ${language === "zh" ? "站" : "stops"}${trip} · ${timingSource(leg.timing_status)}`
+      detail: `${leg.from?.name || "—"} → ${leg.to?.name || "—"} · ${clock}${minutesCopy(leg.duration_min)} · ${fmt(leg.stop_count)} ${language === "zh" ? "站" : "stops"}${trip} · ${timingSource(leg.timing_status)}`
     };
   }
   return {title: leg.type || "Step", detail: ""};
@@ -1473,7 +1543,9 @@ function timelineRow(leg) {
 function renderJourneyTimeline(journey) {
   document.getElementById("selected-journey-title").textContent = journey.route_sequence;
   const transfer = journey.transfer ? ` · ${transferComfort(journey.transfer)}` : "";
-  document.getElementById("selected-journey-summary").textContent = `${fmt(journey.eta_min,1)} min · ${fmt(journey.walking_min,1)} min ${language === "zh" ? "步行" : "walking"} · ${timingSource(journey.eta_status)}${transfer}`;
+  document.getElementById("selected-journey-summary").textContent = language === "zh"
+    ? `${minutesCopy(journey.eta_min)} · 步行 ${minutesCopy(journey.walking_min)} · ${timingSource(journey.eta_status)}${transfer}`
+    : `${minutesCopy(journey.eta_min)} · ${minutesCopy(journey.walking_min)} walking · ${timingSource(journey.eta_status)}${transfer}`;
   const rows = [
     {title: appState.plannerResult?.origin?.name || "Origin", detail: language === "zh" ? "出发" : "Start"},
     ...(journey.legs || []).map(timelineRow),
@@ -1518,6 +1590,130 @@ function journeyMovementSummary(journey) {
   ].filter(Boolean).join(" · ");
 }
 
+function journeySafetySegments(journey) {
+  const safety = journey.safety || {};
+  const fallbackSegments = [
+    {key:"origin", percentile:safety.origin_percentile},
+    {key:"boarding", percentile:safety.boarding_percentile},
+    {key:"along_route", percentile:safety.route_percentile},
+    {key:"transfer", percentile:safety.transfer_percentile},
+    {key:"destination", percentile:safety.destination_percentile}
+  ].filter(row => row.percentile != null);
+  return safety.segments?.length ? safety.segments : fallbackSegments;
+}
+
+function historicalSegmentLabel(key) {
+  const labels = {
+    origin_boarding: language === "zh" ? "起点与上车区域" : "Origin and boarding area",
+    origin: language === "zh" ? "起点区域" : "Origin area",
+    boarding: language === "zh" ? "上车区域" : "Boarding area",
+    along_route: language === "zh" ? "沿线路段" : "Along the route",
+    transfer: language === "zh" ? "换乘区域" : "Transfer area",
+    destination: language === "zh" ? "目的地区域" : "Destination area"
+  };
+  return labels[key] || key;
+}
+
+function roadContextForJourney(journey) {
+  return (journey.disruption_analysis || []).flatMap(row =>
+    (row.road_context || []).map(event => ({...event, route_id: row.route_id}))
+  );
+}
+
+function renderRecommendationContext(journey) {
+  const context = document.getElementById("recommendation-context");
+  if (!context) return;
+  const roads = roadContextForJourney(journey);
+  const safetyPercentile = journey.safety?.overall_percentile;
+  const signals = [
+    {
+      label: language === "zh" ? "首段公交当前移动" : "First transit leg now",
+      value: journeyMovementSummary(journey)
+    },
+    {
+      label: language === "zh" ? "道路背景" : "Street context",
+      value: sourceStatusUnavailable(snapshot?.meta?.source_status?.roads)
+        ? (language === "zh" ? "道路数据暂时不可用" : "Street data temporarily unavailable")
+        : roads.length
+          ? (language === "zh" ? `${roads.length} 项更新与行程接近` : `${roads.length} update${roads.length === 1 ? "" : "s"} near this trip`)
+          : (language === "zh" ? "没有匹配到本行程的道路更新" : "No street update matched this trip")
+    },
+    {
+      label: language === "zh" ? "历史事件参考" : "Historical context",
+      value: hasNumber(safetyPercentile)
+        ? `${historicalContextLevel(safetyPercentile)} · ${language === "zh" ? `第 ${fmt(safetyPercentile)} 百分位` : `${ordinal(safetyPercentile)} percentile`}`
+        : (language === "zh" ? "暂时没有行程级数据" : "No trip-level data yet")
+    }
+  ];
+  context.innerHTML = signals.map(signal => `<div><span>${escapeHtml(signal.label)}</span><strong>${escapeHtml(signal.value)}</strong></div>`).join("");
+}
+
+function compactComparisonCard(journey, label, featured = false) {
+  return `<article class="compact-comparison-card ${featured ? "featured" : ""}">
+    <p>${escapeHtml(label)}</p>
+    <h4>${escapeHtml(journey.route_sequence)}</h4>
+    <strong class="compact-comparison-eta">${minutesCopy(journey.eta_min)}</strong>
+    <dl>
+      <div><dt>${language === "zh" ? "步行" : "Walking"}</dt><dd>${minutesCopy(journey.walking_min)}</dd></div>
+      <div><dt>${language === "zh" ? "换乘" : "Transfers"}</dt><dd>${fmt(journey.transfer_count)}</dd></div>
+      <div><dt>${language === "zh" ? "当前运行" : "Current service"}</dt><dd>${escapeHtml(healthCopy(journey.reliability))}</dd></div>
+      <div><dt>${language === "zh" ? "换乘余量" : "Transfer buffer"}</dt><dd>${escapeHtml(transferComfort(journey.transfer))}</dd></div>
+    </dl>
+  </article>`;
+}
+
+function renderCompactComparison(journey, alternatives) {
+  const section = document.getElementById("compact-comparison");
+  if (!section || alternatives.length < 2) {
+    if (section) section.hidden = true;
+    return;
+  }
+  const recommended = recommendedJourneyForMode() || journey;
+  const fastestMode = (appState.plannerResult?.modes || []).find(row => row.mode === "FASTEST");
+  const fastest = alternatives.find(row => row.journey_id === fastestMode?.winner_journey_id)
+    || [...alternatives].sort((a,b) => Number(a.eta_min) - Number(b.eta_min))[0];
+  const recommendedIsFastest = fastest?.journey_id === recommended.journey_id;
+  const comparison = recommendedIsFastest
+    ? [...alternatives].filter(row => row.journey_id !== recommended.journey_id).sort((a,b) => Number(a.eta_min) - Number(b.eta_min))[0]
+    : fastest;
+  if (!comparison) {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+  document.getElementById("compact-comparison-title").textContent = recommendedIsFastest
+    ? (language === "zh" ? "推荐路线与下一条最快路线" : "Recommended route vs next-fastest route")
+    : (language === "zh" ? "推荐路线与最快路线" : "Recommended route vs fastest route");
+  document.getElementById("compact-comparison-note").textContent = recommendedIsFastest
+    ? (language === "zh" ? "当前推荐本身已经最快；这里显示下一条最快路线，方便看清其他取舍。" : "The recommendation is already fastest, so the next-fastest route is shown for a useful tradeoff.")
+    : (language === "zh" ? "推荐不只看时间，也会考虑步行、换乘和当前运行情况。" : "The recommendation weighs walking, transfers, and current service—not time alone.");
+  document.getElementById("compact-comparison-grid").innerHTML = compactComparisonCard(recommended, language === "zh" ? "当前推荐" : "Recommended", true)
+    + compactComparisonCard(comparison, recommendedIsFastest ? (language === "zh" ? "下一条最快" : "Next fastest") : (language === "zh" ? "最快到达" : "Fastest"));
+}
+
+function renderJourneyContextSummary(journey) {
+  const section = document.getElementById("journey-context-summary");
+  if (!section) return;
+  section.hidden = false;
+  const movementRows = (journey.disruption_analysis || []).map(row => {
+    const speed = hasNumber(row.current_speed_mph)
+      ? `${fmt(row.current_speed_mph,1)} mph${hasNumber(row.comparison_speed_mph) ? ` · ${language === "zh" ? "参考" : "comparison"} ${fmt(row.comparison_speed_mph,1)} mph` : ""}`
+      : (language === "zh" ? "没有足够的近期速度" : "Not enough recent speed data");
+    return `<div class="summary-evidence-row"><span>${escapeHtml(`${language === "zh" ? "线路" : "Route"} ${row.route_id}`)}</span><strong>${escapeHtml(movementStatusCopy(row.movement_status))}</strong>${hasNumber(row.current_speed_mph) ? `<small>${escapeHtml(speed)}</small>` : ""}</div>`;
+  }).join("") || `<p class="summary-empty">${language === "zh" ? "这趟行程暂时没有近期移动数据。" : "No recent movement data is available for this trip."}</p>`;
+  const roads = roadContextForJourney(journey);
+  const roadRows = roads.slice(0,2).map(road => `<div class="summary-road"><span>${language === "zh" ? "道路更新" : "Street update"}</span><strong>${escapeHtml(roadEventTitleCopy(road))}</strong></div>`).join("");
+  document.getElementById("journey-movement-summary").innerHTML = movementRows + (roadRows || `<p class="summary-empty">${sourceStatusUnavailable(snapshot?.meta?.source_status?.roads)
+    ? (language === "zh" ? "道路数据暂时不可用，不能判断本段是否有道路事件。" : "Street data is temporarily unavailable, so this trip cannot be checked for street events.")
+    : (language === "zh" ? "没有匹配到本行程的道路更新。" : "No street update matched this trip.")}</p>`) + (roads.length ? `<p class="summary-caution">${language === "zh" ? "道路事件可能相关，但不能证明它造成了公交减速。" : "A street event may be relevant, but it does not prove what caused slower transit."}</p>` : "");
+
+  const segments = journeySafetySegments(journey);
+  document.getElementById("journey-historical-summary").innerHTML = segments.length
+    ? segments.map(segment => `<div class="summary-evidence-row"><span>${escapeHtml(historicalSegmentLabel(segment.key))}</span><strong>${escapeHtml(historicalContextLevel(segment.percentile))}</strong><small>${hasNumber(segment.percentile) ? escapeHtml(language === "zh" ? `与全部 Muni 站点相比：第 ${fmt(segment.percentile)} 百分位` : `Compared with all Muni stops: ${ordinal(segment.percentile)} percentile`) : ""}</small></div>`).join("")
+      + `<p class="summary-caution">${language === "zh" ? "这是过去报告的区域比较，不能预测犯罪或判断一次出行是否安全。" : "This compares past reports by area. It cannot predict crime or determine whether a trip will be safe."}</p>`
+    : `<p class="summary-empty">${language === "zh" ? "这趟行程暂时没有站点级历史背景。" : "Stop-level historical context is not available for this trip."}</p>`;
+}
+
 function renderJourneyEvidence(journey) {
   document.getElementById("journey-reliability-status").textContent = healthCopy(journey.reliability);
   const reliabilityRows = (journey.reliability_detail || []).map(row => `
@@ -1551,27 +1747,12 @@ function renderJourneyEvidence(journey) {
   const safety = journey.safety || {};
   const safetyReady = safety.status === "JOURNEY_RELATIVE_CONTEXT" && hasNumber(safety.overall_percentile);
   document.getElementById("journey-safety-status").textContent = safetyReady
-    ? (language === "zh" ? `与全部 Muni 站点相比：第 ${fmt(safety.overall_percentile)} 百分位` : `Compared with all Muni stops: ${fmt(safety.overall_percentile)}th percentile`)
+    ? (language === "zh" ? `与全部 Muni 站点相比：第 ${fmt(safety.overall_percentile)} 百分位` : `Compared with all Muni stops: ${ordinal(safety.overall_percentile)} percentile`)
     : (language === "zh" ? "暂时没有行程级数据" : "No trip-level data yet");
-  const segmentLabels = {
-    origin_boarding: language === "zh" ? "起点与上车区域" : "Origin and boarding area",
-    origin: language === "zh" ? "起点区域" : "Origin area",
-    boarding: language === "zh" ? "上车区域" : "Boarding area",
-    along_route: language === "zh" ? "沿线路段" : "Along the route",
-    transfer: language === "zh" ? "换乘区域" : "Transfer area",
-    destination: language === "zh" ? "目的地区域" : "Destination area"
-  };
-  const fallbackSegments = [
-    {key:"origin", percentile:safety.origin_percentile},
-    {key:"boarding", percentile:safety.boarding_percentile},
-    {key:"along_route", percentile:safety.route_percentile},
-    {key:"transfer", percentile:safety.transfer_percentile},
-    {key:"destination", percentile:safety.destination_percentile}
-  ].filter(row => row.percentile != null);
-  const segments = safety.segments?.length ? safety.segments : fallbackSegments;
+  const segments = journeySafetySegments(journey);
   document.getElementById("journey-safety-detail").innerHTML = segments.map(segment => `
-    <div class="evidence-row"><span>${escapeHtml(segmentLabels[segment.key] || segment.key)}</span><strong>${escapeHtml(historicalContextLevel(segment.percentile))}</strong></div>
-    <p class="fine-print">${hasNumber(segment.percentile) ? (language === "zh" ? `与全部 Muni 站点相比：第 ${fmt(segment.percentile)} 百分位` : `Compared with all Muni stops: ${fmt(segment.percentile)}th percentile`) : ""}${hasNumber(segment.weight) ? (language === "zh" ? ` · 本次比较权重 ${fmt(segment.weight)}%` : ` · ${fmt(segment.weight)}% comparison weight`) : ""}${segment.trend === "RISING" ? (language === "zh" ? " · 最近 30 天报告有所增加" : " · Reports increased in the latest 30 days") : ""}</p>`).join("") +
+    <div class="evidence-row"><span>${escapeHtml(historicalSegmentLabel(segment.key))}</span><strong>${escapeHtml(historicalContextLevel(segment.percentile))}</strong></div>
+    <p class="fine-print">${hasNumber(segment.percentile) ? (language === "zh" ? `与全部 Muni 站点相比：第 ${fmt(segment.percentile)} 百分位` : `Compared with all Muni stops: ${ordinal(segment.percentile)} percentile`) : ""}${hasNumber(segment.weight) ? (language === "zh" ? ` · 本次比较权重 ${fmt(segment.weight)}%` : ` · ${fmt(segment.weight)}% comparison weight`) : ""}${segment.trend === "RISING" ? (language === "zh" ? " · 最近 30 天报告有所增加" : " · Reports increased in the latest 30 days") : ""}</p>`).join("") +
     `<p class="evidence-note">${hasNumber(safety.ranking_effect?.excess_percentile_points) && safety.ranking_effect.excess_percentile_points > 0
       ? (language === "zh" ? `只有高于第 50 百分位的 ${fmt(safety.ranking_effect.excess_percentile_points)} 个百分点参与排序。综合推荐的权衡成本为 ${fmt(safety.ranking_effect.balanced_penalty_min,2)} 分钟，历史背景优先为 ${fmt(safety.ranking_effect.safety_first_penalty_min,2)} 分钟；这不会改变预计行程时间。` : `Only the ${fmt(safety.ranking_effect.excess_percentile_points)} points above the 50th percentile affect ranking. The tradeoff cost is ${fmt(safety.ranking_effect.balanced_penalty_min,2)} min for Balanced and ${fmt(safety.ranking_effect.safety_first_penalty_min,2)} min for Historical context; it does not change the ETA.`)
       : (language === "zh" ? "这项历史参考没有高于全部 Muni 站点的中间水平，因此不会增加排序成本。" : "This historical context is at or below the Muni-stop midpoint, so it adds no ranking cost.")}</p>` +
@@ -1608,7 +1789,7 @@ function renderJourneyEvidence(journey) {
       <div class="evidence-row"><span>${language === "zh" ? "最近 60 分钟开始付费" : "Paid sessions started in the last 60 min"}</span><strong>${fmt(parking.starts_60m)}</strong></div>
       <div class="evidence-row"><span>${language === "zh" ? "附近收录的收费车位" : "Metered spaces represented nearby"}</span><strong>${fmt(parking.metered_spaces_represented)}</strong></div>
       <div class="evidence-row"><span>${language === "zh" ? "近期变化" : "Recent change"}</span><strong>${escapeHtml(trendCopy[parking.trend] || (language === "zh" ? "无法判断" : "Unavailable"))}</strong></div>
-      <p class="fine-print">${language === "zh" ? `相对值为第 ${fmt(parking.relative_pressure_percentile)} 百分位，只用于和有数据的区域比较付费活动。` : `The ${fmt(parking.relative_pressure_percentile)}th percentile only compares paid activity with other areas that have data.`}</p>
+      <p class="fine-print">${language === "zh" ? `相对值为第 ${fmt(parking.relative_pressure_percentile)} 百分位，只用于和有数据的区域比较付费活动。` : `The ${ordinal(parking.relative_pressure_percentile)} percentile only compares paid activity with other areas that have data.`}</p>
       <p class="fine-print">${language === "zh" ? `最后可用记录：${timeAgo(snapshot.parking?.source_snapshot_time)}` : `Latest available record: ${timeAgo(snapshot.parking?.source_snapshot_time)}`}</p>
       <p class="evidence-note">${language === "zh" ? "付费记录不代表车辆一定仍在现场，也不能告诉你还有多少空位。" : "A paid session does not prove a vehicle is still present and cannot tell you how many spaces are open."}</p>`
     : parkingStale
@@ -1630,8 +1811,8 @@ function renderAlternatives(alternatives) {
   const selectedModeLabel = modeName(appState.selectedMode);
   list.innerHTML = ranked.map((row,index) => `
     <button type="button" class="alternative-card" data-journey-id="${escapeHtml(row.journey_id)}" aria-pressed="${row.journey_id === appState.selectedJourneyId}">
-      <div class="alternative-card-header"><span class="alternative-card-route">${escapeHtml(row.route_sequence)}</span><span class="alternative-card-eta">${fmt(row.eta_min,1)} min</span></div>
-      <p class="alternative-card-meta">${fmt(row.walking_min,1)} min ${language === "zh" ? "步行" : "walk"} · ${fmt(row.transfer_count)} ${language === "zh" ? "次换乘" : "transfers"} · ${escapeHtml(healthCopy(row.reliability))}</p>
+      <div class="alternative-card-header"><span class="alternative-card-route">${escapeHtml(row.route_sequence)}</span><span class="alternative-card-eta">${minutesCopy(row.eta_min)}</span></div>
+      <p class="alternative-card-meta">${language === "zh" ? `步行 ${minutesCopy(row.walking_min)}` : `${minutesCopy(row.walking_min)} walk`} · ${fmt(row.transfer_count)} ${language === "zh" ? "次换乘" : Number(row.transfer_count) === 1 ? "transfer" : "transfers"} · ${escapeHtml(healthCopy(row.reliability))}</p>
       ${timingBadgeMarkup(row.eta_status)}
       ${index === 0 ? `<span class="alternative-card-badge">${language === "zh" ? `${selectedModeLabel}的首选` : `Top choice for ${selectedModeLabel}`}</span>` : row.pareto_efficient ? `<span class="alternative-card-badge">${language === "zh" ? "值得一起比较" : "Worth comparing"}</span>` : ""}
     </button>`).join("");
@@ -1654,10 +1835,10 @@ function comparisonCard(journey, label) {
   return `<article class="comparison-card">
     <p class="eyebrow">${escapeHtml(label)}</p>
     <h4>${escapeHtml(journey.route_sequence)}</h4>
-    <p class="comparison-eta">${fmt(journey.eta_min,1)} min</p>
+    <p class="comparison-eta">${minutesCopy(journey.eta_min)}</p>
     ${timingBadgeMarkup(journey.eta_status)}
     <dl>
-      <div><dt>${language === "zh" ? "步行" : "Walking"}</dt><dd>${fmt(journey.walking_min,1)} min</dd></div>
+      <div><dt>${language === "zh" ? "步行" : "Walking"}</dt><dd>${minutesCopy(journey.walking_min)}</dd></div>
       <div><dt>${language === "zh" ? "换乘" : "Transfers"}</dt><dd>${fmt(journey.transfer_count)}</dd></div>
       <div><dt>${language === "zh" ? "换乘余量" : "Connection"}</dt><dd>${escapeHtml(transferComfort(journey.transfer))}</dd></div>
       <div><dt>${language === "zh" ? "运行稳定性" : "Service reliability"}</dt><dd>${escapeHtml(healthCopy(journey.reliability))}</dd></div>
@@ -1687,7 +1868,7 @@ function renderComparison(alternatives) {
   if (!ids.has(secondId) || secondId === firstId) secondId = alternatives.find(row => row.journey_id !== firstId)?.journey_id;
   appState.compareJourneyIds = [firstId, secondId];
   const optionMarkup = selectedId => alternatives.map(row =>
-    `<option value="${escapeHtml(row.journey_id)}" ${row.journey_id === selectedId ? "selected" : ""}>${escapeHtml(row.route_sequence)} · ${fmt(row.eta_min,1)} min</option>`
+    `<option value="${escapeHtml(row.journey_id)}" ${row.journey_id === selectedId ? "selected" : ""}>${escapeHtml(row.route_sequence)} · ${minutesCopy(row.eta_min)}</option>`
   ).join("");
   const firstSelect = document.getElementById("comparison-a");
   const secondSelect = document.getElementById("comparison-b");
@@ -1710,8 +1891,11 @@ function renderComparison(alternatives) {
 function renderMobileRecommendation(journey) {
   const bar = document.getElementById("mobile-recommendation");
   bar.hidden = false;
-  document.getElementById("mobile-recommendation-label").textContent = language === "zh" ? "当前选择" : "Selected option";
-  document.getElementById("mobile-recommendation-value").textContent = `${journey.route_sequence} · ${fmt(journey.eta_min,1)} min`;
+  const isRecommended = journey.journey_id === recommendedJourneyForMode()?.journey_id;
+  document.getElementById("mobile-recommendation-label").textContent = isRecommended
+    ? (language === "zh" ? "当前推荐" : "Recommended now")
+    : (language === "zh" ? "当前选择" : "Selected option");
+  document.getElementById("mobile-recommendation-value").textContent = `${journey.route_sequence} · ${minutesCopy(journey.eta_min)}`;
   const button = document.getElementById("mobile-view-trip");
   button.textContent = language === "zh" ? "查看行程" : "View trip";
   button.onclick = () => document.getElementById("journey-workspace").scrollIntoView({behavior:"smooth", block:"start"});
@@ -1730,7 +1914,7 @@ function syncUiOverlays() {
   if (scrim) scrim.hidden = !anyOpen;
   document.body.classList.toggle("overlay-open", anyOpen);
   document.getElementById("why-route-button")?.setAttribute("aria-expanded", String(appState.evidenceOpen));
-  document.getElementById("comparison-open")?.setAttribute("aria-expanded", String(appState.comparisonOpen));
+  document.querySelectorAll("[data-open-comparison]").forEach(button => button.setAttribute("aria-expanded", String(appState.comparisonOpen)));
   document.getElementById("route-detail-toggle")?.setAttribute("aria-expanded", String(appState.routeDetailsOpen));
 }
 
@@ -1752,9 +1936,10 @@ function focusOverlay(closeButtonId, trigger) {
 function renderJourneyRecommendation(journey) {
   const recommendation = document.getElementById("journey-recommendation");
   recommendation.hidden = false;
+  const isRecommended = journey.journey_id === recommendedJourneyForMode()?.journey_id;
   document.getElementById("recommendation-mode").textContent = language === "zh"
-    ? `推荐 · ${modeName(appState.selectedMode)}`
-    : `Recommended · ${modeName(appState.selectedMode)}`;
+    ? `${isRecommended ? "推荐" : "当前选择"} · ${modeName(appState.selectedMode)}`
+    : `${isRecommended ? "Recommended" : "Selected option"} · ${modeName(appState.selectedMode)}`;
   document.getElementById("recommendation-route").textContent = journey.route_sequence;
   document.getElementById("recommendation-eta").textContent = language === "zh"
     ? `${fmt(journey.eta_min, 1)} 分钟`
@@ -1765,10 +1950,13 @@ function renderJourneyRecommendation(journey) {
     : `Arrive around ${arrival} · ${timingSource(journey.eta_status)}`;
   const reasons = [
     `<span>${escapeHtml(healthCopy(journey.reliability))}</span>`,
-    `<span>${escapeHtml(journey.transfer_count ? transferComfort(journey.transfer) : (language === "zh" ? "无需换乘" : "Direct trip"))}</span>`,
+    `<span>${escapeHtml(journey.transfer_count
+      ? (language === "zh" ? `${fmt(journey.transfer_count)} 次换乘 · ${transferComfort(journey.transfer)}` : `${fmt(journey.transfer_count)} transfer${Number(journey.transfer_count) === 1 ? "" : "s"} · ${transferComfort(journey.transfer)}`)
+      : (language === "zh" ? "直达 · 无需换乘" : "Direct · no transfer"))}</span>`,
     timingBadgeMarkup(journey.eta_status)
   ];
   document.getElementById("recommendation-reasons").innerHTML = reasons.join("");
+  renderRecommendationContext(journey);
   document.getElementById("why-route-button").onclick = () => {
     appState.evidenceOpen = true;
     appState.comparisonOpen = false;
@@ -1783,6 +1971,8 @@ function renderPlannerEmpty() {
   document.getElementById("journey-od").textContent = language === "zh" ? "选择起点和终点后开始规划。" : "Choose an origin and destination to begin.";
   document.getElementById("journey-od").hidden = true;
   document.getElementById("journey-recommendation").hidden = true;
+  document.getElementById("compact-comparison").hidden = true;
+  document.getElementById("journey-context-summary").hidden = true;
   document.getElementById("mode-grid").hidden = true;
   document.getElementById("mode-grid").innerHTML = "";
   document.getElementById("journey-workspace").hidden = true;
@@ -1810,13 +2000,15 @@ function renderJourney() {
   document.getElementById("journey-workspace").hidden = false;
   document.getElementById("alternatives-panel").hidden = false;
   renderJourneyRecommendation(journey);
+  renderCompactComparison(journey, result.alternatives || []);
+  renderJourneyContextSummary(journey);
   renderModeCards(result.modes || []);
   renderAlternatives(result.alternatives || []);
   renderComparison(result.alternatives || []);
   renderJourneyMap(journey);
   renderJourneyTimeline(journey);
   renderJourneyEvidence(journey);
-  document.getElementById("mobile-recommendation").hidden = true;
+  renderMobileRecommendation(journey);
   syncUiOverlays();
 }
 
@@ -1949,6 +2141,7 @@ function renderRouteView() {
   renderRouteFocus();
   renderRouteGrid();
   renderEvents();
+  renderNetworkUpdateSummary();
 }
 
 function selectRoute(routeId, directionId = "all", shouldScroll = false) {
@@ -2152,16 +2345,21 @@ document.addEventListener("DOMContentLoaded", () => {
     renderRouteGrid();
   });
   document.getElementById("why-route-close").addEventListener("click", closeUiOverlays);
-  document.getElementById("comparison-open").addEventListener("click", event => {
+  document.querySelectorAll("[data-open-comparison]").forEach(button => button.addEventListener("click", event => {
     appState.comparisonOpen = true;
     appState.evidenceOpen = false;
     renderComparison(appState.plannerResult?.alternatives || []);
     syncUiOverlays();
     focusOverlay("comparison-close", event.currentTarget);
-  });
+  }));
   document.getElementById("comparison-close").addEventListener("click", closeUiOverlays);
   document.getElementById("ui-scrim").addEventListener("click", closeUiOverlays);
   document.querySelector(".disruption-details")?.addEventListener("toggle", syncDisruptionDisclosure);
+  document.getElementById("view-all-updates")?.addEventListener("click", () => {
+    const details = document.querySelector(".disruption-details");
+    if (details) details.open = true;
+    document.getElementById("disruptions")?.scrollIntoView({behavior:"smooth", block:"start"});
+  });
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") closeUiOverlays();
   });

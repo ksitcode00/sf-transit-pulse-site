@@ -9,7 +9,7 @@
   <title>SF Transit Pulse</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="styles.css?v=37">
+  <link rel="stylesheet" href="styles.css?v=38">
 </head>
 <body>
   <a class="skip-link" href="#main" data-i18n="skipToMuni">Skip to Muni updates</a>
@@ -148,6 +148,15 @@
         </aside>
       </div>
 
+      <aside class="network-update-summary" id="network-update-summary" aria-live="polite">
+        <div>
+          <p class="eyebrow" data-i18n="currentUpdates">Current trip context</p>
+          <h3 data-i18n="currentUpdatesTitle">Service and street updates you can see now</h3>
+        </div>
+        <div class="network-update-items" id="network-update-items"></div>
+        <button class="text-action" id="view-all-updates" type="button" data-i18n="viewAllUpdates">View all updates →</button>
+      </aside>
+
       <div class="route-list-header">
         <h3 data-i18n="routeOverview">Routes needing attention</h3>
         <p data-i18n="directionNote">Each direction can run differently, so we check them separately.</p>
@@ -250,9 +259,39 @@
           <p class="recommendation-arrival" id="recommendation-arrival">—</p>
         </div>
         <div class="recommendation-reasons" id="recommendation-reasons"></div>
+        <div class="recommendation-context" id="recommendation-context"></div>
         <div class="recommendation-actions">
           <button class="primary-button" id="why-route-button" type="button" aria-controls="journey-evidence" aria-expanded="false" data-i18n="whyRoute">Why this route?</button>
           <button class="text-action" id="explore-trip-button" type="button" data-i18n="exploreTrip">Explore full trip →</button>
+        </div>
+      </section>
+
+      <section class="compact-comparison" id="compact-comparison" hidden aria-labelledby="compact-comparison-title">
+        <div class="compact-comparison-heading">
+          <div>
+            <p class="eyebrow" data-i18n="quickComparison">Quick comparison</p>
+            <h3 id="compact-comparison-title" data-i18n="recommendedVsFastest">Recommended route vs fastest route</h3>
+          </div>
+          <p id="compact-comparison-note"></p>
+        </div>
+        <div class="compact-comparison-grid" id="compact-comparison-grid"></div>
+        <button class="text-action" id="compact-comparison-open" data-open-comparison type="button" aria-controls="comparison-panel" aria-expanded="false" data-i18n="compareOtherOptions">Compare any two routes →</button>
+      </section>
+
+      <section class="journey-context-summary" id="journey-context-summary" hidden aria-labelledby="journey-context-title">
+        <div class="journey-context-heading">
+          <p class="eyebrow" data-i18n="visibleEvidence">What may affect this trip</p>
+          <h3 id="journey-context-title" data-i18n="visibleEvidenceTitle">Current movement, street work, and historical context</h3>
+        </div>
+        <div class="journey-context-grid">
+          <article>
+            <h4 data-i18n="movementStreetTitle">Current movement and street updates</h4>
+            <div id="journey-movement-summary"></div>
+          </article>
+          <article>
+            <h4 data-i18n="historicalAreasTitle">Historical context by trip area</h4>
+            <div id="journey-historical-summary"></div>
+          </article>
         </div>
       </section>
 
@@ -302,7 +341,7 @@
           <h3 data-i18n="tradeoffs">Compare time, walking, and transfers.</h3>
         </div>
         <div class="alternatives-list" id="alternatives-list"></div>
-        <button class="secondary-button comparison-open" id="comparison-open" type="button" aria-controls="comparison-panel" aria-expanded="false" data-i18n="compareTwo">Compare two options</button>
+        <button class="secondary-button comparison-open" id="comparison-open" data-open-comparison type="button" aria-controls="comparison-panel" aria-expanded="false" data-i18n="compareTwo">Compare two options</button>
       </div>
 
       <section class="comparison-panel" id="comparison-panel" role="dialog" aria-modal="true" aria-labelledby="comparison-title" hidden>
@@ -407,6 +446,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="nearby-stops.js?v=26" defer></script>
   <script src="stop-catalog.js?v=27" defer></script>
-  <script src="app.js?v=37" defer></script>
+  <script src="app.js?v=38" defer></script>
 </body>
 </html>
