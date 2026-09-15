@@ -11,10 +11,16 @@ on:
       - ".github/workflows/refresh-data.yml"
       - "scripts/refresh_data.py"
   schedule:
-    # One off-peak cron entry is less likely to be dropped than overlapping
-    # schedules. The script decides which slower-changing sources are due.
+    # GitHub's documented minimum schedule is five minutes. Cloudflare supplies
+    # the three-minute primary clock; this remains a quota-gated fallback.
     - cron: "3-59/5 * * * *"
   workflow_dispatch:
+    inputs:
+      force_context:
+        description: "Also refresh 15-minute and slower context sources"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -34,21 +40,39 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      - name: Avoid duplicate quota spend
+        id: refresh_gate
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif python scripts/check_refresh_due.py --minimum-age-seconds 120; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Python
+        if: steps.refresh_gate.outputs.run == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install refresh dependencies
+        if: steps.refresh_gate.outputs.run == 'true'
         run: python -m pip install --disable-pip-version-check requests gtfs-realtime-bindings
 
       - name: Build credential-free public snapshot
+        if: steps.refresh_gate.outputs.run == 'true'
         env:
           SF_TRANSIT_511_API_KEY: ${{ secrets.SF_TRANSIT_511_API_KEY }}
-          SF_TRANSIT_FORCE_CONTEXT: ${{ github.event_name != 'schedule' }}
+          SF_TRANSIT_DATASF_APP_TOKEN: ${{ secrets.SF_TRANSIT_DATASF_APP_TOKEN }}
+          # External watchdog dispatches must follow normal source intervals.
+          # Only a data-contract push or an explicit operator choice forces context.
+          SF_TRANSIT_FORCE_CONTEXT: ${{ github.event_name == 'push' || inputs.force_context == true }}
         run: python scripts/refresh_data.py
 
       - name: Commit changed snapshot
+        if: steps.refresh_gate.outputs.run == 'true'
         run: |
           git config user.name "sf-transit-pulse[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

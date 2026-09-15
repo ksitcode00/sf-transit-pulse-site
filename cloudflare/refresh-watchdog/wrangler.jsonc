@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sf-transit-refresh-watchdog",
+  "main": "worker.js",
+  "compatibility_date": "2026-09-15",
+  "triggers": {
+    "crons": ["1-59/3 * * * *"]
+  },
+  "vars": {
+    "GITHUB_OWNER": "ksitcode00",
+    "GITHUB_REPO": "sf-transit-pulse-site",
+    "GITHUB_REF": "main"
+  }
+}

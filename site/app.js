@@ -2411,5 +2411,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }, {rootMargin:"200px"});
     contextObserver.observe(contextSection);
   }
-  setInterval(() => loadData(), 5 * 60 * 1000);
+  // Feature 32 · Fast client pickup / 更快发现后台新快照
+  // 中文：浏览器每 90 秒只读取不含密钥的 GitHub Pages JSON，不会调用 511，
+  // 因此不会消耗 60 次/小时的 API 配额；后台仍按独立的 3 分钟节奏抓取。
+  // English: Poll the credential-free Pages snapshot every 90 seconds. This
+  // never calls 511, so it improves pickup latency without spending API quota.
+  setInterval(() => loadData(), 90 * 1000);
 });

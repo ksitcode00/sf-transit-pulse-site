@@ -10,11 +10,13 @@ from pathlib import Path
 import pytest
 from google.transit import gtfs_realtime_pb2
 
+from scripts.check_refresh_due import generated_age_seconds
 from scripts.refresh_data import (
     REQUEST_BUDGET,
     build_parking_pressure,
     build_safety_context,
     build_spacing_events,
+    datasf_records,
     midpoint_percentile_rank,
     parse_alerts,
     parse_road_events,
@@ -402,16 +404,21 @@ def test_refresh_plan_stays_below_default_511_rate_limit() -> None:
         budget["core_runs_per_hour"] * budget["core_requests_per_run"]
         + budget["context_runs_per_hour"] * budget["context_extra_requests_per_run"]
     )
-    assert calculated == 32
-    assert calculated < budget["default_limit_per_hour"] == 60
+    assert calculated == budget["planned_requests_per_hour"] == 48
+    assert budget["reserved_requests_per_hour"] == 12
+    assert calculated <= budget["default_limit_per_hour"] * 0.8
+    assert calculated + budget["reserved_requests_per_hour"] == budget["default_limit_per_hour"] == 60
+    assert budget["planned_requests_per_day"] == calculated * 24 + budget["static_requests_per_day"]
+    assert budget["published_daily_limit"] is None
 
 
-def test_workflow_runs_core_every_five_minutes_and_context_every_fifteen() -> None:
+def test_cloudflare_drives_three_minutes_and_github_remains_fallback() -> None:
     workflow = (ROOT / ".github/workflows/refresh-data.yml").read_text(encoding="utf-8")
 
     assert 'cron: "3-59/5 * * * *"' in workflow
     assert "cancel-in-progress: false" in workflow
-    assert "SF_TRANSIT_FORCE_CONTEXT" in workflow
+    assert "github.event_name == 'push' || inputs.force_context == true" in workflow
+    assert "check_refresh_due.py --minimum-age-seconds 120" in workflow
     assert "data/parking-inventory.json" in workflow
     assert "data/static-index.json" in workflow
     assert "site/data/live-transit.json" in workflow
@@ -425,7 +432,53 @@ def test_workflow_runs_core_every_five_minutes_and_context_every_fifteen() -> No
 
     watchdog = (ROOT / ".github/workflows/refresh-watchdog.yml").read_text(encoding="utf-8")
     assert 'cron: "11,26,41,56 * * * *"' in watchdog
-    assert "check_refresh_health.py --max-age-min 12" in watchdog
+    assert "check_refresh_health.py --max-age-min 7" in watchdog
+
+    external_watchdog = (ROOT / "cloudflare/refresh-watchdog/worker.js").read_text(encoding="utf-8")
+    assert "GITHUB_WORKFLOW_TOKEN" in external_watchdog
+    assert "MIN_REFRESH_AGE_SECONDS" in external_watchdog
+    assert "actions/workflows" in external_watchdog
+    worker_config = (ROOT / "cloudflare/refresh-watchdog/wrangler.jsonc").read_text(encoding="utf-8")
+    assert '"1-59/3 * * * *"' in worker_config
+
+
+def test_browser_polling_does_not_spend_511_quota() -> None:
+    app = (ROOT / "site/app.js").read_text(encoding="utf-8")
+
+    assert "setInterval(() => loadData(), 90 * 1000)" in app
+    assert "api.511.org" not in app
+
+
+def test_duplicate_refresh_gate_uses_generated_snapshot_age(monkeypatch, tmp_path) -> None:
+    now = datetime.now(timezone.utc)
+    snapshot = tmp_path / "live-transit.json"
+    snapshot.write_text(
+        json.dumps({"meta": {"generated_at": (now - timedelta(seconds=90)).isoformat()}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("scripts.check_refresh_due.SNAPSHOT_PATH", snapshot)
+
+    assert 89 <= generated_age_seconds(now) <= 91
+
+
+def test_datasf_app_token_is_sent_only_as_a_header(monkeypatch) -> None:
+    captured = {}
+
+    class Response:
+        @staticmethod
+        def json():
+            return []
+
+    def fake_request(url, **kwargs):
+        captured.update({"url": url, **kwargs})
+        return Response()
+
+    monkeypatch.setenv("SF_TRANSIT_DATASF_APP_TOKEN", "private-test-token")
+    monkeypatch.setattr("scripts.refresh_data.request", fake_request)
+    assert datasf_records("abcd-1234", "SELECT *", 10) == []
+    assert captured["headers"] == {"X-App-Token": "private-test-token"}
+    assert "private-test-token" not in str(captured["url"])
+    assert "private-test-token" not in str(captured["params"])
 
 
 def test_slow_sources_use_last_check_time_for_refresh_cadence() -> None:

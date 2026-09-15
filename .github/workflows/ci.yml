@@ -46,9 +46,10 @@ jobs:
           node --check site/stop-catalog.js
           node --check site/planner-worker.js
           node --check site/planner-engine.mjs
+          node --check cloudflare/refresh-watchdog/worker.js
 
       - name: Verify Scheme B browser planner contracts
-        run: node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs tests/stop-catalog.test.cjs
+        run: node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs tests/stop-catalog.test.cjs tests/refresh-watchdog.test.mjs
 
       - name: Verify public JSON caches
         run: |

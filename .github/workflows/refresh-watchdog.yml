@@ -29,7 +29,7 @@ jobs:
       - name: Check snapshot age
         id: freshness
         continue-on-error: true
-        run: python scripts/check_refresh_health.py --max-age-min 12
+        run: python scripts/check_refresh_health.py --max-age-min 7
 
       - name: Install refresh dependencies
         if: steps.freshness.outcome == 'failure'
@@ -39,11 +39,12 @@ jobs:
         if: steps.freshness.outcome == 'failure'
         env:
           SF_TRANSIT_511_API_KEY: ${{ secrets.SF_TRANSIT_511_API_KEY }}
+          SF_TRANSIT_DATASF_APP_TOKEN: ${{ secrets.SF_TRANSIT_DATASF_APP_TOKEN }}
         run: python scripts/refresh_data.py
 
       - name: Verify recovered source time
         if: steps.freshness.outcome == 'failure'
-        run: python scripts/check_refresh_health.py --max-age-min 12
+        run: python scripts/check_refresh_health.py --max-age-min 7
 
       - name: Commit recovered snapshot
         id: commit
@@ -57,7 +58,9 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "data: recover stale transit snapshot"
-            git push
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 

@@ -37,19 +37,29 @@ SAFETY_CONTEXT_PATH = ROOT / "site" / "data" / "safety-context.json"
 REFRESH_HEALTH_PATH = ROOT / "site" / "data" / "refresh-health.json"
 PARKING_INVENTORY_PATH = ROOT / "data" / "parking-inventory.json"
 STATIC_INDEX_PATH = ROOT / "data" / "static-index.json"
-PIPELINE_VERSION = "1.8.1"
+PIPELINE_VERSION = "1.9.0"
 PARKING_INVENTORY_SCHEMA_VERSION = 2
 PARKING_MIN_MATCH_COVERAGE = 0.70
 USER_AGENT = "SF-Transit-Pulse/1.0 (+https://github.com/ksitcode00/sf-transit-pulse)"
 SF_BOUNDS = {"south": 37.68, "north": 37.84, "west": -122.55, "east": -122.33}
 REQUEST_BUDGET = {
     "default_limit_per_hour": 60,
-    "core_runs_per_hour": 12,
+    "limit_window_seconds": 3600,
+    "core_interval_minutes": 3,
+    "core_runs_per_hour": 20,
     "core_requests_per_run": 2,
+    "context_interval_minutes": 15,
     "context_runs_per_hour": 4,
     "context_extra_requests_per_run": 2,
     "static_requests_per_day": 1,
+    "planned_requests_per_hour": 48,
+    "planned_requests_per_day": 1153,
+    "reserved_requests_per_hour": 12,
+    "published_daily_limit": None,
 }
+TARGET_REFRESH_INTERVAL_SECONDS = 3 * 60
+CADENCE_WARNING_AFTER_SECONDS = 7 * 60
+REFRESH_HISTORY_SIZE = 480
 
 
 def load_previous() -> dict[str, Any]:
@@ -83,7 +93,7 @@ def write_snapshot(payload: dict[str, Any]) -> None:
     write_json(payload, OUTPUT_PATH, compact=True)
     source_status = payload.get("meta", {}).get("source_status", {})
     # Feature 30 · Source-sized public files / 按数据源拆分公开快照
-    # 中文：兼容用的 latest.json 仍保留，但页面的 5 分钟刷新只需下载
+    # 中文：兼容用的 latest.json 仍保留，但页面频繁检查时只需下载
     # 公交核心文件。道路、停车和安全文件只在各自版本变化时重新读取。
     # English: Keep latest.json for compatibility, while the browser's frequent
     # refresh downloads only transit data and reloads slower contexts on change.
@@ -141,27 +151,41 @@ def write_snapshot(payload: dict[str, Any]) -> None:
     }
     if not history or history[-1].get("generated_at") != generated_at:
         history.append(entry)
-    history = history[-288:]
+    history = history[-REFRESH_HISTORY_SIZE:]
     observed_gaps = [row.get("gap_seconds") for row in history if isinstance(row.get("gap_seconds"), (int, float))]
     transit_gaps = [
         row.get("transit_observed_gap_seconds")
         for row in history
         if isinstance(row.get("transit_observed_gap_seconds"), (int, float))
     ]
-    current_is_healthy = (
-        payload.get("meta", {}).get("status") == "live"
+    source_is_healthy = (
+        payload.get("meta", {}).get("source_status", {}).get("transit", {}).get("status") == "live"
         and isinstance(transit_age_seconds, (int, float))
         and transit_age_seconds <= 10 * 60
     )
+    cadence_is_healthy = (
+        gap_seconds is None
+        or gap_seconds <= CADENCE_WARNING_AFTER_SECONDS
+    )
     write_json(
         {
-            "status": "HEALTHY" if current_is_healthy else "CHECK_REQUIRED",
+            # Feature 32 · Honest refresh health / 如实区分数据源与更新节奏
+            # 中文：一次抓取成功，不代表过去一小时都按计划运行。source_status
+            # 判断 511 内容是否够新；cadence_status 判断本次与上次更新是否断档。
+            # English: A fresh source response cannot erase a scheduling gap.
+            # Report source freshness and refresh cadence as separate signals.
+            "status": "HEALTHY" if source_is_healthy and cadence_is_healthy else "CHECK_REQUIRED",
+            "source_status": "HEALTHY" if source_is_healthy else "CHECK_REQUIRED",
+            "cadence_status": "HEALTHY" if cadence_is_healthy else "DEGRADED",
             "latest_generated_at": generated_at,
             "latest_transit_observed_at": transit_observed_at,
+            "previous_refresh_gap_seconds": gap_seconds,
+            "target_refresh_interval_seconds": TARGET_REFRESH_INTERVAL_SECONDS,
+            "cadence_warning_after_seconds": CADENCE_WARNING_AFTER_SECONDS,
             "largest_recorded_gap_seconds": max(observed_gaps, default=None),
             "largest_transit_observation_gap_seconds": max(transit_gaps, default=None),
             "latest_transit_age_seconds_at_refresh": transit_age_seconds,
-            "history_window": "last 288 refresh attempts",
+            "history_window": f"last {REFRESH_HISTORY_SIZE} refresh attempts",
             "history": history,
         },
         REFRESH_HEALTH_PATH,
@@ -197,11 +221,19 @@ def write_snapshot(payload: dict[str, Any]) -> None:
     )
 
 
-def request(url: str, *, params: dict[str, Any] | None = None, timeout: int = 45) -> requests.Response:
+def request(
+    url: str,
+    *,
+    params: dict[str, Any] | None = None,
+    timeout: int = 45,
+    headers: dict[str, str] | None = None,
+) -> requests.Response:
+    request_headers = {"User-Agent": USER_AGENT, "Accept": "*/*"}
+    request_headers.update(headers or {})
     response = requests.get(
         url,
         params=params,
-        headers={"User-Agent": USER_AGENT, "Accept": "*/*"},
+        headers=request_headers,
         timeout=timeout,
     )
     response.raise_for_status()
@@ -996,12 +1028,20 @@ def datasf_records(
     failure from being misread as an empty city dataset.
     """
 
+    # Feature 32 · Identified DataSF access / 独立的 DataSF 请求池
+    # 中文：Socrata 对匿名请求按共享 IP 限流；若仓库设置了可选 App Token，
+    # 每个 DataSF 请求都会放在本应用自己的池中。Token 只从 Secret 读取。
+    # English: Anonymous Socrata traffic shares an IP pool. An optional App Token
+    # identifies this application without ever publishing the credential.
+    app_token = os.environ.get("SF_TRANSIT_DATASF_APP_TOKEN", "").strip()
+    headers = {"X-App-Token": app_token} if app_token else None
     records: list[dict[str, Any]] = []
     for page_number in range(1, max_pages + 1):
         response = request(
             f"https://data.sf.gov/api/v3/views/{dataset_id}/query.json",
             params={"pageNumber": page_number, "pageSize": page_size, "query": query},
             timeout=75,
+            headers=headers,
         )
         payload = response.json()
         page_rows: list[dict[str, Any]] | None = payload if isinstance(payload, list) else None
@@ -1824,14 +1864,8 @@ def main() -> int:
                 "checked_at": checked_at if refresh_safety_context else previous_sources.get("safety", {}).get("checked_at"),
             },
         },
-        "request_budget": {
-            **REQUEST_BUDGET,
-            "planned_requests_per_hour": (
-                REQUEST_BUDGET["core_runs_per_hour"] * REQUEST_BUDGET["core_requests_per_run"]
-                + REQUEST_BUDGET["context_runs_per_hour"] * REQUEST_BUDGET["context_extra_requests_per_run"]
-            ),
-        },
-        "refresh_policy": "Vehicles and trip updates every 5 minutes; alerts/roads every 15 minutes; parking every 30 minutes; safety and static GTFS daily",
+        "request_budget": REQUEST_BUDGET,
+        "refresh_policy": "Vehicles and trip updates every 3 minutes; alerts/roads every 15 minutes; parking every 30 minutes; safety and static GTFS daily",
     }
     write_snapshot(payload)
     print(json.dumps({"status": status, "errors": len(errors), "vehicles": len(payload.get("vehicles", [])), "routes": len(payload.get("routes", []))}))

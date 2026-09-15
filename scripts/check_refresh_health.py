@@ -25,7 +25,7 @@ def parse_time(value: object) -> datetime | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--max-age-min", type=float, default=12)
+    parser.add_argument("--max-age-min", type=float, default=7)
     args = parser.parse_args()
     payload = json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8"))
     generated = parse_time(payload.get("meta", {}).get("generated_at"))

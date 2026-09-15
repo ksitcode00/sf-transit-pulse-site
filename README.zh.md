@@ -154,7 +154,7 @@ v1 规划器有意限定为最多一次换乘。走廊级历史行程速度基�
 ```text
 511 SF Bay + DataSF + SFMTA 公开数据
                     |
-                    | 5 分钟刷新 + 过期快照监控
+                    | 3 分钟刷新 + 独立的过期数据救援
                     | API 密钥保存在加密 Secret
                     v
           按来源拆分、不含密钥的 JSON 快照
@@ -168,16 +168,20 @@ v1 规划器有意限定为最多一次换乘。走廊级历史行程速度基�
        生成候选 -> 三种排序 -> 解释推荐理由
 ```
 
-核心车辆位置与班次预测计划每 5 分钟更新；服务通知和道路背景每 15 分钟、停车每 30 分钟、安全与静态 GTFS 每天更新。核心计划预计每小时使用 32 次 511 请求，在默认每小时 60 次限制内保留 28 次余量。独立监控每 15 分钟同时检查 `generated_at` 和公交数据本身的 `observed_at`；任意一个超过 12 分钟就执行恢复刷新。超过 10 分钟的预测会自动降级为估算。道路来源会同时记录原始事件数与成功解析数；响应结构异常时标记为不可用，不会冒充“0 条事件”。
+核心车辆位置与班次预测计划每 3 分钟更新；服务通知和道路背景每 15 分钟、停车每 30 分钟、安全与静态 GTFS 每天更新。正常计划在 511 官方“每个 key、滚动 3,600 秒最多 60 次”的默认限制内使用 48 次：核心数据 40 次、背景数据 8 次，保留 12 次（20%）给失败恢复、人工运行或每日静态 GTFS。若改成每 2 分钟，核心接口本身就会用满全部额度，所以本项目明确不采用这个危险频率。
 
-用户查询不会调用 511，也不需要 Render。`SF_TRANSIT_511_API_KEY` 只能保存在 GitHub Actions Secret，不能写入代码、浏览器存储、Notebook 输出或公开数据文件。
+Cloudflare 提供三分钟主时钟，但不直接调用 511；GitHub 官方允许的最短五分钟计划保留为备用。任何一路真正花费配额前，都会在仓库快照不足两分钟时跳过重复任务。另一个 GitHub 监控每 15 分钟检查七分钟过期条件，Cloudflare 触发前也会确认没有正在运行的更新。浏览器每 90 秒检查一次不含密钥的 Pages JSON，同样不消耗 511 配额。超过 10 分钟的预测会自动降级为估算。道路来源会同时记录原始事件数与成功解析数；响应结构异常时标记为不可用，不会冒充“0 条事件”。
+
+官方限额依据：[511 Open Data FAQ](https://511.org/open-data/faqs) 明确写明每个 key 每 3,600 秒 60 次；[GitHub workflow 语法](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule) 写明最短间隔为五分钟，[GitHub 故障说明](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows) 也说明定时任务可能延迟或丢失；[Socrata application token 文档](https://dev.socrata.com/docs/app-tokens.html) 说明已识别应用拥有独立请求池，除滥用外目前通常不会被限流；[Cloudflare Workers 限额](https://developers.cloudflare.com/workers/platform/limits/) 的免费计划每天允许 100,000 次请求，远高于本调度器每天 480 次时间戳检查。
+
+用户查询不会调用 511，也不需要 Render。`SF_TRANSIT_511_API_KEY` 只能保存在 GitHub Actions Secret；可选的 `SF_TRANSIT_DATASF_APP_TOKEN` Secret 会让 DataSF 请求使用 Socrata 为本应用识别的独立请求池。两个值都不能写入代码、浏览器存储、Notebook 输出或公开数据文件。
 
 ## 工程成果证据
 
 2026-09-14 核对的仓库公开快照包含 347 个车辆位置、149 个预测班次、18 条线路的 31 个线路方向记录，以及 5 条服务通知。这些数字会随当天服务和数据源变化；网页读取并显示当前数值，不会把示例数字写死。
 
 - 经常更新的公交核心文件约 0.5 MB；道路、停车、安全和静态路网分别保存。约 2 MB 的安全背景只会在用户开始比较行程或打开背景信息区时下载，不会阻塞首次显示 Network 页面。
-- `refresh-health.json` 最多保留 288 次刷新记录，同时记录脚本间隔、公交观测间隔和每次刷新时的数据年龄。
+- `refresh-health.json` 最多保留 480 次刷新记录，约覆盖目标节奏下的一天；`source_status` 判断上游公交观测是否新鲜，`cadence_status` 单独判断自动更新是否错过 7 分钟恢复目标。
 - 实时依据超过 10 分钟就失效；服务通知与道路背景为 30 分钟，停车背景为 3 小时。
 - 回归测试覆盖第 11 个附近站、第 9 个换乘点、稳定行程身份、道路来源不可用，以及附加数据文件失败后的局部恢复。
 
@@ -199,7 +203,7 @@ scripts/
   check_refresh_health.py 同时检查页面生成时间与公交观测时间
 
 .github/workflows/
-  refresh-data.yml       五分钟数据采集和慢速数据更新节奏
+  refresh-data.yml       三分钟数据采集和慢速数据更新节奏
   refresh-watchdog.yml   独立检测并恢复过期快照
   ci.yml                 Python、JavaScript、流程和数据契约检查
   pages.yml              静态网站部署
@@ -211,6 +215,10 @@ backend/
 data/
   static-index.json      仅供定时刷新使用、不会部署到网站的查询索引
   parking-inventory.json 仅供刷新使用、不会部署到网站的停车表位置
+
+cloudflare/refresh-watchdog/
+  worker.js              三分钟外部主时钟，不提供公开触发入口
+  wrangler.jsonc         免费 Cloudflare Worker 的时间表和仓库目标
 
 tests/
   browser-planner.test.mjs  浏览器规划器功能测试

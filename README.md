@@ -154,7 +154,7 @@ The v1 planner intentionally supports at most one transfer. Corridor-specific hi
 ```text
 511 SF Bay + DataSF + SFMTA public data
                     |
-                    | 5-minute refresh + stale-snapshot watchdog
+                    | 3-minute refresh + independent stale-data recovery
                     | API key stays in an encrypted Secret
                     v
        split, credential-free JSON snapshots
@@ -168,16 +168,20 @@ The v1 planner intentionally supports at most one transfer. Corridor-specific hi
   candidate generation -> three rankings -> explanation
 ```
 
-Core vehicle positions and trip predictions are scheduled every five minutes. Service and road context refresh every 15 minutes, parking every 30 minutes, and safety plus static GTFS daily. The core plan uses an estimated 32 of the default 60 hourly 511 requests, leaving a 28-request margin. A separate 15-minute watchdog compares both `generated_at` and the underlying transit `observed_at`; when either is more than 12 minutes old, it performs a recovery refresh. Predictions older than 10 minutes automatically become estimates. The road feed records raw and parsed event counts; an unknown payload schema is marked unavailable instead of being presented as zero events.
+Core vehicle positions and trip predictions are scheduled every three minutes. Service and road context refresh every 15 minutes, parking every 30 minutes, and safety plus static GTFS daily. The normal plan uses 48 of the official default limit of 60 requests per rolling 3,600 seconds: 40 core requests plus eight context requests, retaining 12 requests (20%) for recovery, a manual run, or the daily static feed. A two-minute core schedule would consume the entire allowance before retries and is therefore intentionally rejected.
 
-User searches do not call 511 and do not need Render. `SF_TRANSIT_511_API_KEY` belongs only in the encrypted GitHub Actions Secret. It must not appear in code, browser storage, Notebook output, or public data files.
+Cloudflare supplies the three-minute primary clock without calling 511 directly; GitHub's documented minimum five-minute schedule remains a fallback. Before either path spends quota, the workflow skips a duplicate run when the checked-in snapshot is under two minutes old. The separate 15-minute GitHub watchdog checks for a seven-minute stale condition, and the Cloudflare Worker also verifies that no refresh is already active before dispatching. The browser checks the credential-free Pages snapshot every 90 seconds, which consumes no 511 quota. Predictions older than 10 minutes automatically become estimates. The road feed records raw and parsed event counts; an unknown payload schema is marked unavailable instead of being presented as zero events.
+
+Official quota references: [511 Open Data FAQ](https://511.org/open-data/faqs) documents 60 requests per 3,600 seconds per key; [GitHub workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule) documents a five-minute minimum and [GitHub troubleshooting](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows) warns scheduled jobs can be delayed or dropped; [Socrata application-token guidance](https://dev.socrata.com/docs/app-tokens.html) says identified applications receive their own pool and are not normally throttled unless abusive; [Cloudflare Workers limits](https://developers.cloudflare.com/workers/platform/limits/) allow 100,000 Free-plan requests per day, far above this scheduler's 480 timestamp checks.
+
+User searches do not call 511 and do not need Render. `SF_TRANSIT_511_API_KEY` belongs only in the encrypted GitHub Actions Secret. An optional `SF_TRANSIT_DATASF_APP_TOKEN` Secret gives DataSF requests a separately identified Socrata pool. Neither value may appear in code, browser storage, Notebook output, or public data files.
 
 ## Engineering evidence
 
 The checked-in public snapshot verified on 2026-09-14 contained 347 reported vehicle positions, 149 predicted trips, 31 route-direction rows across 18 routes, and five service notices. Counts naturally change with service and feed availability; the page displays the current values rather than hard-coding these numbers.
 
 - The frequently refreshed transit file is about 0.5 MB; slower road, parking, safety, and static-network data are separate. The roughly 2 MB safety context loads only when a rider compares a journey or opens the context section, so it does not block the first Network screen.
-- A rolling `refresh-health.json` keeps up to 288 attempts, including script gaps, transit observation gaps, and source age at each refresh.
+- A rolling `refresh-health.json` keeps up to 480 attempts (about one day at the target cadence). `source_status` reports whether the upstream transit observation is current; `cadence_status` separately reports whether the automation missed its seven-minute recovery target.
 - Realtime evidence expires after 10 minutes. Alerts and road context expire after 30 minutes; parking context after three hours.
 - Regression tests cover an 11th nearby stop, a ninth transfer, stable itinerary identity, unavailable road data, and context-file failure recovery.
 
@@ -199,7 +203,7 @@ scripts/
   check_refresh_health.py Detects stale generated and transit-observation times
 
 .github/workflows/
-  refresh-data.yml       Five-minute ingestion and slower-source cadence
+  refresh-data.yml       Three-minute ingestion and slower-source cadence
   refresh-watchdog.yml   Independent stale-snapshot recovery
   ci.yml                 Python, JavaScript, workflow, and data-contract checks
   pages.yml              Static deployment
@@ -211,6 +215,10 @@ backend/
 data/
   static-index.json      Non-site lookup used only by scheduled refreshes
   parking-inventory.json Non-site meter locations used only by refreshes
+
+cloudflare/refresh-watchdog/
+  worker.js              Three-minute external primary clock; no public trigger
+  wrangler.jsonc         Free Cloudflare Worker schedule and repository target
 
 tests/
   browser-planner.test.mjs  Browser planner contracts
