@@ -3,6 +3,10 @@ name: Refresh transit snapshot
 on:
   push:
     # Run one full integration refresh whenever this workflow's data contract changes.
+    # Tags must not trigger this job: a tag checkout has a detached HEAD and cannot
+    # safely publish the generated snapshot back to the main branch.
+    branches:
+      - main
     paths:
       - ".github/workflows/refresh-data.yml"
       - "scripts/refresh_data.py"
@@ -26,6 +30,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -58,5 +65,7 @@ jobs:
             echo "Snapshot is unchanged."
           else
             git commit -m "data: refresh public transit snapshot"
-            git push
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
           fi
