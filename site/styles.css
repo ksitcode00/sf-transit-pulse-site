@@ -1034,3 +1034,318 @@ button { min-height: 44px; }
   .nearby-stop-actions button { width: 100%; min-height: 44px; }
   .planner-place-note { margin-bottom: 10px; }
 }
+
+/* ============================================================
+   Mobile browser layout · 手机浏览器布局
+   中文：同一个页面在手机上改成单栏、底部导航和更清楚的实时状态栏。
+   所有路线计算、数据刷新和评分逻辑保持不变。
+   English: Reflows the existing product into a single-column mobile app
+   with reachable navigation and touch-safe controls. Routing is unchanged.
+   ============================================================ */
+
+@media (max-width: 640px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  html { scroll-padding-top: 138px; }
+  #network,
+  #journey,
+  #context,
+  #method { scroll-margin-top: 138px; }
+
+  body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  body:has(.mobile-recommendation:not([hidden])) { padding-bottom: calc(154px + env(safe-area-inset-bottom)); }
+
+  .global-nav { height: 44px; }
+  .nav-inner {
+    width: calc(100% - 32px);
+    justify-content: center;
+  }
+  .wordmark {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .global-nav nav {
+    position: fixed;
+    z-index: 930;
+    right: 12px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 12px;
+    min-width: 0;
+    height: 58px;
+    padding: 4px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2px;
+    overflow: visible;
+    border: 1px solid rgba(0,0,0,.12);
+    border-radius: 18px;
+    color: var(--ink);
+    background: rgba(250,250,252,.94);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+  .global-nav nav a {
+    min-width: 0;
+    min-height: 48px;
+    padding: 5px 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    color: var(--ink);
+    font-size: 12px;
+    line-height: 1.15;
+    text-align: center;
+    white-space: normal;
+  }
+  .global-nav nav a:focus-visible {
+    outline: 2px solid var(--blue-focus);
+    outline-offset: -2px;
+  }
+
+  .sub-nav {
+    top: 44px;
+    min-height: 82px;
+    height: auto;
+  }
+  .sub-nav-inner {
+    width: calc(100% - 32px);
+    min-height: 82px;
+    height: auto;
+    padding: 7px 0 8px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-content: center;
+    gap: 4px 8px;
+  }
+  .sub-nav-inner > div:first-child {
+    grid-column: 1 / -1;
+    min-width: 0;
+    max-width: none;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sub-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+  .sub-actions .text-action {
+    min-width: 44px;
+    min-height: 36px;
+    padding: 4px 8px;
+  }
+  #refresh-button {
+    min-height: 36px;
+    padding: 6px 14px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .section,
+  .hero,
+  .product-highlights,
+  .decision-story {
+    padding-top: 64px;
+    padding-bottom: 64px;
+  }
+  .hero {
+    min-height: auto;
+    gap: 40px;
+  }
+  .hero h1 {
+    max-width: 330px;
+    font-size: 34px;
+    line-height: 1.08;
+  }
+  .hero-lead {
+    max-width: 340px;
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .hero-actions {
+    gap: 10px;
+    margin-top: 28px;
+  }
+  .hero-actions .primary-button { width: 100%; }
+  .hero-visual {
+    min-height: 340px;
+    border-radius: var(--radius-card);
+  }
+  .hero-route-art { height: 244px; }
+  .hero-metrics article,
+  .hero-metrics article:nth-child(odd),
+  .hero-metrics article:nth-child(even) {
+    min-height: 96px;
+    padding: 14px;
+  }
+  .hero-metrics span { font-size: 28px; }
+  .hero-metrics small {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  h2 { font-size: 32px; }
+  .section-heading,
+  .story-heading,
+  .journey-heading { margin-bottom: 32px; }
+  .section-lead { font-size: 18px; }
+  .prototype-chip {
+    align-self: flex-start;
+    max-width: 100%;
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .highlight-rail {
+    width: 100%;
+    margin-right: 0;
+    padding: 0 18px 10px 0;
+    grid-template-columns: repeat(3, minmax(260px, 84vw));
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+  .highlight-rail::-webkit-scrollbar { display: none; }
+  .highlight-rail article { min-height: 230px; }
+  .highlight-rail h3 { margin-top: 44px; }
+
+  .decision-comparison { margin-top: 36px; }
+  .decision-comparison article { min-height: 170px; }
+  .decision-comparison > div {
+    min-height: 108px;
+    padding: 22px;
+  }
+
+  .route-scope { border-radius: 16px; }
+  .scope-button {
+    min-width: 0;
+    min-height: 44px;
+    padding: 7px 9px;
+    line-height: 1.2;
+    white-space: normal;
+  }
+  .map-shell,
+  .journey-map-shell,
+  .planner-field,
+  .nearby-stops-card,
+  .journey-recommendation,
+  .compact-comparison,
+  .journey-context-summary,
+  .alternatives-panel {
+    min-width: 0;
+    max-width: 100%;
+  }
+  #map,
+  #journey-map { height: 320px; }
+  .map-layer-control {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 100%;
+    padding: 8px 12px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 0;
+    border-bottom: 1px solid var(--hairline);
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .map-layer-control legend { grid-column: 1 / -1; }
+  .map-layer-control label {
+    min-width: 0;
+    min-height: 40px;
+    line-height: 1.2;
+  }
+  .map-caption {
+    min-height: 0;
+    padding: 14px 16px;
+    gap: 6px;
+  }
+
+  .nearby-stops-card { padding: 20px; }
+  .nearby-stops-controls { gap: 10px; }
+  .planner-form {
+    padding: 18px;
+    border-radius: var(--radius-card);
+  }
+  .planner-field-heading { gap: 8px; }
+  .stop-browse-button {
+    min-height: 36px;
+    text-align: right;
+  }
+  .stop-suggestions { max-height: min(45dvh, 320px); }
+  .planner-submit { width: 100%; }
+
+  .journey-loading { padding: 24px 20px; }
+  .journey-recommendation {
+    margin-top: 20px;
+    padding: 24px 20px;
+  }
+  .journey-recommendation h3 { font-size: 36px; }
+  .recommendation-eta { font-size: 44px; }
+  .mode-grid { position: relative; }
+  .mode-segment {
+    min-height: 48px;
+    padding: 7px 6px;
+    font-size: 12px;
+  }
+  .journey-workspace,
+  .alternatives-panel { margin-top: 32px; }
+  .journey-detail-card,
+  .alternatives-panel { padding: 20px; }
+  .alternative-card { padding: 18px; }
+
+  .evidence-drawer {
+    max-height: 90dvh;
+    padding-bottom: calc(32px + env(safe-area-inset-bottom));
+  }
+  .comparison-panel {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 90dvh;
+    padding: 24px 20px calc(28px + env(safe-area-inset-bottom));
+    transform: none;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 22px 22px 0 0;
+  }
+
+  .mobile-recommendation:not([hidden]) {
+    right: 12px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    left: 12px;
+    min-height: 60px;
+    padding: 10px 12px;
+  }
+  .mobile-recommendation button { flex: 0 0 auto; }
+
+  footer {
+    padding-top: 48px;
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+    gap: 28px;
+  }
+}
+
+@media (max-width: 419px) {
+  .hero h1 { font-size: 32px; }
+  h2 { font-size: 30px; }
+  .hero-visual { min-height: 326px; }
+  .hero-route-art { height: 230px; }
+  .global-nav nav a { font-size: 11px; }
+  .decision-comparison article { min-height: 156px; }
+}

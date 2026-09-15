@@ -8,6 +8,14 @@ const html = fs.readFileSync(path.join(root, "site", "index.html"), "utf8");
 const app = fs.readFileSync(path.join(root, "site", "app.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "site", "styles.css"), "utf8");
 
+test("mobile browser layout has reachable navigation and no page-wide overflow", () => {
+  assert.match(html, /href="styles\.css\?v=41"/);
+  assert.match(css, /\.global-nav nav\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?bottom:/);
+  assert.match(css, /grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(css, /overflow-x:\s*hidden/);
+  assert.match(css, /bottom:\s*calc\(78px \+ env\(safe-area-inset-bottom\)\)/);
+});
+
 test("network keeps a visible service and street update summary", () => {
   assert.match(html, /id="network-update-summary"/);
   assert.match(app, /function renderNetworkUpdateSummary/);
