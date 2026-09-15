@@ -29,6 +29,20 @@ test("recommendation shows transfer buffer and restores the mobile bar", () => {
 
 test("stale realtime data is labeled as delayed and auto-checked", () => {
   assert.match(app, /Update delayed · checking automatically/);
-  assert.match(app, /The page checks for updates every 5 minutes/);
+  assert.match(app, /The page checks for updates every 90 seconds/);
   assert.match(css, /\.live-dot\.delayed/);
+});
+
+test("trip planning accepts places while keeping stop mapping explicit", () => {
+  assert.match(html, /src="place-search\.js\?v=39"/);
+  assert.match(html, /id="origin-place-match"/);
+  assert.match(html, /id="destination-place-match"/);
+  assert.match(app, /function placeOptionMarkup/);
+  assert.match(app, /This walk is not included in the transit ETA/);
+});
+
+test("nearby stops include an on-page location map", () => {
+  assert.match(html, /id="nearby-map"/);
+  assert.match(app, /function renderNearbyMap/);
+  assert.match(css, /#nearby-map\s*\{/);
 });

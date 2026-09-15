@@ -559,8 +559,8 @@ def test_realtime_journey_copy_distinguishes_predictions_from_estimates() -> Non
     assert "renderComparison" in app
     assert "New transit data changed the top option" in app
     assert "不能预测你这次是否安全" in app
-    assert "Parking near your destination" in app
-    assert "目的地附近停车情况" in app
+    assert "Recent parking activity near your destination" in app
+    assert "目的地附近近期停车活动" in app
     assert "cannot tell you how many spaces are open" in app
     assert "Recent cached arrival prediction" in app
     assert "近期缓存的到站预测" in app

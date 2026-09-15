@@ -9,7 +9,7 @@
   <title>SF Transit Pulse</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="styles.css?v=38">
+  <link rel="stylesheet" href="styles.css?v=39">
 </head>
 <body>
   <a class="skip-link" href="#main" data-i18n="skipToMuni">Skip to Muni updates</a>
@@ -191,7 +191,7 @@
         <div>
           <p class="eyebrow" data-i18n="journeyDecision">Plan your trip</p>
           <h2 data-i18n="whereGoing">Where do you want to go?</h2>
-          <p class="section-lead" data-i18n="plannerLead">Choose two Muni stops. We'll compare direct trips and trips with one transfer using the latest available data.</p>
+          <p class="section-lead" data-i18n="plannerLead">Search for a Muni stop, San Francisco address, or landmark. We'll connect places to a nearby stop and compare the routes you can take now.</p>
         </div>
         <span class="prototype-chip" data-i18n="dynamicPlanner">Latest predictions + on-device planning · Public Beta</span>
       </div>
@@ -216,29 +216,36 @@
         </div>
         <p class="nearby-privacy" data-i18n="nearbyPrivacy">Your location is used only on this page to calculate distance. It is not uploaded or saved.</p>
         <p class="nearby-status" id="nearby-status" role="status" aria-live="polite" data-i18n="nearbyInitial">Select “Find nearby stops” when you're ready to share your location with this page.</p>
+        <div class="nearby-map-shell" id="nearby-map-shell" hidden>
+          <div id="nearby-map" role="application" aria-label="Your location and nearby Muni stops"></div>
+          <p class="nearby-map-caption" data-i18n="nearbyMapCaption">Your location stays on this page. Select a stop card below to use it in the trip planner.</p>
+        </div>
         <div class="nearby-results" id="nearby-results"></div>
       </section>
 
       <form class="planner-form" id="trip-planner-form">
         <div class="planner-field">
           <div class="planner-field-heading">
-            <label for="origin-input" data-i18n="fromStop">Starting stop</label>
+            <label for="origin-input" data-i18n="fromStop">Starting point</label>
             <button class="stop-browse-button" id="origin-browse-button" type="button" aria-controls="origin-suggestions" aria-expanded="false" data-i18n="browseAllStops">Browse all stops</button>
           </div>
-          <input id="origin-input" autocomplete="off" placeholder="Enter a stop name, then choose from the list" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="origin-suggestions" required>
+          <input id="origin-input" autocomplete="off" placeholder="Search a stop, address, or landmark" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="origin-suggestions" required>
+          <p class="place-match" id="origin-place-match" aria-live="polite" hidden></p>
           <div class="stop-suggestions" id="origin-suggestions" role="listbox" aria-label="Starting stop choices" hidden></div>
         </div>
         <button class="swap-button" id="swap-stops" type="button" aria-label="Swap origin and destination" title="Swap origin and destination">⇅</button>
         <div class="planner-field">
           <div class="planner-field-heading">
-            <label for="destination-input" data-i18n="toStop">Destination stop</label>
+            <label for="destination-input" data-i18n="toStop">Destination</label>
             <button class="stop-browse-button" id="destination-browse-button" type="button" aria-controls="destination-suggestions" aria-expanded="false" data-i18n="browseAllStops">Browse all stops</button>
           </div>
-          <input id="destination-input" autocomplete="off" placeholder="Enter a stop name, then choose from the list" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="destination-suggestions" required>
+          <input id="destination-input" autocomplete="off" placeholder="Search a stop, address, or landmark" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="destination-suggestions" required>
+          <p class="place-match" id="destination-place-match" aria-live="polite" hidden></p>
           <div class="stop-suggestions" id="destination-suggestions" role="listbox" aria-label="Destination stop choices" hidden></div>
         </div>
         <button class="primary-button planner-submit" id="plan-trip-button" type="submit" data-i18n="findRoute">Compare routes</button>
       </form>
+      <p class="planner-place-note" data-i18n="placeSearchNote">For an address or landmark, we use its nearest Muni stop. The walk to that stop is shown before you compare routes and is not included in the transit ETA.</p>
       <button class="text-action example-trip-button" id="example-trip-button" type="button" data-i18n="tryExample">Try a sample trip</button>
       <div class="planner-status" id="planner-status" role="status"></div>
       <div class="journey-loading" id="journey-loading" hidden aria-live="polite">
@@ -435,17 +442,19 @@
     </div>
     <div class="footer-meta">
       <span id="generated-at">Page update time unavailable</span>
-      <span data-i18n="footerVersion">v1.4 · Decision Support Beta</span>
+      <span data-i18n="footerVersion">v1.5 · Decision Support Beta</span>
       <span data-i18n="footerData">Data: 511 SF Bay · DataSF · SFMTA</span>
       <span data-i18n="footerMap">Map © OpenStreetMap contributors</span>
+      <span data-i18n="footerPlaces">Place search: OpenStreetMap contributors · Photon</span>
       <a href="https://github.com/ksitcode00/sf-transit-pulse-site/issues/new" target="_blank" rel="noreferrer" data-i18n="reportIssue">Report an issue</a>
     </div>
   </footer>
 
   <div class="error-banner" id="error-banner" role="status" hidden></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="nearby-stops.js?v=26" defer></script>
-  <script src="stop-catalog.js?v=27" defer></script>
-  <script src="app.js?v=38" defer></script>
+  <script src="nearby-stops.js?v=39" defer></script>
+  <script src="place-search.js?v=39" defer></script>
+  <script src="stop-catalog.js?v=39" defer></script>
+  <script src="app.js?v=39" defer></script>
 </body>
 </html>

@@ -13,6 +13,8 @@
   [![Recover stale transit snapshot](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-watchdog.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-watchdog.yml)
 </div>
 
+![SF Transit Pulse live Muni dashboard and trip planner](artifacts/ui-v1.5/desktop-home.png)
+
 SF Transit Pulse is a Muni decision tool for everyday riders. It goes beyond departure times by explaining vehicle spacing, possible long gaps, transfer timing, and why one route ranks above another.
 
 > This is an independent research prototype, not an official SFMTA service. Live predictions can change, so leave extra time for important trips.
@@ -21,8 +23,8 @@ SF Transit Pulse is a Muni decision tool for everyday riders. It goes beyond dep
 
 1. Open the [English live app](https://ksitcode00.github.io/sf-transit-pulse-site/?lang=en).
 2. Choose a route and direction under “Muni now,” then inspect vehicle positions, spacing, and service notices.
-3. Under “Plan a trip,” select “Find nearby stops,” allow location access, and choose a 100, 200, 300, or 400 meter range.
-4. Use a nearby stop as your start or destination, then compare Fastest, Balanced, and Safety-first.
+3. Under “Plan a trip,” type a stop, address, or landmark such as “Ferry Building”—or select “Find nearby stops” and choose a 100, 200, 300, or 400 meter range.
+4. Choose the matched Muni stop, review any walk-to-stop distance, then compare Fastest, Balanced, and Safety-first.
 
 ## Product goal
 
@@ -63,9 +65,11 @@ Each row explains the rider need, the implementation's practical value, and an e
 | Muni service notices | Places stop moves, elevator outages, and service changes beside route information. | Learn that a stop moved before walking to its usual location. | Live |
 | Street work and route context | Shows road events beside transit movement without claiming proximity proves causation. | Work near Market Street and a slower transit segment appear as possible context only. | Research beta |
 | Nearby stop location | After explicit permission, the browser calculates distance to every Muni stop. Coordinates are not uploaded or saved. | Choose 200 m and see every stop in range, its distance, and its routes. | Live beta |
+| Current-location map | Shows the rider's location, selected radius, and every matching stop on one map without sending coordinates to the project server. | Increase the range from 100 m to 300 m and see which additional stops enter the map. | Live beta |
 | 100–400 meter range | Provides exactly four predictable choices: 100, 200, 300, and 400 m. Changing the range does not request permission again. | Increase the range from 100 m to 300 m when no stop is close enough. | Live |
 | Use nearby stop as start or destination | Removes the need to retype a stop name, especially on mobile. | Select “Use as start,” then enter a destination and compare routes. | Live |
 | Stop search | Finds origin and destination stops and shows routes serving each stop using the public GTFS catalog in the browser. | Enter “4th St & Market” and choose the correct stop ID. | Live |
+| Address and landmark search | Searches only within San Francisco, maps a place to the nearest Muni stop within 1,200 m, and shows the walk distance before planning. That walk is not silently added to the transit ETA. | Enter “Ferry Building,” select the place result, then use the mapped Embarcadero stop. | Live beta |
 | Browse every stop | Opens the complete alphabetized Muni stop catalog without requiring any typing. Stops load 100 at a time while scrolling, so the full list remains available without freezing the page. | Select “Browse all stops,” scroll through the catalog, and choose a stop with its route list. | Live |
 | Direct and one-transfer planning | Finds feasible boarding and alighting stops while rejecting wrong-direction and distant fake transfers. | Compare direct and one-transfer options from SoMa to Fillmore. | Public beta |
 | Trip-level live boarding and arrival | A leg is labeled live only when one concrete trip has valid predictions at both stops and the update is no more than 10 minutes old. Otherwise it is estimated. | Show predicted 8:12 boarding, 8:27 arrival, and a trip ID instead of a vague 15 minutes. | Live with fresh complete predictions |
@@ -80,7 +84,7 @@ Each row explains the rider need, the implementation's practical value, and an e
 | Stable auto-refresh | A route structure has a stable itinerary ID, while its concrete vehicle run has a separate trip-instance ID. New snapshots recalculate the request without making the open option jump. | The next 38R trip can replace the prior trip while the rider stays on the same 38R itinerary card. | Live |
 | Mobile recommendation bar | Keeps the selected route and a 44-pixel trip button within reach on narrow screens; comparison cards collapse to one column. | Check the chosen trip one-handed while walking to a stop. | Live beta |
 | Separate English and Chinese UI | URLs can select a language, and controls, states, errors, and method copy switch together. The preference is also stored locally. | `?lang=en` opens English and `?lang=zh` opens Chinese. | Live |
-| On-device browser calculation | Trip and nearby-stop queries need no Render server. A Web Worker keeps the map responsive, and the API key never enters the browser. | Anyone can use GitHub Pages while the author's Notebook and computer remain offline. | Live |
+| On-device browser calculation | Trip and nearby-stop calculations need no Render server. A Web Worker keeps the map responsive; the small place-search proxy uses no 511 key, and the 511 key never enters the browser. | Anyone can use GitHub Pages while the author's Notebook and computer remain offline. | Live |
 
 ## Market comparison
 
@@ -94,6 +98,7 @@ Sources checked: 2026-09-14.
 | Live departures | Yes, with live versus estimated labels | Some stations | Where supported | Yes | Yes |
 | Live vehicles on map | Yes; unmatched vehicles excluded | Related; official material emphasizes departures | Where supported | Yes, including rider crowdsourcing | Bus location features |
 | Nearby stops with adjustable distance | Yes; four 100–400 m ranges and on-device location | Nearby transit search | Nearby transit features | Nearby stops | Nearby stops |
+| Address and landmark search | Yes; the place is mapped to the nearest Muni stop with the walk disclosed | Yes | Yes | Yes | Yes |
 | Direction-specific health | Yes; each direction is evaluated separately | No equivalent found | No equivalent found | No equivalent found | No equivalent found |
 | Bunching and long-gap evidence | Yes; counts and spacing shown | No equivalent found | No equivalent found | Related live and rider reports | Related vehicle location and traffic predictions |
 | Exact transfer catch slack | Yes; minutes and basis shown | Related connection information | Related connection information | Related tight-transfer warnings | No equivalent minute value found |
@@ -148,6 +153,7 @@ The v1 planner intentionally supports at most one transfer. Corridor-specific hi
 - Paid parking sessions do not prove a vehicle is present. Parking pressure is not occupancy or open-space availability.
 - Preference costs rank routes. They are never shown as ETA.
 - Location is requested only after a rider selects the button. Coordinates stay on the current page and are neither uploaded nor saved.
+- An address or landmark is converted to the nearest Muni stop within 1,200 m. The mapping and walk distance are shown, and that walk is not included in the transit ETA.
 
 ## Serverless architecture
 
@@ -172,6 +178,8 @@ Core vehicle positions and trip predictions are scheduled every three minutes. S
 
 Cloudflare supplies the three-minute primary clock without calling 511 directly; GitHub's documented minimum five-minute schedule remains a fallback. Before either path spends quota, the workflow skips a duplicate run when the checked-in snapshot is under two minutes old. The separate 15-minute GitHub watchdog checks for a seven-minute stale condition, and the Cloudflare Worker also verifies that no refresh is already active before dispatching. The browser checks the credential-free Pages snapshot every 90 seconds, which consumes no 511 quota. Predictions older than 10 minutes automatically become estimates. The road feed records raw and parsed event counts; an unknown payload schema is marked unavailable instead of being presented as zero events.
 
+The same Worker exposes a narrow, read-only San Francisco place-search proxy backed by Photon and OpenStreetMap. It accepts short search queries only from the published site or local development, returns normalized coordinates, caches successful responses, and never receives the rider's live device location or a 511 key.
+
 Official quota references: [511 Open Data FAQ](https://511.org/open-data/faqs) documents 60 requests per 3,600 seconds per key; [GitHub workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule) documents a five-minute minimum and [GitHub troubleshooting](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows) warns scheduled jobs can be delayed or dropped; [Socrata application-token guidance](https://dev.socrata.com/docs/app-tokens.html) says identified applications receive their own pool and are not normally throttled unless abusive; [Cloudflare Workers limits](https://developers.cloudflare.com/workers/platform/limits/) allow 100,000 Free-plan requests per day, far above this scheduler's 480 timestamp checks.
 
 User searches do not call 511 and do not need Render. `SF_TRANSIT_511_API_KEY` belongs only in the encrypted GitHub Actions Secret. An optional `SF_TRANSIT_DATASF_APP_TOKEN` Secret gives DataSF requests a separately identified Socrata pool. Neither value may appear in code, browser storage, Notebook output, or public data files.
@@ -193,6 +201,7 @@ site/
   styles.css             Responsive visual system
   app.js                 UI state, maps, search, location, and bilingual copy
   nearby-stops.js        Distance calculation and nearby-stop filtering
+  place-search.js        San Francisco place lookup and nearest-stop mapping
   stop-catalog.js        Search and progressive full-catalog browsing
   planner-engine.mjs     Browser routing engine and ranking rules
   planner-worker.js      Background calculation thread
@@ -217,12 +226,13 @@ data/
   parking-inventory.json Non-site meter locations used only by refreshes
 
 cloudflare/refresh-watchdog/
-  worker.js              Three-minute external primary clock; no public trigger
+  worker.js              Three-minute clock, private recovery trigger, and read-only place search
   wrangler.jsonc         Free Cloudflare Worker schedule and repository target
 
 tests/
   browser-planner.test.mjs  Browser planner contracts
   nearby-stops.test.cjs     Nearby distance and radius contracts
+  place-search.test.cjs     Place lookup and nearest-stop mapping contracts
   stop-catalog.test.cjs      Search and full-catalog batching contracts
   test_planner.py           Python reference contracts
 ```
@@ -248,7 +258,7 @@ Open `http://127.0.0.1:8765/?lang=en`. Do not open `index.html` directly because
 ### Tests
 
 ```bash
-node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs tests/stop-catalog.test.cjs
+node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs tests/place-search.test.cjs tests/stop-catalog.test.cjs tests/refresh-watchdog.test.mjs tests/ui-evidence.test.cjs
 python3 -m pytest -q tests
 ```
 
@@ -256,11 +266,12 @@ python3 -m pytest -q tests
 
 | Available now | Next |
 |---|---|
-| All Muni routes, directions, and live vehicles | Address and place search |
-| Nearby stops within 100–400 meters | Show current location and nearby stops on the map |
-| Direct and one-transfer planning | Multiple transfers and a fuller walking graph |
-| Fastest, Balanced, and Safety-first | Accessible routing only when evidence is complete |
-| Live trips and transfer slack | Future leave and arrive times |
+| All Muni routes, directions, and live vehicles | Multiple transfers and a fuller walking graph |
+| Address and landmark search with transparent nearest-stop mapping | Accessible routing only when evidence is complete |
+| Current location and nearby-stop map within 100–400 meters | Future leave and arrive times |
+| Direct and one-transfer planning | Corridor-level historical speed baselines |
+| Fastest, Balanced, and Safety-first | Favorites and alerts |
+| Live trips and transfer slack | Step-by-step guidance |
 | Transit, road, historical incident, and parking context | Favorites, alerts, and step-by-step guidance |
 
 ## Data sources
@@ -270,10 +281,11 @@ python3 -m pytest -q tests
 - [SFMTA](https://www.sfmta.com/): Muni and parking program context
 - [Caltrans QuickMap](https://quickmap.dot.ca.gov/): road event context where available in the public snapshot
 - [OpenStreetMap](https://www.openstreetmap.org/): map tiles and attribution
+- [Photon](https://photon.komoot.io/): OpenStreetMap-powered San Francisco address and landmark search
 - [W3C Geolocation](https://www.w3.org/TR/geolocation/): browser location permission and privacy standard
 
 ## Version
 
-Current public release: `v1.4 · Decision Support Beta`
+Current public release: `v1.5 · Decision Support Beta`
 
 The private analytical Notebook is intentionally not published here. This repository contains only the deployable application, credential-free snapshots, refresh workflow, reference implementation, and tests.

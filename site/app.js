@@ -6,26 +6,26 @@ const I18N = {
     planJourney: "Plan a trip", viewNetwork: "Explore Muni →", howWorks: "See how results are made", vehiclesReporting: "vehicle locations found",
     routesObserved: "routes with recent updates", activeNotices: "service updates", liveNetwork: "Muni right now",
     seeCityMove: "Check your route before you go.", focusRoute: "Choose a route", focusDirection: "Choose a direction", mapHint: "The map updates when you choose a route or direction.",
-    routePulse: "What's happening", vehicles: "Vehicle locations", medianGap: "Time between vehicles", bunching: "Vehicles close together", serviceGaps: "Long waits", currentSpeed: "Reported speed", evidence: "Arrival estimates checked",
+    routePulse: "What to know now", vehicles: "Vehicles on the map", medianGap: "Typical time between vehicles", bunching: "Vehicles arriving together", serviceGaps: "Longer gaps", currentSpeed: "Latest reported speed", evidence: "Arrival estimates available",
     routeOverview: "Routes needing attention", directionNote: "Each direction can run differently, so we check them separately.",
     viewRouteDetails: "View details →", viewAllRoutes: "View all routes →", showFewerRoutes: "Show fewer routes", openUpdates: "Open updates ＋", closeUpdates: "Close updates −",
-    currentUpdates: "Current trip context", currentUpdatesTitle: "Service and street updates you can see now", viewAllUpdates: "View all updates →",
+    currentUpdates: "Before you go", currentUpdatesTitle: "Service and street updates available now", viewAllUpdates: "View all updates →",
     streetsService: "What may affect your ride", explainWhy: "See service and street updates together.",
     causalityNote: "A street event near a route may affect service, but it does not prove what caused a delay.",
     serviceNotices: "Muni service updates", roadEvents: "Nearby street work", journeyDecision: "Plan your trip",
-    whereGoing: "Where do you want to go?", plannerLead: "Choose two Muni stops. We'll compare direct trips and trips with one transfer using the latest available data.",
-    dynamicPlanner: "Latest predictions + on-device planning · Public Beta", fromStop: "Starting stop", toStop: "Destination stop", browseAllStops: "Browse all stops", findRoute: "Compare routes", tryExample: "Try a sample trip",
-    findingOptions: "Finding your best options…", loadingTrips: "Feasible Muni trips", loadingPredictions: "Current predictions", loadingTransfers: "Transfers", loadingReliability: "Route reliability",
-    whyRoute: "Why this route?", exploreTrip: "Explore full trip →", recommendationEvidence: "Recommendation evidence", compareTwo: "Compare two options",
+    whereGoing: "Where do you want to go?", plannerLead: "Search for a Muni stop, San Francisco address, or landmark. We'll connect places to a nearby stop and compare the routes you can take now.",
+    dynamicPlanner: "Uses current arrivals · Plans on this device · Public Beta", fromStop: "Starting point", toStop: "Destination", browseAllStops: "Browse all stops", findRoute: "Compare routes", tryExample: "Try a sample trip",
+    findingOptions: "Finding routes you can take…", loadingTrips: "Direct and one-transfer trips", loadingPredictions: "Latest arrival times", loadingTransfers: "Time to make each transfer", loadingReliability: "How steadily vehicles are arriving",
+    whyRoute: "Why choose this route?", exploreTrip: "View trip details →", recommendationEvidence: "What this is based on", compareTwo: "Compare two options",
     quickComparison: "Quick comparison", recommendedVsFastest: "Recommended route vs fastest route", compareOtherOptions: "Compare any two routes →",
-    visibleEvidence: "What may affect this trip", visibleEvidenceTitle: "Current movement, street work, and historical context",
-    movementStreetTitle: "Current movement and street updates", historicalAreasTitle: "Historical context by trip area",
+    visibleEvidence: "What may affect this trip", visibleEvidenceTitle: "Current service, street work, and past reports",
+    movementStreetTitle: "Current service and street updates", historicalAreasTitle: "Past reports near each part of the trip",
     journeyMapHint: "Transit legs are solid; walking connections are dotted.", journeyTimeline: "Your trip",
-    journeyReliability: "How steady is this trip?", journeySafety: "Historical incident context", journeyParking: "Parking near your destination",
+    journeyReliability: "How steadily is service running?", journeySafety: "Past reports near this trip", journeyParking: "Recent parking activity near your destination",
     threeWays: "Choose what matters most.", referenceCase: "Reference trip", alternatives: "Other routes",
     tradeoffs: "Compare time, walking, and transfers.", route: "Route", eta: "Estimated trip time", walk: "Walking", reliability: "Current service",
-    exposure: "Historical incident context", cityContext: "More travel info", moreThanBus: "Other things that may affect your trip.",
-    parkingDemand: "Recent parking activity", safetyContext: "Historical incident context", safetyExpand: "Read what this can—and cannot—tell you", dataQuality: "How current is this data?",
+    exposure: "Past reports nearby", cityContext: "More travel info", moreThanBus: "Other things that may affect your trip.",
+    parkingDemand: "Recent parking payments—not open spaces", safetyContext: "Past reports near Muni stops", safetyExpand: "See what these reports can—and cannot—tell you", dataQuality: "How current is this data?",
     methodEyebrow: "How we build each result", evidenceTitle: "What we check before recommending a trip.",
     northStarBody: "SF Transit Pulse answers one practical question: What should I take right now, and why?", evidenceBody: "We only say what the available data supports.",
     observe: "Collect current updates", observeBody: "Check vehicle locations, arrival estimates, service notices, route paths, and when each source was updated.",
@@ -38,7 +38,8 @@ const I18N = {
     nearbyLead: "Choose a distance, then allow location access. We'll show every Muni stop inside that range and the routes you can take there.",
     nearbyRadiusLabel: "Search within", nearbyButton: "Find nearby stops",
     nearbyPrivacy: "Your location is used only on this page to calculate distance. It is not uploaded or saved.",
-    nearbyInitial: "Select “Find nearby stops” when you're ready to share your location with this page.",
+    nearbyInitial: "Select “Find nearby stops” when you're ready to share your location with this page.", nearbyMapCaption: "Your location stays on this page. Select a stop card below to use it in the trip planner.",
+    placeSearchNote: "For an address or landmark, we use its nearest Muni stop. The walk to that stop is shown before you compare routes and is not included in the transit ETA.",
     highlightsEyebrow: "Beyond a single ETA", highlightsTitle: "See what an ETA alone can miss.",
     highlightDirection: "Direction health", highlightDirectionBody: "Check each direction separately for uneven spacing and longer waits.",
     highlightTransfer: "Can you catch the transfer?", highlightTransferBody: "See the expected connection buffer when two concrete trips are available.",
@@ -50,8 +51,8 @@ const I18N = {
     comparisonEyebrow: "Option A vs Option B", comparisonTitle: "Compare two routes side by side",
     comparisonHelp: "Choose any two options to see the tradeoffs without switching back and forth.",
     freshnessFeature: "Old data doesn't stay “live.”",
-    footerNote: "An independent research prototype. Not an official SFMTA service.", footerVersion: "v1.4 · Decision Support Beta",
-    footerData: "Data: 511 SF Bay · DataSF · SFMTA", footerMap: "Map © OpenStreetMap contributors", reportIssue: "Report an issue"
+    footerNote: "An independent research prototype. Not an official SFMTA service.", footerVersion: "v1.5 · Decision Support Beta",
+    footerData: "Data: 511 SF Bay · DataSF · SFMTA", footerMap: "Map © OpenStreetMap contributors", footerPlaces: "Place search: OpenStreetMap contributors · Photon", reportIssue: "Report an issue"
   },
   zh: {
     navNetwork: "现在的 Muni", navJourney: "规划行程", navContext: "更多出行信息", refresh: "立即检查", skipToMuni: "跳到 Muni 实时信息",
@@ -60,26 +61,26 @@ const I18N = {
     planJourney: "规划行程", viewNetwork: "查看 Muni →", howWorks: "看看结果怎么来的", vehiclesReporting: "个车辆位置",
     routesObserved: "条线路有近期信息", activeNotices: "条服务更新", liveNetwork: "现在的 Muni",
     seeCityMove: "出发前，先看看你的线路。", focusRoute: "选择线路", focusDirection: "选择方向", mapHint: "选择线路或方向后，地图会跟着更新。",
-    routePulse: "现在运行得怎么样", vehicles: "车辆位置", medianGap: "车辆通常相隔多久", bunching: "几辆车挤在一起", serviceGaps: "两班车间隔过长", currentSpeed: "回报速度", evidence: "已查看的到站信息",
+    routePulse: "出发前需要知道什么", vehicles: "地图上的车辆", medianGap: "车辆通常相隔多久", bunching: "几辆车同时到达", serviceGaps: "较长的车辆空档", currentSpeed: "最近回报速度", evidence: "可参考的到站时间",
     routeOverview: "需要留意的线路", directionNote: "同一条线路的两个方向可能不一样，所以会分开查看。",
     viewRouteDetails: "查看详情 →", viewAllRoutes: "查看全部线路 →", showFewerRoutes: "收起线路", openUpdates: "展开更新 ＋", closeUpdates: "收起更新 −",
-    currentUpdates: "当前出行背景", currentUpdatesTitle: "现在可查看的公交与道路更新", viewAllUpdates: "查看全部更新 →",
+    currentUpdates: "出发前先看", currentUpdatesTitle: "现在可查看的公交和道路更新", viewAllUpdates: "查看全部更新 →",
     streetsService: "可能影响行程的情况", explainWhy: "把公交和道路更新放在一起看。",
     causalityNote: "线路附近的道路事件可能影响公交，但不能单凭位置接近就认定它造成了延误。",
     serviceNotices: "Muni 服务更新", roadEvents: "附近道路施工与事件", journeyDecision: "规划行程",
-    whereGoing: "你想从哪里去哪里？", plannerLead: "选择两个 Muni 站点。我们会用最新数据比较直达和一次换乘的路线。",
-    dynamicPlanner: "最新预测与本机计算 · 测试版", fromStop: "起点站", toStop: "终点站", browseAllStops: "浏览全部站点", findRoute: "比较路线", tryExample: "试试示例行程",
-    findingOptions: "正在寻找适合你的路线…", loadingTrips: "可以乘坐的 Muni 路线", loadingPredictions: "当前到站预测", loadingTransfers: "换乘是否接得上", loadingReliability: "线路运行稳定性",
-    whyRoute: "为什么推荐这条？", exploreTrip: "查看完整行程 →", recommendationEvidence: "推荐依据", compareTwo: "比较两个方案",
+    whereGoing: "你想从哪里去哪里？", plannerLead: "可以搜索 Muni 站点、旧金山地址或地标。我们会把地点连接到附近站点，再比较现在可以乘坐的路线。",
+    dynamicPlanner: "使用当前到站时间 · 在你的设备上计算 · 测试版", fromStop: "从哪里出发", toStop: "去哪里", browseAllStops: "浏览全部站点", findRoute: "比较路线", tryExample: "试试示例行程",
+    findingOptions: "正在寻找现在可以乘坐的路线…", loadingTrips: "直达和一次换乘路线", loadingPredictions: "最近到站时间", loadingTransfers: "每次换乘还剩多久", loadingReliability: "车辆到站是否稳定",
+    whyRoute: "为什么选择这条？", exploreTrip: "查看行程详情 →", recommendationEvidence: "这个推荐根据什么", compareTwo: "比较两个方案",
     quickComparison: "快速比较", recommendedVsFastest: "推荐路线与最快路线", compareOtherOptions: "任意比较两条路线 →",
-    visibleEvidence: "可能影响这趟行程的情况", visibleEvidenceTitle: "当前行驶、道路施工与历史背景",
-    movementStreetTitle: "当前行驶与道路更新", historicalAreasTitle: "行程各区域的历史背景",
+    visibleEvidence: "可能影响这趟行程的情况", visibleEvidenceTitle: "当前运行、道路施工和过去报告",
+    movementStreetTitle: "当前运行和道路更新", historicalAreasTitle: "行程各处附近的过去报告",
     journeyMapHint: "实线是公交路段，虚线是步行连接。", journeyTimeline: "行程步骤",
-    journeyReliability: "这趟行程稳不稳定？", journeySafety: "历史事件参考", journeyParking: "目的地附近停车情况",
+    journeyReliability: "车辆到站稳不稳定？", journeySafety: "这趟行程附近的过去报告", journeyParking: "目的地附近近期停车活动",
     threeWays: "按你最在意的事情来选。", referenceCase: "参考行程", alternatives: "其他路线",
     tradeoffs: "比较时间、步行和换乘。", route: "线路", eta: "预计行程时间", walk: "步行", reliability: "当前运行情况",
-    exposure: "历史事件参考", cityContext: "更多出行信息", moreThanBus: "看看其他可能影响出行的情况。",
-    parkingDemand: "近期停车付费情况", safetyContext: "历史事件参考", safetyExpand: "了解这些记录能说明什么、不能说明什么", dataQuality: "这些数据有多新？",
+    exposure: "附近的过去报告", cityContext: "更多出行信息", moreThanBus: "看看其他可能影响出行的情况。",
+    parkingDemand: "近期停车付费活动，不代表空位", safetyContext: "Muni 站点附近的过去报告", safetyExpand: "看看这些报告能说明什么、不能说明什么", dataQuality: "这些数据有多新？",
     methodEyebrow: "每个结果是怎么得出的", evidenceTitle: "推荐路线前，我们会检查这些信息。",
     northStarBody: "SF Transit Pulse 只想回答一个实用问题：我现在该坐什么？为什么？", evidenceBody: "数据能说明多少，我们就只说多少。",
     observe: "收集最新信息", observeBody: "查看车辆位置、预计到站时间、服务通知、线路路径，以及每份数据的更新时间。",
@@ -92,7 +93,8 @@ const I18N = {
     nearbyLead: "先选择距离，再允许获取位置。我们会列出范围内的全部 Muni 站点，以及每个站可以乘坐的线路。",
     nearbyRadiusLabel: "查找范围", nearbyButton: "查找附近站点",
     nearbyPrivacy: "你的位置只会在这个页面中用于计算距离，不会上传或保存。",
-    nearbyInitial: "准备好后，点击“查找附近站点”并选择是否允许本页使用你的位置。",
+    nearbyInitial: "准备好后，点击“查找附近站点”并选择是否允许本页使用你的位置。", nearbyMapCaption: "你的位置只留在本页。可在下方选择一个站点，用作行程起点或终点。",
+    placeSearchNote: "搜索地址或地标时，我们会使用离它最近的 Muni 站点。比较前会显示步行到站距离，这段步行不计入公交预计时间。",
     highlightsEyebrow: "不只看一个到达时间", highlightsTitle: "看看单一 ETA 容易漏掉什么。",
     highlightDirection: "分方向看运行情况", highlightDirectionBody: "两个方向分开检查车辆间隔和可能的长时间等待。",
     highlightTransfer: "这次换乘赶得上吗？", highlightTransferBody: "有具体班次预测时，直接显示预计可用的换乘余量。",
@@ -104,8 +106,8 @@ const I18N = {
     comparisonEyebrow: "方案 A 与方案 B", comparisonTitle: "并排比较两条路线",
     comparisonHelp: "选择任意两个方案，不用来回切换就能看清差别。",
     freshnessFeature: "旧数据不会一直被叫作“实时”。",
-    footerNote: "独立研究原型，并非 SFMTA 官方服务。", footerVersion: "v1.4 · 出行决策测试版",
-    footerData: "数据：511 SF Bay · DataSF · SFMTA", footerMap: "地图 © OpenStreetMap 贡献者", reportIssue: "报告问题"
+    footerNote: "独立研究原型，并非 SFMTA 官方服务。", footerVersion: "v1.5 · 出行决策测试版",
+    footerData: "数据：511 SF Bay · DataSF · SFMTA", footerMap: "地图 © OpenStreetMap 贡献者", footerPlaces: "地点搜索：OpenStreetMap 贡献者 · Photon", reportIssue: "报告问题"
   }
 };
 
@@ -119,9 +121,14 @@ let map = null;
 let mapLayers = {};
 let journeyMap = null;
 let journeyLayer = null;
+let nearbyMap = null;
+let nearbyMapLayer = null;
 let stopSearchIndex = new Map();
 let plannerStops = [];
 const stopBrowseState = new WeakMap();
+const placeSearchState = new WeakMap();
+const placeSearchCache = new Map();
+const placeMatches = {origin: null, destination: null};
 let userLocation = null;
 let nearbyFeedback = null;
 let overlayReturnFocus = null;
@@ -284,8 +291,8 @@ function setLanguage(next, {syncUrl = false} = {}) {
   const originInput = document.getElementById("origin-input");
   const destinationInput = document.getElementById("destination-input");
   const swapButton = document.getElementById("swap-stops");
-  if (originInput) originInput.placeholder = language === "zh" ? "输入站名，或浏览全部站点" : "Search by name, or browse all stops";
-  if (destinationInput) destinationInput.placeholder = language === "zh" ? "输入站名，或浏览全部站点" : "Search by name, or browse all stops";
+  if (originInput) originInput.placeholder = language === "zh" ? "搜索站点、地址或地标" : "Search a stop, address, or landmark";
+  if (destinationInput) destinationInput.placeholder = language === "zh" ? "搜索站点、地址或地标" : "Search a stop, address, or landmark";
   if (swapButton) {
     const label = language === "zh" ? "交换起点和终点" : "Swap starting and destination stops";
     swapButton.setAttribute("aria-label", label);
@@ -311,6 +318,8 @@ function setLanguage(next, {syncUrl = false} = {}) {
   const destinationList = document.getElementById("destination-suggestions");
   if (originList) originList.setAttribute("aria-label", language === "zh" ? "起点站选项" : "Starting stop choices");
   if (destinationList) destinationList.setAttribute("aria-label", language === "zh" ? "终点站选项" : "Destination stop choices");
+  const nearbyMapElement = document.getElementById("nearby-map");
+  if (nearbyMapElement) nearbyMapElement.setAttribute("aria-label", language === "zh" ? "你的位置和附近 Muni 站点地图" : "Map of your location and nearby Muni stops");
   const localizedLabels = {
     "route-detail-close": language === "zh" ? "关闭线路详情" : "Close route details",
     "why-route-close": language === "zh" ? "关闭推荐依据" : "Close recommendation evidence",
@@ -326,6 +335,8 @@ function setLanguage(next, {syncUrl = false} = {}) {
   if (nearbyFeedback) {
     setNearbyStatus(nearbyCopy(nearbyFeedback.key, nearbyFeedback.values), nearbyFeedback.isError);
   }
+  renderPlaceMatch("origin");
+  renderPlaceMatch("destination");
 }
 
 function initMap() {
@@ -362,6 +373,16 @@ function initJourneyMap() {
     attribution: "&copy; OpenStreetMap contributors"
   }).addTo(journeyMap);
   journeyLayer = L.layerGroup().addTo(journeyMap);
+}
+
+function initNearbyMap() {
+  if (!window.L || nearbyMap) return;
+  nearbyMap = L.map("nearby-map", {zoomControl: true, scrollWheelZoom: false}).setView([37.7749, -122.4194], 15);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(nearbyMap);
+  nearbyMapLayer = L.layerGroup().addTo(nearbyMap);
 }
 
 function healthCopy(health) {
@@ -468,7 +489,7 @@ function renderMeta() {
   const retainedSources = Object.values(meta.source_status || {})
     .filter(source => String(source?.status || "").toLowerCase().startsWith("retained"));
   const sourceCheckMessage = transitStale && (transit.isLive || transit.isCached)
-    ? (language === "zh" ? "最新公交数据已超过 10 分钟，因此不会用于实时到站或当前车速判断。网页会每 5 分钟自动检查更新。" : "The latest transit data is more than 10 minutes old, so it is not used for live arrivals or current speed. The page checks for updates every 5 minutes.")
+    ? (language === "zh" ? "最新公交数据已超过 10 分钟，因此不会用于实时到站或当前车速判断。网页会每 90 秒自动检查更新。" : "The latest transit data is more than 10 minutes old, so it is not used for live arrivals or current speed. The page checks for updates every 90 seconds.")
     : failures.length || unavailableSources.length ?
     (language === "zh" ? `${Math.max(failures.length, unavailableSources.length)} 项数据暂时无法更新。页面不会把“没拿到数据”说成“没有事件”。` : `${Math.max(failures.length, unavailableSources.length)} data source${Math.max(failures.length, unavailableSources.length) === 1 ? " is" : "s are"} temporarily unavailable. Missing data is not presented as “no events.”`) : retainedSources.length ?
     (language === "zh" ? "公交数据已更新；更新较慢的来源沿用上一次成功结果，并按各自时间判断是否还能使用。" : "Transit is updated. Slower sources use their latest successful update and remain subject to their own freshness limits.") :
@@ -1103,9 +1124,59 @@ function useNearbyStop(stopId, role) {
   if (!stop || !input) return;
   input.value = stopLabel(stop);
   stopSearchIndex.set(input.value, stop.stop_id);
+  clearPlaceMatch(input);
   appState.plannerRequestKey = null;
   input.focus({preventScroll: true});
   document.getElementById("trip-planner-form")?.scrollIntoView({behavior: "smooth", block: "center"});
+}
+
+function renderNearbyMap(matches) {
+  if (!userLocation || !window.L) return;
+  initNearbyMap();
+  if (!nearbyMap || !nearbyMapLayer) return;
+  const shell = document.getElementById("nearby-map-shell");
+  const radius = Number(document.getElementById("nearby-radius")?.value || 200);
+  shell.hidden = false;
+  nearbyMapLayer.clearLayers();
+
+  L.circle([userLocation.lat, userLocation.lon], {
+    radius,
+    color: "#0066cc",
+    weight: 1,
+    fillColor: "#0066cc",
+    fillOpacity: .06
+  }).addTo(nearbyMapLayer);
+  const locationMarker = L.circleMarker([userLocation.lat, userLocation.lon], {
+    radius: 8,
+    color: "#ffffff",
+    weight: 3,
+    fillColor: "#0066cc",
+    fillOpacity: 1
+  }).addTo(nearbyMapLayer);
+  locationMarker.bindPopup(language === "zh" ? "你的位置" : "Your location");
+
+  matches.forEach(stop => {
+    const routes = (stop.route_ids || []).join(" · ");
+    const routeLine = routes
+      ? (language === "zh" ? `可乘线路：${routes}` : `Routes: ${routes}`)
+      : (language === "zh" ? "暂时没有线路资料" : "Route information unavailable");
+    L.circleMarker([Number(stop.lat), Number(stop.lon)], {
+      radius: 7,
+      color: "#0066cc",
+      weight: 2,
+      fillColor: "#ffffff",
+      fillOpacity: 1
+    }).bindPopup(`<strong>${escapeHtml(stop.name || "Muni stop")}</strong><br>${escapeHtml(routeLine)}<br>${Math.round(stop.distance_m)} ${language === "zh" ? "米" : "m"}`)
+      .addTo(nearbyMapLayer);
+  });
+
+  const bounds = L.latLngBounds([[userLocation.lat, userLocation.lon]]);
+  matches.forEach(stop => bounds.extend([Number(stop.lat), Number(stop.lon)]));
+  requestAnimationFrame(() => {
+    nearbyMap.invalidateSize();
+    if (matches.length) nearbyMap.fitBounds(bounds.pad(.2), {maxZoom: 17});
+    else nearbyMap.setView([userLocation.lat, userLocation.lon], radius <= 100 ? 18 : 17);
+  });
 }
 
 function renderNearbyStops() {
@@ -1119,6 +1190,7 @@ function renderNearbyStops() {
   }
 
   const matches = window.SFNearbyStops?.findNearbyStops(plannerStops, userLocation, radius) || [];
+  renderNearbyMap(matches);
   setNearbyFeedback(matches.length ? "found" : "none", {count: matches.length, radius});
   results.innerHTML = matches.map(stop => {
     const routes = (stop.route_ids || []).join(" · ");
@@ -1210,9 +1282,67 @@ function stopOptionMarkup(stop, position, total) {
   </button>`;
 }
 
+function inputRole(input) {
+  return input?.id === "destination-input" ? "destination" : "origin";
+}
+
+function renderPlaceMatch(role) {
+  const match = placeMatches[role];
+  const element = document.getElementById(`${role}-place-match`);
+  if (!element) return;
+  if (!match) {
+    element.hidden = true;
+    element.textContent = "";
+    return;
+  }
+  const distance = Math.round(match.distance_m);
+  element.textContent = language === "zh"
+    ? `${match.placeName} → 使用 ${match.stopName}；步行约 ${distance} 米到站，不计入公交预计时间。`
+    : `${match.placeName} → using ${match.stopName}; walk about ${distance} m to the stop. This walk is not included in the transit ETA.`;
+  element.hidden = false;
+}
+
+function clearPlaceMatch(input) {
+  const role = inputRole(input);
+  placeMatches[role] = null;
+  renderPlaceMatch(role);
+}
+
+function placeOptionMarkup(place, input) {
+  const nearest = window.SFPlaceSearch?.nearestStops(plannerStops, place, 1)?.[0];
+  if (!nearest) return "";
+  const distance = Math.round(nearest.distance_m);
+  const detail = [place.detail, language === "zh"
+    ? `最近 Muni 站点：${nearest.name} · ${distance} 米`
+    : `Nearest Muni stop: ${nearest.name} · ${distance} m`]
+    .filter(Boolean)
+    .join(" · ");
+  return `<button class="place-option" type="button" role="option"
+    data-place-name="${escapeHtml(place.name)}"
+    data-place-lat="${Number(place.lat)}"
+    data-place-lon="${Number(place.lon)}"
+    data-stop-id="${escapeHtml(nearest.stop_id)}"
+    data-stop-label="${escapeHtml(stopLabel(nearest))}"
+    data-stop-name="${escapeHtml(nearest.name || "Muni stop")}" data-walk-distance="${distance}">
+    <strong>${escapeHtml(place.name)}</strong>
+    <span>${escapeHtml(detail)}</span>
+  </button>`;
+}
+
 function chooseStopOption(option, input, list) {
   input.value = option.dataset.stopLabel;
   stopSearchIndex.set(input.value, option.dataset.stopId);
+  if (option.classList.contains("place-option")) {
+    const role = inputRole(input);
+    placeMatches[role] = {
+      placeName: option.dataset.placeName,
+      stopName: option.dataset.stopName,
+      distance_m: Number(option.dataset.walkDistance)
+    };
+    renderPlaceMatch(role);
+  } else {
+    clearPlaceMatch(input);
+  }
   appState.plannerRequestKey = null;
   input.focus({preventScroll: true});
   closeStopList(input, list);
@@ -1293,7 +1423,7 @@ function openAllStops(input, list) {
   appendStopBrowseBatch(input, list);
 }
 
-function renderStopSuggestions(input, list, rows) {
+function renderStopSuggestions(input, list, rows, {places = [], placeStatus = ""} = {}) {
   closeAllStopLists(list);
   stopBrowseState.delete(list);
   const unique = new Map();
@@ -1305,9 +1435,21 @@ function renderStopSuggestions(input, list, rows) {
     stopSearchIndex.set(normalized.stop_id, normalized.stop_id);
   });
   const suggestions = [...unique.values()].slice(0, 12);
-  list.innerHTML = suggestions.map((stop, index) => stopOptionMarkup(stop, index + 1, suggestions.length)).join("");
-  list.hidden = suggestions.length === 0;
-  input.setAttribute("aria-expanded", String(suggestions.length > 0));
+  const stopMarkup = suggestions.map((stop, index) => stopOptionMarkup(stop, index + 1, suggestions.length)).join("");
+  const placeMarkup = places.map(place => placeOptionMarkup(place, input)).filter(Boolean).join("");
+  const stopGroup = stopMarkup
+    ? `<p class="suggestion-group-label">${language === "zh" ? "Muni 站点" : "Muni stops"}</p><div class="stop-options">${stopMarkup}</div>`
+    : "";
+  const placeGroup = placeMarkup
+    ? `<p class="suggestion-group-label">${language === "zh" ? "旧金山地址和地标" : "San Francisco places"}</p><div class="stop-options">${placeMarkup}</div>`
+    : "";
+  const statusMarkup = placeStatus
+    ? `<p class="place-search-status" role="status">${escapeHtml(placeStatus)}</p>`
+    : "";
+  list.innerHTML = `${stopGroup}${placeGroup}${statusMarkup}`;
+  const hasContent = Boolean(stopMarkup || placeMarkup || placeStatus);
+  list.hidden = !hasContent;
+  input.setAttribute("aria-expanded", String(hasContent));
   const browseButton = browseButtonForInput(input);
   if (browseButton) browseButton.setAttribute("aria-expanded", "false");
   bindStopOptionButtons(input, list);
@@ -1315,11 +1457,47 @@ function renderStopSuggestions(input, list, rows) {
 
 function scheduleStopSearch(input, list) {
   const query = input.value.trim();
+  const previous = placeSearchState.get(input);
+  if (previous?.timer) window.clearTimeout(previous.timer);
+  if (previous?.controller) previous.controller.abort();
   if (query.length < 2) {
     closeStopList(input, list);
     return;
   }
-  renderStopSuggestions(input, list, localStopMatches(query));
+  const localRows = localStopMatches(query);
+  if (query.length < 3 || !window.SFPlaceSearch) {
+    renderStopSuggestions(input, list, localRows);
+    return;
+  }
+
+  const cacheKey = `${language}:${query.toLocaleLowerCase()}`;
+  if (placeSearchCache.has(cacheKey)) {
+    renderStopSuggestions(input, list, localRows, {places: placeSearchCache.get(cacheKey)});
+    return;
+  }
+
+  renderStopSuggestions(input, list, localRows, {
+    placeStatus: language === "zh" ? "正在搜索旧金山地址和地标……" : "Searching San Francisco places…"
+  });
+  const state = {timer: null, controller: null, query, language};
+  state.timer = window.setTimeout(async () => {
+    const controller = new AbortController();
+    state.controller = controller;
+    try {
+      const places = await window.SFPlaceSearch.searchPlaces(query, {language: state.language, signal: controller.signal});
+      if (input.value.trim() !== state.query || language !== state.language) return;
+      placeSearchCache.set(cacheKey, places);
+      renderStopSuggestions(input, list, localStopMatches(state.query), {places});
+    } catch (error) {
+      if (error.name === "AbortError" || input.value.trim() !== state.query) return;
+      renderStopSuggestions(input, list, localStopMatches(state.query), {
+        placeStatus: language === "zh"
+          ? "地点搜索暂时不可用。请选择 Muni 站点，或稍后重试。"
+          : "Place search is unavailable. Choose a Muni stop or try again."
+      });
+    }
+  }, 600);
+  placeSearchState.set(input, state);
 }
 
 function resolveStopInput(value) {
@@ -2371,13 +2549,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const origin = document.getElementById("origin-input");
     const destination = document.getElementById("destination-input");
     [origin.value, destination.value] = [destination.value, origin.value];
+    [placeMatches.origin, placeMatches.destination] = [placeMatches.destination, placeMatches.origin];
+    renderPlaceMatch("origin");
+    renderPlaceMatch("destination");
     appState.plannerRequestKey = null;
   });
   [
     [document.getElementById("origin-input"), document.getElementById("origin-suggestions"), document.getElementById("origin-browse-button")],
     [document.getElementById("destination-input"), document.getElementById("destination-suggestions"), document.getElementById("destination-browse-button")]
   ].forEach(([input, list, browseButton]) => {
-    input.addEventListener("input", () => scheduleStopSearch(input, list));
+    input.addEventListener("input", () => {
+      clearPlaceMatch(input);
+      scheduleStopSearch(input, list);
+    });
     input.addEventListener("focus", () => scheduleStopSearch(input, list));
     browseButton.addEventListener("click", () => openAllStops(input, list));
     list.addEventListener("scroll", () => {
@@ -2398,6 +2582,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!origin || !destination) return;
     document.getElementById("origin-input").value = stopLabel(origin);
     document.getElementById("destination-input").value = stopLabel(destination);
+    clearPlaceMatch(document.getElementById("origin-input"));
+    clearPlaceMatch(document.getElementById("destination-input"));
     appState.plannerRequestKey = null;
     planTrip();
   });

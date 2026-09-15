@@ -2,6 +2,9 @@ const RAW_SNAPSHOT_URL =
   "https://raw.githubusercontent.com/ksitcode00/sf-transit-pulse-site/main/site/data/live-transit.json";
 const MIN_REFRESH_AGE_SECONDS = 2 * 60;
 const ACTIVE_RUN_LOOKBACK_SECONDS = 10 * 60;
+const PLACE_SEARCH_ORIGIN = "https://ksitcode00.github.io";
+const PLACE_SEARCH_BBOX = "-122.55,37.69,-122.32,37.84";
+const PHOTON_SEARCH_URL = "https://photon.komoot.io/api/";
 
 function parseEpoch(value) {
   const epoch = Date.parse(value || "");
@@ -22,6 +25,81 @@ function githubHeaders(token) {
     "X-GitHub-Api-Version": "2022-11-28",
     "User-Agent": "sf-transit-refresh-watchdog"
   };
+}
+
+function allowedPlaceSearchOrigin(origin) {
+  if (!origin) return true;
+  if (origin === PLACE_SEARCH_ORIGIN) return true;
+  return /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+}
+
+function buildPlaceSearchUrl(query, language = "en") {
+  const url = new URL(PHOTON_SEARCH_URL);
+  url.searchParams.set("q", query);
+  url.searchParams.set("limit", "6");
+  url.searchParams.set("lang", language === "zh" ? "zh" : "en");
+  url.searchParams.set("bbox", PLACE_SEARCH_BBOX);
+  url.searchParams.set("lat", "37.7749");
+  url.searchParams.set("lon", "-122.4194");
+  return url.toString();
+}
+
+function normalizePhotonResults(payload) {
+  const seen = new Set();
+  return (payload?.features || []).flatMap(feature => {
+    const coordinates = feature?.geometry?.coordinates || [];
+    const lon = Number(coordinates[0]);
+    const lat = Number(coordinates[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return [];
+    if (lon < -122.55 || lon > -122.32 || lat < 37.69 || lat > 37.84) return [];
+    const properties = feature.properties || {};
+    const primary = properties.name
+      || [properties.housenumber, properties.street].filter(Boolean).join(" ")
+      || properties.locality
+      || properties.city;
+    const secondary = [properties.street, properties.locality, properties.city, properties.postcode]
+      .filter(Boolean)
+      .filter((value, index, values) => values.indexOf(value) === index && value !== primary)
+      .join(", ");
+    if (!primary) return [];
+    const key = `${primary}|${lat.toFixed(5)}|${lon.toFixed(5)}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{id: key, name: primary, detail: secondary, lat, lon}];
+  }).slice(0, 5);
+}
+
+function placeResponse(payload, status, origin = "") {
+  const headers = {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": status === 200 ? "public, max-age=3600" : "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "Vary": "Origin"
+  };
+  if (origin) headers["Access-Control-Allow-Origin"] = origin;
+  return new Response(JSON.stringify(payload), {status, headers});
+}
+
+async function handlePlaceSearch(request) {
+  const origin = request.headers.get("Origin") || "";
+  if (!allowedPlaceSearchOrigin(origin)) {
+    return placeResponse({error: "Origin not allowed."}, 403);
+  }
+  const requestUrl = new URL(request.url);
+  const query = String(requestUrl.searchParams.get("q") || "").trim().slice(0, 80);
+  const language = requestUrl.searchParams.get("lang") === "zh" ? "zh" : "en";
+  if (query.length < 3) {
+    return placeResponse({error: "Enter at least three characters."}, 400, origin);
+  }
+
+  const upstream = await fetch(buildPlaceSearchUrl(query, language), {
+    headers: {Accept: "application/json"}
+  });
+  if (!upstream.ok) {
+    return placeResponse({error: "Place search is temporarily unavailable."}, 502, origin);
+  }
+  const places = normalizePhotonResults(await upstream.json());
+  return placeResponse({places, attribution: "OpenStreetMap contributors · Photon"}, 200, origin);
 }
 
 async function githubRequest(env, path, init = {}) {
@@ -70,6 +148,13 @@ async function checkAndRecover(env, scheduledTime) {
 }
 
 export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (request.method === "GET" && url.pathname === "/places") {
+      return handlePlaceSearch(request);
+    }
+    return new Response("Not found", {status: 404});
+  },
   async scheduled(controller, env, ctx) {
     // Feature 32 · Independent scheduler / 独立调度保险
     // 中文：Cloudflare 每 3 分钟提供主时钟；时间戳仍新鲜或 GitHub 已有任务时
@@ -81,4 +166,4 @@ export default {
   }
 };
 
-export {checkAndRecover, snapshotAgeSeconds};
+export {buildPlaceSearchUrl, checkAndRecover, handlePlaceSearch, normalizePhotonResults, snapshotAgeSeconds};

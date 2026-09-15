@@ -13,6 +13,8 @@
   [![自动恢复过期公交数据](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-watchdog.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-watchdog.yml)
 </div>
 
+![SF Transit Pulse 实时 Muni 看板与行程规划器](artifacts/ui-v1.5/desktop-home.png)
+
 SF Transit Pulse 是一个为普通乘客设计的 Muni 出行决策工具。它不仅显示预计到站时间，还会解释车辆是否挤在一起、是否可能出现长时间空档、具体换乘是否赶得上，以及不同路线为什么会被推荐。
 
 > 当前版本是独立研究原型，不是 SFMTA 官方服务。实时预测仍会变化，请为重要行程预留时间。
@@ -21,8 +23,8 @@ SF Transit Pulse 是一个为普通乘客设计的 Muni 出行决策工具。它
 
 1. 打开[中文实时网站](https://ksitcode00.github.io/sf-transit-pulse-site/?lang=zh)。
 2. 在“现在的 Muni”选择线路和方向，查看车辆位置、间隔和服务提示。
-3. 在“规划行程”点击“查找附近站点”，允许定位后选择 100、200、300 或 400 米范围。
-4. 把附近站点设为起点或终点，再比较“最快到达”“综合推荐”和“安全优先”。
+3. 在“规划行程”输入站点、地址或地标，例如“Ferry Building”；也可以点击“查找附近站点”，允许定位后选择 100、200、300 或 400 米范围。
+4. 选择系统匹配的 Muni 站点，确认步行到站距离，再比较“最快到达”“综合推荐”和“安全优先”。
 
 ## 产品目标
 
@@ -63,9 +65,11 @@ SF Transit Pulse 是一个为普通乘客设计的 Muni 出行决策工具。它
 | Muni 服务通知 | 把站点临时移动、电梯故障和服务调整放在线路旁边。 | 前往常用站点前，先看到该站临时搬到下一条街。 | 已上线 |
 | 道路施工与线路背景 | 把道路事件与公交运行放在一起看，但不会把位置接近写成已经证明的延误原因。 | Market Street 附近施工且车辆变慢时，只提示“可能有关”。 | 研究功能 |
 | 附近站点定位 | 用户主动允许后，在浏览器内计算当前位置与全部 Muni 站点的距离；位置不会上传或保存。 | 选择 200 米后，查看范围内所有站点、距离和可乘线路。 | 已上线，测试版 |
+| 当前位置地图 | 在同一张地图中显示当前位置、选择的范围和所有匹配站点；坐标不会传到项目服务器。 | 把范围从 100 米改为 300 米，直接查看地图中新增加了哪些站点。 | 已上线，测试版 |
 | 100–400 米范围选择 | 查找范围只提供 100、200、300、400 米四档。改变范围不需要再次授权定位。 | 100 米没有站点时，把范围改为 300 米重新查看。 | 已上线 |
 | 附近站点设为起点或终点 | 找到站点后不必重新输入站名，减少移动端操作。 | 点击“设为起点”，再输入目的地进行路线比较。 | 已上线 |
 | 站点搜索 | 输入站名即可选择起点和终点，并查看该站经过的线路；搜索在浏览器中读取公开 GTFS。 | 输入“4th St & Market”，再选择正确的站点编号。 | 已上线 |
+| 地址与地标搜索 | 只搜索旧金山市内地点，把地点连接到 1,200 米内最近的 Muni 站点，并在规划前显示步行距离；不会把这段步行偷偷算进公交 ETA。 | 输入“Ferry Building”，选择地点结果，再从匹配的 Embarcadero 站点规划。 | 已上线，测试版 |
 | 浏览全部站点 | 不输入任何文字也能打开按名称排序的完整 Muni 站点目录。滚动时每次加载 100 个，既能选到全部站点，也不会让页面卡住。 | 点击“浏览全部站点”，在列表中滚动，再根据站名和经过线路选择。 | 已上线 |
 | 直达和一次换乘规划 | 寻找可上车与下车的站点，并排除反方向、先下后上和距离过远的假换乘。 | 从 SoMa 去 Fillmore 时，同时比较直达和一次换乘方案。 | 已上线，测试版 |
 | 具体班次实时上下车时间 | 只有同一具体班次在上下车站都有有效预测，而且更新不超过 10 分钟时才标成实时；否则明确降级为估算。 | 显示预计 8:12 上车、8:27 下车和班次编号，而不是只给模糊的 15 分钟。 | 有新鲜完整预测时上线 |
@@ -80,7 +84,7 @@ SF Transit Pulse 是一个为普通乘客设计的 Muni 出行决策工具。它
 | 稳定的自动刷新 | 路线结构使用稳定的行程 ID，当前具体班次另有班次实例 ID；新快照重新计算时不会让用户正在看的选项乱跳。 | 下一班 38R 替换上一班时，用户仍留在同一张 38R 行程卡。 | 已上线 |
 | 手机端推荐栏 | 窄屏时把当前选择和 44 像素高的“查看行程”按钮保持在手边，并把比较卡片改成单栏。 | 走向车站时也能单手查看当前选择。 | 已上线，测试版 |
 | 独立中英文界面 | 网址可以指定语言，按钮、状态、错误和方法说明会整体切换；选择也会保存在本机。 | `?lang=zh` 直接打开中文，`?lang=en` 直接打开英文。 | 已上线 |
-| 浏览器本地计算 | 查询路线和附近站点不需要 Render 或付费服务器；后台线程避免地图卡住，API 密钥也不会进入浏览器。 | 任何人打开 GitHub Pages 都能使用，项目作者不必开着 Notebook 或电脑。 | 已上线 |
+| 浏览器本地计算 | 路线和附近站点计算不需要 Render 或付费服务器；后台线程避免地图卡住。地点搜索代理不使用 511 密钥，511 密钥也不会进入浏览器。 | 任何人打开 GitHub Pages 都能使用，项目作者不必开着 Notebook 或电脑。 | 已上线 |
 
 ## 和同类产品相比
 
@@ -94,6 +98,7 @@ SF Transit Pulse 是一个为普通乘客设计的 Muni 出行决策工具。它
 | 实时到站信息 | 有，并区分实时与估算 | 部分站点支持 | 视地区支持 | 有 | 有 |
 | 地图实时车辆 | 有，排除未归属车辆 | 相关，官方资料重点是实时出发 | 视地区支持 | 有，含乘客众包 | 有公交位置功能 |
 | 当前位置附近站点与距离范围 | 有，100–400 米四档且位置留在浏览器 | 有附近交通搜索 | 有附近交通功能 | 有附近站点 | 有附近站点 |
+| 地址与地标搜索 | 有，地点会匹配到最近 Muni 站点并显示步行距离 | 有 | 有 | 有 | 有 |
 | 按线路方向诊断状态 | 有，两个方向分别判断 | 未见同等功能 | 未见同等功能 | 未见同等功能 | 未见同等功能 |
 | 扎堆和长空档证据 | 有，显示数量与班距 | 未见同等功能 | 未见同等功能 | 相关，提供实时与乘客回报 | 相关，提供位置与交通预测 |
 | 具体换乘余量 | 有，显示分钟数和计算依据 | 相关，提供连接信息 | 相关，提供连接信息 | 相关，会提示紧张换乘 | 未见同等分钟数 |
@@ -148,6 +153,7 @@ v1 规划器有意限定为最多一次换乘。走廊级历史行程速度基�
 - 停车付费记录不证明车辆仍在现场；停车压力不是占用率或空位数。
 - 偏好分数只用于排序，不会显示成预计到达时间。
 - 用户位置只在当前浏览器页面中计算附近站点，不上传、不保存，也不会在页面打开时自动请求。
+- 地址或地标只会匹配到 1,200 米内最近的 Muni 站点；页面会显示对应站点和步行距离，而且这段步行不计入公交 ETA。
 
 ## 无服务器架构
 
@@ -172,6 +178,8 @@ v1 规划器有意限定为最多一次换乘。走廊级历史行程速度基�
 
 Cloudflare 提供三分钟主时钟，但不直接调用 511；GitHub 官方允许的最短五分钟计划保留为备用。任何一路真正花费配额前，都会在仓库快照不足两分钟时跳过重复任务。另一个 GitHub 监控每 15 分钟检查七分钟过期条件，Cloudflare 触发前也会确认没有正在运行的更新。浏览器每 90 秒检查一次不含密钥的 Pages JSON，同样不消耗 511 配额。超过 10 分钟的预测会自动降级为估算。道路来源会同时记录原始事件数与成功解析数；响应结构异常时标记为不可用，不会冒充“0 条事件”。
 
+同一个 Worker 还提供范围很小、只读的旧金山地点搜索代理，底层使用 Photon 和 OpenStreetMap。它只接受来自公开网站或本地开发环境的短查询，统一返回格式并缓存成功结果；它不会收到用户设备的实时位置，也不会接触 511 密钥。
+
 官方限额依据：[511 Open Data FAQ](https://511.org/open-data/faqs) 明确写明每个 key 每 3,600 秒 60 次；[GitHub workflow 语法](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule) 写明最短间隔为五分钟，[GitHub 故障说明](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows) 也说明定时任务可能延迟或丢失；[Socrata application token 文档](https://dev.socrata.com/docs/app-tokens.html) 说明已识别应用拥有独立请求池，除滥用外目前通常不会被限流；[Cloudflare Workers 限额](https://developers.cloudflare.com/workers/platform/limits/) 的免费计划每天允许 100,000 次请求，远高于本调度器每天 480 次时间戳检查。
 
 用户查询不会调用 511，也不需要 Render。`SF_TRANSIT_511_API_KEY` 只能保存在 GitHub Actions Secret；可选的 `SF_TRANSIT_DATASF_APP_TOKEN` Secret 会让 DataSF 请求使用 Socrata 为本应用识别的独立请求池。两个值都不能写入代码、浏览器存储、Notebook 输出或公开数据文件。
@@ -193,6 +201,7 @@ site/
   styles.css             响应式视觉系统
   app.js                 界面状态、地图、搜索、定位与双语文案
   nearby-stops.js        距离计算和附近站点筛选
+  place-search.js        旧金山地点查询与最近站点匹配
   stop-catalog.js        站点搜索与完整目录分批加载
   planner-engine.mjs     浏览器路线引擎与排序规则
   planner-worker.js      后台计算线程
@@ -217,12 +226,13 @@ data/
   parking-inventory.json 仅供刷新使用、不会部署到网站的停车表位置
 
 cloudflare/refresh-watchdog/
-  worker.js              三分钟外部主时钟，不提供公开触发入口
+  worker.js              三分钟时钟、私有恢复触发与只读地点搜索
   wrangler.jsonc         免费 Cloudflare Worker 的时间表和仓库目标
 
 tests/
   browser-planner.test.mjs  浏览器规划器功能测试
   nearby-stops.test.cjs     附近站点距离与范围测试
+  place-search.test.cjs     地点查询与最近站点匹配测试
   stop-catalog.test.cjs      站点搜索与完整目录分批测试
   test_planner.py           Python 参考测试
 ```
@@ -248,7 +258,7 @@ node scripts/benchmark_planner.mjs 100
 ### 测试
 
 ```bash
-node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs tests/stop-catalog.test.cjs
+node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs tests/place-search.test.cjs tests/stop-catalog.test.cjs tests/refresh-watchdog.test.mjs tests/ui-evidence.test.cjs
 python3 -m pytest -q tests
 ```
 
@@ -256,11 +266,12 @@ python3 -m pytest -q tests
 
 | 已经可以使用 | 下一阶段 |
 |---|---|
-| Muni 全线路、方向和实时车辆 | 地址与地标搜索 |
-| 当前位置附近 100–400 米站点 | 在地图上标记当前位置与附近站点 |
-| 直达与一次换乘 | 多次换乘和更完整的步行路网 |
-| 最快到达、综合推荐、安全优先 | 数据完整时再开放无障碍路线 |
-| 实时班次与换乘余量 | 未来出发与到达时间 |
+| Muni 全线路、方向和实时车辆 | 多次换乘和更完整的步行路网 |
+| 地址与地标搜索，并清楚显示最近站点 | 数据完整时再开放无障碍路线 |
+| 当前位置与附近 100–400 米站点地图 | 未来出发与到达时间 |
+| 直达与一次换乘 | 走廊级历史速度基线 |
+| 最快到达、综合推荐、安全优先 | 收藏与提醒 |
+| 实时班次与换乘余量 | 逐步导航 |
 | 线路、道路、历史事件和停车背景 | 收藏线路、提醒和逐步导航 |
 
 ## 数据来源
@@ -270,10 +281,11 @@ python3 -m pytest -q tests
 - [SFMTA](https://www.sfmta.com/)：Muni 与停车项目资料
 - [Caltrans QuickMap](https://quickmap.dot.ca.gov/)：公开快照可用时的道路事件背景
 - [OpenStreetMap](https://www.openstreetmap.org/)：地图底图与署名
+- [Photon](https://photon.komoot.io/)：基于 OpenStreetMap 的旧金山地址与地标搜索
 - [W3C Geolocation](https://www.w3.org/TR/geolocation/)：浏览器定位的授权与隐私标准
 
 ## 版本
 
-当前公开版本：`v1.4 · 出行决策测试版`
+当前公开版本：`v1.5 · 出行决策测试版`
 
 私有分析 Notebook 不在这个仓库中。仓库只包含可部署网页、无密钥数据快照、自动刷新流程、参考实现与测试。
