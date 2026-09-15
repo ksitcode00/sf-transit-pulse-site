@@ -13,7 +13,7 @@
   [![Recover stale transit snapshot](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-watchdog.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-watchdog.yml)
 </div>
 
-![SF Transit Pulse live Muni dashboard and trip planner](artifacts/ui-v1.5/desktop-home.png)
+![SF Transit Pulse live Muni dashboard and trip planner](artifacts/ui-v1.5/desktop-home-readme.png)
 
 ## At a glance
 

@@ -51,6 +51,7 @@ test("the fixed home comparison is explicitly labeled as an example", () => {
 test("social sharing metadata uses a repository-owned preview", () => {
   assert.match(html, /property="og:title" content="SF Transit Pulse"/);
   assert.match(html, /property="og:image" content="https:\/\/ksitcode00\.github\.io\/sf-transit-pulse-site\/assets\/social-preview\.png"/);
+  assert.match(html, /property="og:image:height" content="825"/);
   assert.match(html, /name="twitter:card" content="summary_large_image"/);
   assert.ok(fs.existsSync(path.join(root, "site", "assets", "social-preview.png")));
 });

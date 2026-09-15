@@ -13,7 +13,7 @@
   [![自动恢复过期公交数据](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-watchdog.yml/badge.svg)](https://github.com/ksitcode00/sf-transit-pulse-site/actions/workflows/refresh-watchdog.yml)
 </div>
 
-![SF Transit Pulse 实时 Muni 看板与行程规划器](artifacts/ui-v1.5/desktop-home.png)
+![SF Transit Pulse 实时 Muni 看板与行程规划器](artifacts/ui-v1.5/desktop-home-readme.png)
 
 ## 项目亮点
 
