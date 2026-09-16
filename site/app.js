@@ -254,6 +254,12 @@ function sourceFreshnessDisplay(source, maxAgeMinutes, observedAt = source?.obse
     className: "freshness-outdated"
   };
   const result = freshnessDisplay(observedAt, maxAgeMinutes);
+  if (source?.timeliness_status === "DELAYED_SOURCE") {
+    result.text = language === "zh"
+      ? `DataSF 上游数据延迟 · 最新可用记录 ${timeAgo(observedAt)} · 已过期`
+      : `DataSF source delayed · latest available record ${timeAgo(observedAt)} · Outdated`;
+    return result;
+  }
   const status = String(source?.status || "").toLowerCase();
   if (status === "retained_client_cache") {
     result.text = language === "zh"
@@ -523,7 +529,10 @@ function renderMeta() {
     [language === "zh" ? "车辆与到站时间" : "Vehicles and arrivals", transitFreshness],
     [language === "zh" ? "服务通知" : "Service notices", sourceFreshnessDisplay(meta.source_status?.alerts, 30)],
     [language === "zh" ? "道路事件" : "Street events", roadFreshness],
-    [language === "zh" ? "最近可用的停车付费活动" : "Latest paid-parking activity", sourceFreshnessDisplay(meta.source_status?.parking, 180, snapshot.parking?.source_snapshot_time)],
+    [language === "zh" ? "最近可用的停车付费活动" : "Latest paid-parking activity", sourceFreshnessDisplay({
+      ...meta.source_status?.parking,
+      timeliness_status: snapshot.parking?.timeliness_status
+    }, 180, snapshot.parking?.source_snapshot_time)],
     [language === "zh" ? "历史事件记录" : "Historical incident records", sourceFreshnessDisplay(meta.source_status?.safety, 48 * 60)],
     [language === "zh" ? "线路和站点" : "Routes and stops", {text: network?.meta?.feed_version ? `${language === "zh" ? "数据版本" : "Data version"} ${network.meta.feed_version}` : "—", className:"freshness-current"}]
   ];
