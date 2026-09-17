@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import os
 import re
 import shutil
@@ -27,9 +28,9 @@ REQUIRED_FILES = {
     "routes.txt",
     "trips.txt",
     "stops.txt",
-    "shapes.txt",
     "stop_observations.txt",
 }
+OPTIONAL_FILES = {"shapes.txt"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,6 +39,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", default="tableau-output")
     parser.add_argument("--work-dir", default=".tableau-history-work")
     parser.add_argument("--feed-zip", help="Use an existing historic feed ZIP instead of downloading")
+    parser.add_argument(
+        "--network-json",
+        default="site/data/network.json",
+        help="Static GTFS network fallback used only when the historic ZIP omits shapes.txt",
+    )
     return parser.parse_args()
 
 
@@ -73,7 +79,7 @@ def extract_required(zip_path: Path, extract_dir: Path) -> dict[str, Path]:
     with zipfile.ZipFile(zip_path) as archive:
         for member in archive.infolist():
             basename = Path(member.filename).name.lower()
-            if basename not in REQUIRED_FILES or basename in found:
+            if basename not in REQUIRED_FILES | OPTIONAL_FILES or basename in found:
                 continue
             target = extract_dir / basename
             print(f"Extracting {basename}...")
@@ -145,7 +151,71 @@ Stop observations are inferred from GTFS-Realtime data and can contain measureme
     (output_dir / "README.md").write_text(text, encoding="utf-8")
 
 
-def build_tables(files: dict[str, Path], output_dir: Path, work_dir: Path, month: str) -> None:
+def write_fallback_shapes(
+    output_dir: Path,
+    network_json: Path,
+    route_rows: list[tuple[str, str, str]],
+) -> None:
+    if not network_json.exists():
+        raise RuntimeError(
+            "Historic ZIP omitted shapes.txt and the static network fallback does not exist: "
+            f"{network_json}"
+        )
+    with network_json.open(encoding="utf-8") as handle:
+        network = json.load(handle)
+
+    current_routes = {
+        str(route.get("route_id", "")): route for route in network.get("routes", [])
+    }
+    historical_by_short_name = {
+        str(route_short_name): (str(route_id), str(route_long_name or ""))
+        for route_id, route_short_name, route_long_name in route_rows
+    }
+    output_rows = []
+    for direction in network.get("route_directions", {}).values():
+        current_route_id = str(direction.get("route_id", ""))
+        current_route = current_routes.get(current_route_id, {})
+        short_name = str(current_route.get("route_short_name", current_route_id))
+        historical_route = historical_by_short_name.get(short_name)
+        if not historical_route:
+            continue
+        route_id, route_long_name = historical_route
+        direction_id = str(direction.get("direction_id", ""))
+        shape_id = str(direction.get("shape_id", ""))
+        path_id = f"{route_id}|{direction_id}|{shape_id}"
+        for sequence, point in enumerate(direction.get("shape", []), start=1):
+            if not isinstance(point, list) or len(point) < 2:
+                continue
+            output_rows.append(
+                {
+                    "path_id": path_id,
+                    "route_id": route_id,
+                    "route_short_name": short_name,
+                    "route_long_name": route_long_name,
+                    "direction_id": direction_id,
+                    "shape_id": shape_id,
+                    "point_sequence": sequence,
+                    "latitude": point[0],
+                    "longitude": point[1],
+                }
+            )
+
+    if not output_rows:
+        raise RuntimeError("Static network fallback did not match any historical Muni routes")
+    with (output_dir / "route_shapes.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(output_rows[0]))
+        writer.writeheader()
+        writer.writerows(output_rows)
+    print("Historic ZIP omitted shapes.txt; used the current official static GTFS network fallback.")
+
+
+def build_tables(
+    files: dict[str, Path],
+    output_dir: Path,
+    work_dir: Path,
+    month: str,
+    network_json: Path,
+) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     (work_dir / "duckdb-tmp").mkdir(parents=True, exist_ok=True)
     database_path = work_dir / "tableau_history.duckdb"
@@ -382,28 +452,6 @@ def build_tables(files: dict[str, Path], output_dir: Path, work_dir: Path, month
 
         COPY (
             SELECT
-                concat(t.route_id, '|', t.direction_id, '|', t.shape_id) AS path_id,
-                t.route_id,
-                t.route_short_name,
-                t.route_long_name,
-                t.direction_id,
-                t.shape_id,
-                try_cast(s.shape_pt_sequence AS INTEGER) AS point_sequence,
-                try_cast(s.shape_pt_lat AS DOUBLE) AS latitude,
-                try_cast(s.shape_pt_lon AS DOUBLE) AS longitude
-            FROM read_csv_auto('{sql_path(files['shapes.txt'])}', all_varchar=true, sample_size=-1) s
-            INNER JOIN (
-                SELECT DISTINCT route_id, route_short_name, route_long_name, direction_id, shape_id
-                FROM sf_trips WHERE shape_id <> ''
-            ) t USING (shape_id)
-            WHERE try_cast(s.shape_pt_sequence AS INTEGER) IS NOT NULL
-              AND try_cast(s.shape_pt_lat AS DOUBLE) IS NOT NULL
-              AND try_cast(s.shape_pt_lon AS DOUBLE) IS NOT NULL
-            ORDER BY path_id, point_sequence
-        ) TO '{shapes_out}' (HEADER, DELIMITER ',');
-
-        COPY (
-            SELECT
                 o.route_id,
                 o.route_short_name,
                 o.route_long_name,
@@ -480,6 +528,38 @@ def build_tables(files: dict[str, Path], output_dir: Path, work_dir: Path, month
         """
     )
 
+    if "shapes.txt" in files:
+        con.execute(
+            f"""
+            COPY (
+                SELECT
+                    concat(t.route_id, '|', t.direction_id, '|', t.shape_id) AS path_id,
+                    t.route_id,
+                    t.route_short_name,
+                    t.route_long_name,
+                    t.direction_id,
+                    t.shape_id,
+                    try_cast(s.shape_pt_sequence AS INTEGER) AS point_sequence,
+                    try_cast(s.shape_pt_lat AS DOUBLE) AS latitude,
+                    try_cast(s.shape_pt_lon AS DOUBLE) AS longitude
+                FROM read_csv_auto('{sql_path(files['shapes.txt'])}', all_varchar=true, sample_size=-1) s
+                INNER JOIN (
+                    SELECT DISTINCT route_id, route_short_name, route_long_name, direction_id, shape_id
+                    FROM sf_trips WHERE shape_id <> ''
+                ) t USING (shape_id)
+                WHERE try_cast(s.shape_pt_sequence AS INTEGER) IS NOT NULL
+                  AND try_cast(s.shape_pt_lat AS DOUBLE) IS NOT NULL
+                  AND try_cast(s.shape_pt_lon AS DOUBLE) IS NOT NULL
+                ORDER BY path_id, point_sequence
+            ) TO '{shapes_out}' (HEADER, DELIMITER ',');
+            """
+        )
+    else:
+        route_rows = con.execute(
+            "SELECT route_id, route_short_name, route_long_name FROM sf_routes"
+        ).fetchall()
+        write_fallback_shapes(output_dir, network_json, route_rows)
+
     write_dictionary(output_dir)
     write_readme(output_dir, month, agency_ids)
     for path in sorted(output_dir.iterdir()):
@@ -508,7 +588,7 @@ def main() -> int:
     if not zipfile.is_zipfile(zip_path):
         raise RuntimeError("The downloaded file is not a valid ZIP archive")
     files = extract_required(zip_path, work_dir / "extracted")
-    build_tables(files, output_dir, work_dir, month)
+    build_tables(files, output_dir, work_dir, month, Path(args.network_json).resolve())
     return 0
 
 
