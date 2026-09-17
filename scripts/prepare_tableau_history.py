@@ -262,22 +262,29 @@ def build_tables(
         """
     )
 
-    agency_ids = [
+    route_agencies = {
         str(row[0])
-        for row in con.execute(
-            """
-            SELECT agency_id
-            FROM agency
-            WHERE lower(coalesce(agency_name, '')) LIKE '%san francisco%'
-               OR lower(coalesce(agency_name, '')) LIKE '%sfmta%'
-               OR lower(coalesce(agency_name, '')) LIKE '%municipal transportation%'
-            ORDER BY agency_id
-            """
-        ).fetchall()
-    ]
+        for row in con.execute("SELECT DISTINCT agency_id FROM routes_raw").fetchall()
+    }
+
+    # The regional agency table includes several operators whose names contain
+    # "San Francisco" (for example, Bay Ferry and local city shuttles). 511's
+    # historic feed identifies SFMTA routes with SF, so prefer the exact agency
+    # identifier before falling back to a name search for older feed variants.
+    agency_ids = sorted(route_agencies & {"SF", "SFMTA"})
     if not agency_ids:
-        route_agencies = {str(row[0]) for row in con.execute("SELECT DISTINCT agency_id FROM routes_raw").fetchall()}
-        agency_ids = sorted(route_agencies & {"SF", "SFMTA"})
+        agency_ids = [
+            str(row[0])
+            for row in con.execute(
+                """
+                SELECT agency_id
+                FROM agency
+                WHERE lower(coalesce(agency_name, '')) LIKE '%sfmta%'
+                   OR lower(coalesce(agency_name, '')) LIKE '%municipal transportation%'
+                ORDER BY agency_id
+                """
+            ).fetchall()
+        ]
     if not agency_ids:
         raise RuntimeError("Could not identify the SFMTA agency_id in the historic Regional GTFS feed")
     print("Using transit agency IDs: " + ", ".join(agency_ids))
