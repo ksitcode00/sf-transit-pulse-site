@@ -51,20 +51,25 @@ def test_reference_journey_returns_shared_mode_contract(engine: PlannerEngine) -
     }
 
 
-def test_mode_changes_ranking_not_actual_eta(engine: PlannerEngine) -> None:
-    fastest = engine.plan("13161", "15659", "FASTEST")
-    balanced = engine.plan("13161", "15659", "BALANCED")
-    fastest_eta = {
-        row["journey_id"]: row["eta_min"] for row in fastest["alternatives"]
+def test_modes_share_candidates_without_rewriting_eta(engine: PlannerEngine) -> None:
+    # All three mode winners are calculated from one time-consistent candidate
+    # pool. Comparing two separate plan() calls is flaky at the exact moment a
+    # realtime departure becomes stale, because each call gets a new clock time.
+    result = engine.plan("13161", "15659", "BALANCED")
+    alternative_eta = {
+        row["journey_id"]: row["eta_min"] for row in result["alternatives"]
     }
-    balanced_eta = {
-        row["journey_id"]: row["eta_min"] for row in balanced["alternatives"]
+    mode_winners = {
+        row["mode"]: row["winner_journey_id"] for row in result["modes"]
     }
-    assert fastest_eta.keys() == balanced_eta.keys()
+
+    assert set(mode_winners) == {"FASTEST", "BALANCED", "SAFETY_FIRST"}
+    assert all(winner_id in alternative_eta for winner_id in mode_winners.values())
     assert all(
-        fastest_eta[journey_id] == pytest.approx(balanced_eta[journey_id], abs=0.2)
-        for journey_id in fastest_eta
+        row["eta_min"] == pytest.approx(alternative_eta[row["winner_journey_id"]])
+        for row in result["modes"]
     )
+    assert result["selected_journey_id"] == mode_winners["BALANCED"]
 
 
 def test_same_stop_is_rejected(engine: PlannerEngine) -> None:
