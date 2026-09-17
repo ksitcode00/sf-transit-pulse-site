@@ -42,6 +42,7 @@ jobs:
       - name: Verify browser JavaScript
         run: |
           node --check site/app.js
+          node --check site/analytics/analytics.js
           node --check site/nearby-stops.js
           node --check site/place-search.js
           node --check site/stop-catalog.js
@@ -50,7 +51,7 @@ jobs:
           node --check cloudflare/refresh-watchdog/worker.js
 
       - name: Verify Scheme B browser planner contracts
-        run: node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs tests/place-search.test.cjs tests/stop-catalog.test.cjs tests/refresh-watchdog.test.mjs
+        run: node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs tests/place-search.test.cjs tests/stop-catalog.test.cjs tests/refresh-watchdog.test.mjs tests/analytics.test.cjs
 
       - name: Verify public JSON caches
         run: |
@@ -61,3 +62,4 @@ jobs:
           python -m json.tool site/data/parking-context.json > /dev/null
           python -m json.tool site/data/safety-context.json > /dev/null
           python -m json.tool site/data/refresh-health.json > /dev/null
+          python -m json.tool site/data/eta-analytics.json > /dev/null

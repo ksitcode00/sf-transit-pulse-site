@@ -1,0 +1,243 @@
+/* 中文：沿用主站设计，只限定 Analytics 样式，避免改变实时地图和行程规划。
+   English: Reuse the main site's design; scope overrides to Analytics to protect the live planner. */
+.analytics-page main {
+  width: 100%;
+}
+.analytics-page .analytics-intro,
+.analytics-page .analytics-section {
+  scroll-margin-top: 0;
+}
+.analytics-intro,
+.analytics-section {
+  max-width: 1180px;
+  margin: auto;
+  padding: 88px 24px;
+  scroll-margin-top: 116px;
+}
+.analytics-intro {
+  max-width: 920px;
+  text-align: center;
+  padding-top: 96px;
+}
+.analytics-intro h1 {
+  font-size: clamp(42px, 6vw, 72px);
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+}
+.analytics-page .intro-lead {
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1.45;
+  max-width: 780px;
+  margin: 24px auto;
+}
+.analytics-section h2 {
+  font-size: clamp(30px, 4vw, 46px);
+  line-height: 1.15;
+  max-width: 900px;
+  margin-bottom: 24px;
+}
+.analytics-section .intro-lead {
+  margin-left: 0;
+}
+.analytics-page h3 {
+  font-size: 24px;
+  line-height: 1.25;
+  margin-bottom: 14px;
+}
+.analytics-page p {
+  line-height: 1.55;
+}
+.scope-note {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: 24px;
+}
+.catalog-section,
+.method-section {
+  border-top: 1px solid var(--hairline);
+}
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.feature-card,
+.analytics-panel,
+.research-status,
+.metric-card {
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  padding: 28px;
+  background: var(--white);
+  min-width: 0;
+}
+.feature-card p {
+  color: var(--muted);
+  margin: 12px 0;
+}
+.feature-card .feature-number {
+  color: var(--blue);
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+.feature-card .feature-state {
+  font-size: 13px;
+  padding: 4px 10px;
+  background: var(--parchment);
+  border-radius: 20px;
+  display: inline-block;
+}
+.feature-card.feature-open {
+  border-color: var(--blue);
+}
+.feature-card a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  margin-top: 12px;
+  color: var(--blue);
+}
+.research-status {
+  background: var(--parchment);
+  margin: 28px 0;
+}
+.research-status strong {
+  display: block;
+  margin-bottom: 8px;
+}
+.route-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 28px 0;
+}
+.route-controls select {
+  width: auto;
+  min-width: 180px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+}
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.metric-card strong {
+  font-size: 32px;
+  display: block;
+  margin: 10px 0;
+}
+.metric-card p {
+  font-size: 14px;
+  color: var(--muted);
+}
+.analytics-panel {
+  margin: 24px 0;
+}
+.analytics-panel > p {
+  color: var(--muted);
+}
+.table-scroll {
+  overflow-x: auto;
+  margin: 24px 0;
+}
+.analytics-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  text-align: left;
+}
+.analytics-page th,
+.analytics-page td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--hairline);
+  white-space: nowrap;
+}
+.question-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  margin-top: 48px;
+}
+.question-grid p {
+  color: var(--muted);
+}
+.question-grid h3 {
+  font-size: 20px;
+}
+.method-steps {
+  padding-left: 28px;
+  margin: 32px 0;
+}
+.method-steps li {
+  padding: 8px 0 20px 12px;
+  line-height: 1.55;
+}
+.method-steps strong {
+  display: block;
+  margin-bottom: 6px;
+}
+.analytics-panel summary {
+  cursor: pointer;
+  min-height: 44px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+#method-details p {
+  margin: 18px 0;
+}
+.analytics-page footer {
+  gap: 20px;
+  flex-wrap: wrap;
+}
+@media (max-width: 834px) {
+  .question-grid {
+    grid-template-columns: 1fr;
+  }
+  .analytics-page .intro-lead {
+    font-size: 20px;
+  }
+}
+@media (max-width: 640px) {
+  .analytics-page .global-nav nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .analytics-intro,
+  .analytics-section {
+    padding: 52px 20px;
+  }
+  .feature-grid,
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+  .feature-card,
+  .analytics-panel,
+  .research-status,
+  .metric-card {
+    padding: 22px;
+  }
+  .analytics-page .sub-nav,
+  .analytics-page .sub-nav-inner {
+    min-height: 52px;
+  }
+  .analytics-page .sub-nav-inner {
+    display: flex;
+    gap: 12px;
+  }
+  .analytics-page .sub-nav-inner > span {
+    font-size: 13px;
+  }
+  .analytics-page footer {
+    padding: 32px 20px;
+  }
+}

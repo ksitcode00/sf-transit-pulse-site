@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import datetime
 import json
 import sys
 from pathlib import Path
@@ -21,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--actual-arrivals", required=True)
     parser.add_argument("--output-dir", default="eta-accuracy-output")
     parser.add_argument("--work-dir", default=".eta-accuracy-work")
+    parser.add_argument("--public-output", help="Optional compact JSON for the Analytics website")
     return parser.parse_args()
 
 
@@ -82,6 +84,7 @@ def build_outputs(
     actual_arrivals: Path,
     output_dir: Path,
     work_dir: Path,
+    public_output: Path | None = None,
 ) -> dict[str, int | float]:
     prediction_files = sorted(predictions_dir.glob("eta_snapshots_raw_*.parquet"))
     if not prediction_files:
@@ -313,6 +316,39 @@ def build_outputs(
     (output_dir / "eta_accuracy_manifest.json").write_text(
         json.dumps(metrics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+    if public_output is not None:
+        # 中文：网页只发布汇总，不上传乘客可能误解为独立样本的全部重复快照。
+        # English: Publish aggregates, not the full archive of correlated snapshots.
+        query = con.execute("""
+            SELECT route_short_name, prediction_horizon_bucket,
+                   count(*) AS prediction_count,
+                   count(DISTINCT trip_stop_instance_id) AS trip_stop_instance_count,
+                   round(median(absolute_error_min), 3) AS median_absolute_error_min,
+                   round(quantile_cont(absolute_error_min, 0.9), 3) AS p90_absolute_error_min,
+                   round(median(prediction_error_min), 3) AS median_signed_error_min
+            FROM eta_accuracy GROUP BY ALL
+            ORDER BY route_short_name, prediction_horizon_bucket
+        """)
+        columns = [description[0] for description in query.description]
+        summary = [dict(zip(columns, row)) for row in query.fetchall()]
+        start, end = con.execute("SELECT min(service_date), max(service_date) FROM eta_accuracy").fetchone()
+        payload = {
+            "schema_version": 1, "status": "available",
+            "published_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "selected_routes": list(SELECTED_ROUTES),
+            "service_date_start": str(start), "service_date_end": str(end),
+            "source": "511 GTFS-Realtime snapshots matched to 511 historical stop observations",
+            **metrics, "summary": summary,
+        }
+        for key, filename in (
+            ("calibration", "eta_calibration_curve.csv"),
+            ("stops", "eta_stop_summary.csv"),
+            ("route_time", "eta_route_time_summary.csv"),
+        ):
+            with (output_dir / filename).open(encoding="utf-8") as handle:
+                payload[key] = list(csv.DictReader(handle))
+        public_output.parent.mkdir(parents=True, exist_ok=True)
+        public_output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     con.close()
     return metrics
 
@@ -325,6 +361,7 @@ def main() -> int:
             Path(args.actual_arrivals),
             Path(args.output_dir),
             Path(args.work_dir),
+            Path(args.public_output) if args.public_output else None,
         )
     except (RuntimeError, duckdb.Error) as exc:
         print(str(exc), file=sys.stderr)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import datetime
+import json
 from pathlib import Path
 
 import duckdb
@@ -84,7 +85,14 @@ def test_build_outputs_calculates_trust_metrics(tmp_path: Path) -> None:
     )
     con.close()
 
-    metrics = build_outputs(predictions_dir, actuals_path, output_dir, work_dir)
+    public_output = tmp_path / "public" / "eta-analytics.json"
+    metrics = build_outputs(predictions_dir, actuals_path, output_dir, work_dir, public_output)
+    public = json.loads(public_output.read_text())
+    assert public["status"] == "available"
+    assert public["service_date_start"] == "2026-09-16"
+    assert public["selected_routes"] == ["1", "8", "30", "45"]
+    assert sum(row["prediction_count"] for row in public["summary"]) == 2
+    assert {row["median_signed_error_min"] for row in public["summary"]} == {-1, -2}
 
     assert metrics["matched_prediction_rows"] == 2
     assert metrics["trip_stop_instances"] == 1

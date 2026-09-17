@@ -22,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--month", required=True, help="Month to download in YYYY-MM format")
     parser.add_argument("--output-dir", default="eta-predictions")
+    parser.add_argument("--allow-missing", action="store_true", help="Allow months before collection began")
     return parser.parse_args()
 
 
@@ -105,9 +106,12 @@ def main() -> int:
             break
 
     selected = select_latest_artifacts(artifacts, month)
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+            handle.write(f"has_data={'true' if selected else 'false'}\n")
     if not selected:
         print(f"No active daily ETA artifacts found for {month}", file=sys.stderr)
-        return 1
+        return 0 if args.allow_missing else 1
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

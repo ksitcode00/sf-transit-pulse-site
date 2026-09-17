@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "status": "awaiting_actual_arrivals",
+  "selected_routes": ["1", "8", "30", "45"],
+  "source": "511 GTFS-Realtime snapshots matched to 511 historical stop observations",
+  "service_date_start": null,
+  "service_date_end": null,
+  "summary": []
+}

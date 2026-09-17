@@ -22,7 +22,7 @@
   <title>SF Transit Pulse</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="styles.css?v=41">
+  <link rel="stylesheet" href="styles.css?v=42">
 </head>
 <body>
   <a class="skip-link" href="#main" data-i18n="skipToMuni">Skip to Muni updates</a>
@@ -36,6 +36,7 @@
       <nav aria-label="Page sections">
         <a href="#network" data-i18n="navNetwork">Muni now</a>
         <a href="#journey" data-i18n="navJourney">Plan a trip</a>
+        <a href="analytics/?lang=en" data-language-link data-i18n="navAnalytics">Commute analytics</a>
         <a href="#context" data-i18n="navContext">More travel info</a>
       </nav>
     </div>
@@ -63,6 +64,7 @@
         <div class="hero-actions">
           <a class="primary-button large" href="#journey" data-i18n="planJourney">Plan a trip</a>
           <a class="hero-text-link" href="#network" data-i18n="viewNetwork">Explore Muni →</a>
+          <a class="hero-text-link" href="analytics/?lang=en" data-language-link data-i18n="navAnalytics">Commute analytics</a>
         </div>
       </div>
       <div class="hero-visual" aria-label="A simplified Muni route with vehicle and service-gap markers">
@@ -468,6 +470,6 @@
   <script src="nearby-stops.js?v=40" defer></script>
   <script src="place-search.js?v=40" defer></script>
   <script src="stop-catalog.js?v=40" defer></script>
-  <script src="app.js?v=42" defer></script>
+  <script src="app.js?v=43" defer></script>
 </body>
 </html>

@@ -17,6 +17,10 @@
 
 ## At a glance
 
+[Explore Commute Analytics](https://ksitcode00.github.io/sf-transit-pulse-site/analytics/?lang=en) · [ETA trustworthiness research preview](https://ksitcode00.github.io/sf-transit-pulse-site/analytics/?lang=en#eta-accuracy)
+
+The Analytics area complements live trip planning. Features 1–3 (Route Map, Reliability, Best Time) are being built in Tableau. Feature 4 is a published **research preview**, collecting predictions for routes **1, 8, 30, and 45** and waiting for official monthly observed arrivals before reporting errors. Features 5–8 remain planned. Calibration models and validated uncertainty intervals are not yet implemented. Future Tableau views can be linked from this catalog without loading eight embeds on the homepage.
+
 - **Realtime:** Muni vehicles and arrival predictions refresh every three minutes.
 - **Decision engine:** Fastest, Balanced, and Historical Context rank the same feasible trips.
 - **Explainable:** Transfer time, service reliability, data freshness, and limits appear beside each recommendation.

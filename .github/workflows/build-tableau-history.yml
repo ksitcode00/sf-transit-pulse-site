@@ -12,7 +12,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 concurrency:
@@ -26,6 +26,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -75,19 +78,36 @@ jobs:
           key: 511-historic-regional-${{ steps.period.outputs.month }}-so-v1
 
       - name: Download daily ETA prediction artifacts
+        id: predictions
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: >-
           python scripts/download_eta_artifacts.py
           --month "${{ steps.period.outputs.month }}"
           --output-dir eta-predictions
+          --allow-missing
 
       - name: Match predictions to official actual arrivals
+        if: steps.predictions.outputs.has_data == 'true'
         run: >-
           python scripts/build_eta_accuracy.py
           --predictions-dir eta-predictions
           --actual-arrivals tableau-output/eta_actual_arrivals.parquet
           --output-dir eta-accuracy-output
+          --public-output site/data/eta-analytics.json
+
+      - name: Publish matched Analytics summary
+        if: steps.predictions.outputs.has_data == 'true'
+        run: |
+          git config user.name "sf-transit-data-bot"
+          git config user.email "sf-transit-data-bot@users.noreply.github.com"
+          git add site/data/eta-analytics.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data: publish matched ETA analytics"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
 
       - name: Upload processed CSV files
         uses: actions/upload-artifact@v4
@@ -98,6 +118,7 @@ jobs:
           retention-days: 14
 
       - name: Upload ETA accuracy and trustworthiness tables
+        if: steps.predictions.outputs.has_data == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: sf-transit-eta-accuracy-${{ steps.period.outputs.month }}

@@ -1,5 +1,6 @@
 const I18N = {
   en: {
+    navAnalytics: "Commute analytics",
     navNetwork: "Muni now", navJourney: "Plan a trip", navContext: "More travel info", refresh: "Check now", skipToMuni: "Skip to Muni updates",
     eyebrow: "SF Transit Pulse", heroTitle: "Know what to take. Know why.",
     heroLead: "Live Muni reliability and explainable journey recommendations.",
@@ -55,6 +56,7 @@ const I18N = {
     footerData: "Data: 511 SF Bay · DataSF · SFMTA", footerMap: "Map © OpenStreetMap contributors", footerPlaces: "Place search: OpenStreetMap contributors · Photon", reportIssue: "Report an issue"
   },
   zh: {
+    navAnalytics: "通勤分析",
     navNetwork: "现在的 Muni", navJourney: "规划行程", navContext: "更多出行信息", refresh: "立即检查", skipToMuni: "跳到 Muni 实时信息",
     eyebrow: "SF Transit Pulse", heroTitle: "知道坐什么，也知道为什么。",
     heroLead: "查看 Muni 当前运行情况，并获得说得清理由的行程推荐。",
@@ -288,6 +290,11 @@ function setLanguage(next, {syncUrl = false} = {}) {
     window.history.replaceState(null, "", url);
   }
   document.documentElement.lang = language === "zh" ? "zh-Hans" : "en";
+  document.querySelectorAll("[data-language-link]").forEach(node => {
+    const url = new URL(node.href);
+    url.searchParams.set("lang", language);
+    node.href = url;
+  });
   document.querySelectorAll("[data-i18n]").forEach(node => {
     const key = node.dataset.i18n;
     if (I18N[language][key]) node.textContent = I18N[language][key];

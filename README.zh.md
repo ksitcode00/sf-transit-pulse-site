@@ -1,5 +1,9 @@
 # SF Transit Pulse
 
+[打开通勤分析](https://ksitcode00.github.io/sf-transit-pulse-site/analytics/?lang=zh) · [预计到站可信度研究预览](https://ksitcode00.github.io/sf-transit-pulse-site/analytics/?lang=zh#eta-accuracy)
+
+通勤分析与实时行程规划互补。功能 1–3（线路地图、线路可靠度、出行时间）正在 Tableau 中制作。功能 4 已开放**研究预览**：收集 **1、8、30、45 号线**预测，等待官方月度实际到站记录后再发布误差；目前不展示虚构准确率。功能 5–8 为后续计划。预测校正模型和经过验证的不确定性区间尚未实现。以后可从这个目录连接 Tableau，不需要在首页同时加载八个嵌入仪表板。
+
 <p align="right"><strong>中文</strong> · <a href="./README.md">English</a></p>
 
 <div align="center">
