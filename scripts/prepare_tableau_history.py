@@ -226,8 +226,6 @@ def build_tables(
 
     required_observation_columns = {
         "trip_id",
-        "trip_start_date",
-        "stop_id",
         "stop_sequence",
         "scheduled_arrival_time",
         "observed_arrival_time",
@@ -239,6 +237,15 @@ def build_tables(
             "stop_observations.txt is missing expected columns: "
             + ", ".join(missing_observation_columns)
             + ". Actual columns: "
+            + ", ".join(sorted(observed_columns))
+        )
+    if "trip_start_date" in observed_columns:
+        service_date_column = "trip_start_date"
+    elif "service_date" in observed_columns:
+        service_date_column = "service_date"
+    else:
+        raise RuntimeError(
+            "stop_observations.txt has no service-date field. Actual columns: "
             + ", ".join(sorted(observed_columns))
         )
 
@@ -303,6 +310,47 @@ def build_tables(
         """
     )
 
+    if "stop_id" in observed_columns:
+        stop_id_expression = "o.stop_id"
+        stop_time_join = ""
+    else:
+        if "stop_times.txt" not in files:
+            raise RuntimeError(
+                "stop_observations.txt has no stop_id and the historic ZIP has no stop_times.txt"
+            )
+        stop_time_columns = columns(con, files["stop_times.txt"])
+        required_stop_time_columns = {"trip_id", "stop_id", "stop_sequence"}
+        missing_stop_time_columns = sorted(required_stop_time_columns - stop_time_columns)
+        if missing_stop_time_columns:
+            raise RuntimeError(
+                "stop_times.txt is missing expected columns: "
+                + ", ".join(missing_stop_time_columns)
+            )
+        con.execute(
+            f"""
+            CREATE TABLE sf_stop_times AS
+            SELECT
+                st.trip_id,
+                try_cast(st.stop_sequence AS INTEGER) AS stop_sequence,
+                st.stop_id
+            FROM read_csv_auto(
+                '{sql_path(files['stop_times.txt'])}',
+                all_varchar=true,
+                sample_size=20480,
+                ignore_errors=true,
+                null_padding=true
+            ) st
+            INNER JOIN sf_trips t USING (trip_id)
+            WHERE try_cast(st.stop_sequence AS INTEGER) IS NOT NULL;
+            """
+        )
+        stop_id_expression = "st.stop_id"
+        stop_time_join = """
+            LEFT JOIN sf_stop_times st
+              ON o.trip_id = st.trip_id
+             AND try_cast(o.stop_sequence AS INTEGER) = st.stop_sequence
+        """
+
     observations_path = sql_path(files["stop_observations.txt"])
     con.execute(
         f"""
@@ -310,8 +358,8 @@ def build_tables(
         WITH source AS (
             SELECT
                 o.trip_id,
-                o.trip_start_date,
-                o.stop_id,
+                o.{service_date_column} AS trip_start_date,
+                {stop_id_expression} AS stop_id,
                 try_cast(o.stop_sequence AS INTEGER) AS stop_sequence,
                 o.scheduled_arrival_time,
                 o.observed_arrival_time,
@@ -334,6 +382,7 @@ def build_tables(
                 ignore_errors=true,
                 null_padding=true
             ) o
+            {stop_time_join}
         )
         SELECT
             try_strptime(s.trip_start_date, '%Y%m%d')::DATE AS service_date,
@@ -356,6 +405,7 @@ def build_tables(
         INNER JOIN sf_trips t USING (trip_id)
         WHERE try_strptime(s.trip_start_date, '%Y%m%d') IS NOT NULL
           AND s.stop_sequence IS NOT NULL
+          AND s.stop_id IS NOT NULL
           AND s.scheduled_seconds IS NOT NULL
           AND s.observed_seconds IS NOT NULL
           AND abs(s.observed_seconds - s.scheduled_seconds) <= 21600;
