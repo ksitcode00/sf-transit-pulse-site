@@ -30,7 +30,7 @@ REQUIRED_FILES = {
     "stops.txt",
     "stop_observations.txt",
 }
-OPTIONAL_FILES = {"shapes.txt"}
+OPTIONAL_FILES = {"shapes.txt", "stop_times.txt"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -238,6 +238,8 @@ def build_tables(
         raise RuntimeError(
             "stop_observations.txt is missing expected columns: "
             + ", ".join(missing_observation_columns)
+            + ". Actual columns: "
+            + ", ".join(sorted(observed_columns))
         )
 
     con.execute(

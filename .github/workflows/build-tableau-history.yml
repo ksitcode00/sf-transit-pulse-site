@@ -32,6 +32,12 @@ jobs:
       - name: Install data-processing dependency
         run: python -m pip install --disable-pip-version-check duckdb
 
+      - name: Restore monthly historic feed cache
+        uses: actions/cache@v4
+        with:
+          path: .tableau-history-work/regional-${{ inputs.month }}-so.zip
+          key: 511-historic-regional-${{ inputs.month }}-so-v1
+
       - name: Build Tableau-ready historical tables
         env:
           SF_TRANSIT_511_API_KEY: ${{ secrets.SF_TRANSIT_511_API_KEY }}
