@@ -1,0 +1,52 @@
+name: Export Tableau ETA snapshots
+
+on:
+  schedule:
+    # 03:15 or 04:15 San Francisco time, after the prior service day is complete.
+    - cron: "15 11 * * *"
+  workflow_dispatch:
+    inputs:
+      service_date:
+        description: "Optional San Francisco service date in YYYY-MM-DD; blank exports yesterday"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sf-transit-eta-export
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out complete prediction history
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Export immutable prediction snapshots
+        run: |
+          if [ -n "${{ inputs.service_date }}" ]; then
+            python scripts/export_eta_snapshots.py --service-date "${{ inputs.service_date }}" --output-dir eta-output
+          else
+            python scripts/export_eta_snapshots.py --output-dir eta-output
+          fi
+
+      - name: Upload Tableau-ready daily prediction archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: sf-transit-eta-snapshots-${{ inputs.service_date || github.run_id }}
+          path: eta-output/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0

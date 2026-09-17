@@ -22,6 +22,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
+from zoneinfo import ZoneInfo
 
 import requests
 from google.transit import gtfs_realtime_pb2
@@ -793,11 +794,23 @@ def parse_trip_predictions(
         stops.sort(key=lambda row: (row["stop_sequence"], row["arrival_time"] or row["departure_time"] or 0))
         if not stops:
             continue
+        service_date = str(update.trip.start_date or "").strip()
+        if re.fullmatch(r"\d{8}", service_date):
+            service_date = f"{service_date[:4]}-{service_date[4:6]}-{service_date[6:]}"
+        elif not re.fullmatch(r"\d{4}-\d{2}-\d{2}", service_date):
+            first_event_time = int(
+                stops[0]["arrival_time"] or stops[0]["departure_time"] or now_epoch
+            )
+            service_date = datetime.fromtimestamp(
+                first_event_time,
+                tz=ZoneInfo("America/Los_Angeles"),
+            ).date().isoformat()
         rows.append(
             {
                 "trip_id": trip_id,
                 "route_id": route_id,
                 "direction_id": direction_id,
+                "service_date": service_date,
                 "shape_id": str(static.get("shape_id") or ""),
                 "vehicle_id": str(update.vehicle.id or "") if update.HasField("vehicle") else "",
                 "update_timestamp": int(update.timestamp or 0) or None,

@@ -102,6 +102,7 @@ def test_trip_predictions_keep_concrete_trip_and_stop_times() -> None:
     entity.id = "prediction-1"
     update = entity.trip_update
     update.trip.trip_id = "trip-1"
+    update.trip.start_date = "20260917"
     update.vehicle.id = "vehicle-1"
     update.timestamp = now_epoch
     board = update.stop_time_update.add()
@@ -126,6 +127,7 @@ def test_trip_predictions_keep_concrete_trip_and_stop_times() -> None:
 
     assert len(rows) == 1
     assert rows[0]["trip_id"] == "trip-1"
+    assert rows[0]["service_date"] == "2026-09-17"
     assert rows[0]["shape_id"] == "shape-R-0"
     assert rows[0]["vehicle_id"] == "vehicle-1"
     assert rows[0]["stops"] == [
