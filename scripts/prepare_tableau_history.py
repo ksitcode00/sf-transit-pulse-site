@@ -31,6 +31,7 @@ REQUIRED_FILES = {
     "stop_observations.txt",
 }
 OPTIONAL_FILES = {"shapes.txt", "stop_times.txt"}
+ETA_EXPERIMENT_ROUTES = ("1", "8", "30", "45")
 
 
 def parse_args() -> argparse.Namespace:
@@ -112,6 +113,11 @@ def write_dictionary(output_dir: Path) -> None:
         ("trip_performance.csv", "One row per observed trip instance", "Travel-time boxplot and trip detail"),
         ("route_daily.csv", "One row per service date, route and direction", "Daily KPI cards and trends"),
         ("route_hourly.csv", "One row per weekday, hour, route and direction", "Day-by-hour reliability heatmap"),
+        (
+            "eta_actual_arrivals.parquet",
+            "One row per observed stop arrival for routes 1, 8, 30, and 45",
+            "Ground truth for ETA prediction accuracy matching",
+        ),
     ]
     with (output_dir / "data_dictionary.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
@@ -134,6 +140,7 @@ Source: 511 SF Bay Historic Regional GTFS with `stop_observations.txt`
 - `trip_performance.csv`: one row per trip instance with matched scheduled and observed travel time.
 - `route_daily.csv`: daily reliability metrics by route and direction.
 - `route_hourly.csv`: reliability metrics by weekday, trip-start hour, route and direction.
+- `eta_actual_arrivals.parquet`: observed stop arrivals for routes 1, 8, 30, and 45, used as ETA ground truth.
 
 ## Definitions
 
@@ -501,6 +508,8 @@ def build_tables(
     trips_out = sql_path(output_dir / "trip_performance.csv")
     daily_out = sql_path(output_dir / "route_daily.csv")
     hourly_out = sql_path(output_dir / "route_hourly.csv")
+    eta_actuals_out = sql_path(output_dir / "eta_actual_arrivals.parquet")
+    eta_route_sql = ", ".join(f"'{route}'" for route in ETA_EXPERIMENT_ROUTES)
 
     con.execute(
         f"""
@@ -584,6 +593,31 @@ def build_tables(
             GROUP BY ALL
             ORDER BY weekday_order, hour, route_short_name, direction_id
         ) TO '{hourly_out}' (HEADER, DELIMITER ',');
+
+        COPY (
+            SELECT
+                service_date,
+                route_id,
+                route_short_name,
+                direction_id,
+                trip_id,
+                stop_id,
+                stop_sequence,
+                scheduled_arrival_time,
+                observed_arrival_time,
+                timezone(
+                    'America/Los_Angeles',
+                    cast(service_date AS TIMESTAMP)
+                        + observed_seconds * INTERVAL '1 second'
+                ) AS actual_arrival_time
+            FROM sf_observations
+            WHERE route_short_name IN ({eta_route_sql})
+            QUALIFY row_number() OVER (
+                PARTITION BY service_date, trip_id, stop_id, stop_sequence
+                ORDER BY observed_seconds DESC
+            ) = 1
+            ORDER BY service_date, route_short_name, trip_id, stop_sequence
+        ) TO '{eta_actuals_out}' (FORMAT PARQUET, COMPRESSION ZSTD);
         """
     )
 

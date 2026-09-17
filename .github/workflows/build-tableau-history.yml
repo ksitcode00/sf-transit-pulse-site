@@ -1,16 +1,19 @@
 name: Build Tableau historical data
 
 on:
+  schedule:
+    # Build the prior month after the official 511 historic feed has had time to publish.
+    - cron: "45 12 15 * *"
   workflow_dispatch:
     inputs:
       month:
-        description: "Complete historic month in YYYY-MM format"
-        required: true
-        default: "2026-08"
+        description: "Optional complete historic month in YYYY-MM format; blank uses last month"
+        required: false
         type: string
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: sf-transit-tableau-history
@@ -29,35 +32,75 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Resolve analysis month
+        id: period
+        env:
+          INPUT_MONTH: ${{ inputs.month }}
+        run: |
+          python - <<'PY'
+          import datetime
+          import os
+
+          month = os.environ.get("INPUT_MONTH", "").strip()
+          if not month:
+              today = datetime.date.today()
+              month = (today.replace(day=1) - datetime.timedelta(days=1)).strftime("%Y-%m")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"month={month}\n")
+          PY
+
       - name: Install data-processing dependency
-        run: python -m pip install --disable-pip-version-check duckdb
+        run: python -m pip install --disable-pip-version-check duckdb pytz
 
       - name: Restore monthly historic feed cache
         id: historic_cache
         uses: actions/cache/restore@v4
         with:
-          path: .tableau-history-work/regional-${{ inputs.month }}-so.zip
-          key: 511-historic-regional-${{ inputs.month }}-so-v1
+          path: .tableau-history-work/regional-${{ steps.period.outputs.month }}-so.zip
+          key: 511-historic-regional-${{ steps.period.outputs.month }}-so-v1
 
       - name: Build Tableau-ready historical tables
         env:
           SF_TRANSIT_511_API_KEY: ${{ secrets.SF_TRANSIT_511_API_KEY }}
         run: >-
           python scripts/prepare_tableau_history.py
-          --month "${{ inputs.month }}"
+          --month "${{ steps.period.outputs.month }}"
           --output-dir tableau-output
 
       - name: Save monthly historic feed cache
         if: always() && steps.historic_cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          path: .tableau-history-work/regional-${{ inputs.month }}-so.zip
-          key: 511-historic-regional-${{ inputs.month }}-so-v1
+          path: .tableau-history-work/regional-${{ steps.period.outputs.month }}-so.zip
+          key: 511-historic-regional-${{ steps.period.outputs.month }}-so-v1
+
+      - name: Download daily ETA prediction artifacts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          python scripts/download_eta_artifacts.py
+          --month "${{ steps.period.outputs.month }}"
+          --output-dir eta-predictions
+
+      - name: Match predictions to official actual arrivals
+        run: >-
+          python scripts/build_eta_accuracy.py
+          --predictions-dir eta-predictions
+          --actual-arrivals tableau-output/eta_actual_arrivals.parquet
+          --output-dir eta-accuracy-output
 
       - name: Upload processed CSV files
         uses: actions/upload-artifact@v4
         with:
-          name: sf-transit-tableau-${{ inputs.month }}
+          name: sf-transit-tableau-${{ steps.period.outputs.month }}
           path: tableau-output/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload ETA accuracy and trustworthiness tables
+        uses: actions/upload-artifact@v4
+        with:
+          name: sf-transit-eta-accuracy-${{ steps.period.outputs.month }}
+          path: eta-accuracy-output/
+          if-no-files-found: error
+          retention-days: 90

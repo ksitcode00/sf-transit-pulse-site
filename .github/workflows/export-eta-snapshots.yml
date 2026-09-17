@@ -37,19 +37,39 @@ jobs:
       - name: Install Parquet writer
         run: python -m pip install pyarrow
 
-      - name: Export immutable prediction snapshots
+      - name: Resolve San Francisco service date
+        id: period
+        env:
+          INPUT_SERVICE_DATE: ${{ inputs.service_date }}
         run: |
-          if [ -n "${{ inputs.service_date }}" ]; then
-            python scripts/export_eta_snapshots.py --service-date "${{ inputs.service_date }}" --output-dir eta-output
-          else
-            python scripts/export_eta_snapshots.py --output-dir eta-output
-          fi
+          python - <<'PY'
+          import datetime
+          import os
+          from zoneinfo import ZoneInfo
+
+          service_date = os.environ.get("INPUT_SERVICE_DATE", "").strip()
+          if not service_date:
+              service_date = str(
+                  datetime.datetime.now(ZoneInfo("America/Los_Angeles")).date()
+                  - datetime.timedelta(days=1)
+              )
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"service_date={service_date}\n")
+          PY
+
+      - name: Export immutable prediction snapshots
+        run: >-
+          python scripts/export_eta_snapshots.py
+          --service-date "${{ steps.period.outputs.service_date }}"
+          --output-dir eta-output
 
       - name: Upload Tableau-ready daily prediction archive
         uses: actions/upload-artifact@v4
         with:
-          name: sf-transit-eta-snapshots-${{ inputs.service_date || github.run_id }}
+          name: sf-transit-eta-snapshots-${{ steps.period.outputs.service_date }}
           path: eta-output/
           if-no-files-found: error
-          retention-days: 30
+          # Official stop observations arrive later in the monthly historic feed.
+          # Keep raw predictions long enough to match them, then let artifacts expire.
+          retention-days: 60
           compression-level: 0
