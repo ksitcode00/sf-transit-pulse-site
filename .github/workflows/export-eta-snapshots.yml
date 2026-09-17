@@ -34,6 +34,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install Parquet writer
+        run: python -m pip install pyarrow
+
       - name: Export immutable prediction snapshots
         run: |
           if [ -n "${{ inputs.service_date }}" ]; then
@@ -48,5 +51,5 @@ jobs:
           name: sf-transit-eta-snapshots-${{ inputs.service_date || github.run_id }}
           path: eta-output/
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 30
           compression-level: 0

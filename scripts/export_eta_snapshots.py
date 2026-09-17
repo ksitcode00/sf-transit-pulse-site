@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Export immutable ETA prediction snapshots from the repository history.
+"""Export a controlled ETA prediction experiment from repository history.
 
 The production refresh already calls the 511 Trip Updates endpoint and commits
 the credential-free ``site/data/live-transit.json`` snapshot. This exporter
 reuses those versions, so collecting Tableau ETA history adds zero 511 calls.
+
+The portfolio experiment deliberately keeps only routes 1, 8, 30, and 45 and
+predictions no more than 30 minutes ahead. This bounded sample is enough to
+compare ETA accuracy without retaining every SFMTA prediction indefinitely.
 """
 
 from __future__ import annotations
 
 import argparse
-import csv
-import gzip
 import json
 import subprocess
 import sys
@@ -24,7 +26,9 @@ ROOT = Path(__file__).resolve().parents[1]
 LIVE_TRANSIT_PATH = "site/data/live-transit.json"
 NETWORK_PATH = ROOT / "site" / "data" / "network.json"
 SF_TIMEZONE = ZoneInfo("America/Los_Angeles")
-CSV_FIELDS = [
+SELECTED_ROUTE_SHORT_NAMES = frozenset({"1", "8", "30", "45"})
+MAX_PREDICTION_HORIZON_MINUTES = 30
+PARQUET_FIELDS = [
     "service_date",
     "route_id",
     "route_short_name",
@@ -168,6 +172,8 @@ def flatten_snapshot(
     source_commit: str,
     route_names: dict[str, str],
     stop_names: dict[str, str],
+    selected_route_short_names: frozenset[str] = SELECTED_ROUTE_SHORT_NAMES,
+    max_prediction_horizon_minutes: int = MAX_PREDICTION_HORIZON_MINUTES,
 ) -> list[dict[str, Any]]:
     snapshot_time = str(snapshot.get("meta", {}).get("generated_at") or "")
     if not snapshot_time:
@@ -178,10 +184,14 @@ def flatten_snapshot(
     snapshot_epoch = int(snapshot_dt.timestamp())
     rows: list[dict[str, Any]] = []
     seen: set[tuple[str, str, str, int]] = set()
+    latest_allowed_epoch = snapshot_epoch + max_prediction_horizon_minutes * 60
     for trip in snapshot.get("trip_predictions", []):
         trip_id = str(trip.get("trip_id") or "")
         route_id = str(trip.get("route_id") or "")
         if not trip_id or not route_id:
+            continue
+        route_short_name = route_names.get(route_id, route_id)
+        if route_short_name not in selected_route_short_names:
             continue
         feed_timestamp = iso_utc(trip.get("update_timestamp"))
         for stop in trip.get("stops", []):
@@ -190,7 +200,12 @@ def flatten_snapshot(
             arrival_epoch = int(stop.get("arrival_time") or 0)
             departure_epoch = int(stop.get("departure_time") or 0)
             event_epoch = arrival_epoch or departure_epoch
-            if not stop_id or not event_epoch or event_epoch <= snapshot_epoch:
+            if (
+                not stop_id
+                or not event_epoch
+                or event_epoch <= snapshot_epoch
+                or event_epoch > latest_allowed_epoch
+            ):
                 continue
             key = (trip_id, stop_id, source_commit, stop_sequence)
             if key in seen:
@@ -202,7 +217,7 @@ def flatten_snapshot(
                         trip.get("service_date"), event_epoch
                     ),
                     "route_id": route_id,
-                    "route_short_name": route_names.get(route_id, route_id),
+                    "route_short_name": route_short_name,
                     "direction_id": str(trip.get("direction_id") or ""),
                     "trip_id": trip_id,
                     "stop_id": stop_id,
@@ -231,16 +246,31 @@ def main() -> int:
     commits = snapshot_commits(since, until)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"eta_snapshots_raw_{label}.csv.gz"
+    output_path = output_dir / f"eta_snapshots_raw_{label}.parquet"
     manifest_path = output_dir / f"eta_snapshots_manifest_{label}.json"
+
+    try:
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+    except ImportError:
+        print(
+            "Parquet export requires pyarrow. Install it with: python -m pip install pyarrow",
+            file=sys.stderr,
+        )
+        return 2
+
+    parquet_schema = pa.schema(
+        [
+            pa.field(field, pa.int64() if field == "stop_sequence" else pa.string())
+            for field in PARQUET_FIELDS
+        ]
+    )
 
     snapshot_count = 0
     prediction_count = 0
     duplicate_snapshot_count = 0
     seen_snapshot_times: set[str] = set()
-    with gzip.open(output_path, "wt", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=CSV_FIELDS)
-        writer.writeheader()
+    with pq.ParquetWriter(output_path, parquet_schema, compression="zstd") as writer:
         for commit_hash, _committed_at in commits:
             snapshot = load_snapshot(commit_hash)
             snapshot_time = str(snapshot.get("meta", {}).get("generated_at") or "")
@@ -251,7 +281,7 @@ def main() -> int:
             rows = flatten_snapshot(snapshot, commit_hash, route_names, stop_names)
             if not rows:
                 continue
-            writer.writerows(rows)
+            writer.write_table(pa.Table.from_pylist(rows, schema=parquet_schema))
             snapshot_count += 1
             prediction_count += len(rows)
 
@@ -260,11 +290,13 @@ def main() -> int:
         "window_end_exclusive": until.isoformat(),
         "source_file": LIVE_TRANSIT_PATH,
         "api_requests_added": 0,
+        "selected_route_short_names": sorted(SELECTED_ROUTE_SHORT_NAMES),
+        "max_prediction_horizon_minutes": MAX_PREDICTION_HORIZON_MINUTES,
         "commits_examined": len(commits),
         "snapshots_exported": snapshot_count,
         "duplicate_snapshots_skipped": duplicate_snapshot_count,
         "prediction_rows": prediction_count,
-        "csv_gzip": output_path.name,
+        "parquet": output_path.name,
     }
     manifest_path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
