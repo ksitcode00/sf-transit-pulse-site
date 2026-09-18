@@ -4,6 +4,8 @@ const MIN_REFRESH_AGE_SECONDS = 2 * 60;
 const ACTIVE_RUN_LOOKBACK_SECONDS = 10 * 60;
 const HISTORY_RUN_LOOKBACK_SECONDS = 24 * 60 * 60;
 const HISTORY_CRON = "47 12 15,22 * *";
+const FEATURE5_RUN_LOOKBACK_SECONDS = 20 * 60 * 60;
+const FEATURE5_CRON = "19 13 * * *";
 const PLACE_SEARCH_ORIGIN = "https://ksitcode00.github.io";
 const PLACE_SEARCH_BBOX = "-122.55,37.69,-122.32,37.84";
 const PHOTON_SEARCH_URL = "https://photon.komoot.io/api/";
@@ -160,6 +162,24 @@ async function dispatchHistoricalBuild(env, scheduledTime) {
   });
 }
 
+async function dispatchFeature5Build(env, scheduledTime) {
+  if (!env.GITHUB_WORKFLOW_TOKEN) throw new Error("Missing GITHUB_WORKFLOW_TOKEN secret.");
+  const workflow = "build-tableau-construction.yml";
+  const path = `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/actions/workflows/${workflow}/runs?per_page=10`;
+  const response = await githubRequest(env, path);
+  const payload = await response.json();
+  const alreadyStarted = (payload.workflow_runs || []).some(run => {
+    const created = parseEpoch(run.created_at);
+    return created !== null && (scheduledTime - created) / 1000 <= FEATURE5_RUN_LOOKBACK_SECONDS;
+  });
+  if (alreadyStarted) return;
+  await githubRequest(env, `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/actions/workflows/${workflow}/dispatches`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ref: env.GITHUB_REF || "main", inputs: {}})
+  });
+}
+
 async function checkAndRecover(env, scheduledTime) {
   if (!env.GITHUB_WORKFLOW_TOKEN) throw new Error("Missing GITHUB_WORKFLOW_TOKEN secret.");
   const snapshotResponse = await fetch(`${RAW_SNAPSHOT_URL}?t=${scheduledTime}`, {
@@ -203,8 +223,12 @@ export default {
       ctx.waitUntil(dispatchHistoricalBuild(env, controller.scheduledTime));
       return;
     }
+    if (controller.cron === FEATURE5_CRON) {
+      ctx.waitUntil(dispatchFeature5Build(env, controller.scheduledTime));
+      return;
+    }
     ctx.waitUntil(checkAndRecover(env, controller.scheduledTime));
   }
 };
 
-export {buildPlaceSearchUrl, checkAndRecover, dispatchHistoricalBuild, handlePlaceSearch, normalizePhotonResults, previousCompleteMonth, snapshotAgeSeconds};
+export {buildPlaceSearchUrl, checkAndRecover, dispatchFeature5Build, dispatchHistoricalBuild, handlePlaceSearch, normalizePhotonResults, previousCompleteMonth, snapshotAgeSeconds};

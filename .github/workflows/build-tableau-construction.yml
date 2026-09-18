@@ -1,0 +1,54 @@
+name: Build Feature 5 Tableau data
+
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot_date:
+        description: "Optional San Francisco snapshot date in YYYY-MM-DD; blank uses today"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sf-transit-feature5-tableau
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install data dependency
+        run: python -m pip install --disable-pip-version-check requests
+
+      - name: Build Tableau-ready construction and closure data
+        env:
+          SF_TRANSIT_511_API_KEY: ${{ secrets.SF_TRANSIT_511_API_KEY }}
+          SF_TRANSIT_DATASF_APP_TOKEN: ${{ secrets.SF_TRANSIT_DATASF_APP_TOKEN }}
+          INPUT_SNAPSHOT_DATE: ${{ inputs.snapshot_date }}
+        run: |
+          args=(--output-dir feature5-output)
+          if [ -n "$INPUT_SNAPSHOT_DATE" ]; then
+            args+=(--snapshot-date "$INPUT_SNAPSHOT_DATE")
+          fi
+          python scripts/prepare_tableau_construction.py "${args[@]}"
+
+      - name: Upload Tableau Feature 5 data package
+        uses: actions/upload-artifact@v4
+        with:
+          name: sf-transit-feature5-construction-${{ inputs.snapshot_date || github.run_id }}
+          path: feature5-output/
+          if-no-files-found: error
+          retention-days: 90
