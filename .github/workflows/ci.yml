@@ -64,3 +64,4 @@ jobs:
           python -m json.tool site/data/refresh-health.json > /dev/null
           python -m json.tool site/data/eta-analytics.json > /dev/null
           python -m json.tool site/data/historical-analytics.json > /dev/null
+          python -m json.tool site/data/construction-exposure.json > /dev/null

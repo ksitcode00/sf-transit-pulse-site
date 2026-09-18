@@ -23,7 +23,7 @@
       <h1 data-copy="title">Understand your commute.</h1>
       <p class="intro-lead" data-copy="lead">Plan with current conditions. Look back to understand reliability, arrival estimates, and the places along your route.</p>
       <a class="primary-button" href="#historical-service" data-copy="openHistory">Explore historical service</a>
-      <p class="scope-note" data-copy="scope">Features 1–3 use completed historical Muni observations. Feature 4 is collecting predictions. Features 5–8 are planned.</p>
+      <p class="scope-note" data-copy="scope">Features 1–3 use completed historical Muni observations. Feature 4 is collecting predictions. Feature 5 maps current street-work context. Features 6–8 are planned.</p>
     </section>
     <section class="analytics-section historical-section" id="historical-service" aria-labelledby="history-title">
       <p class="eyebrow" data-copy="historyEyebrow">Features 1–3 · Historical service</p>
@@ -46,6 +46,18 @@
       <div id="accuracy-results"></div>
       <div class="analytics-panel"><h3 data-copy="captureTitle">What is available in the latest prediction snapshot?</h3><p data-copy="captureLead">These counts describe one snapshot, not the archive and not prediction accuracy. Only estimates within 30 minutes of that snapshot are counted.</p><div id="capture-status" aria-live="polite"></div></div>
       <div class="question-grid" id="research-questions"></div>
+    </section>
+    <section class="analytics-section construction-section" id="construction-exposure" aria-labelledby="construction-title">
+      <p class="eyebrow" data-copy="feature5">Feature 5 · Construction & Closure Exposure</p>
+      <h2 id="construction-title" data-copy="constructionTitle">See the street work along a route.</h2>
+      <p class="intro-lead" data-copy="constructionLead">Choose a direction to see its route line and the current road-work or closure records spatially matched to it.</p>
+      <div class="route-controls construction-controls">
+        <label for="construction-route" data-copy="routeLabel">Choose a route</label><select id="construction-route"></select>
+        <label for="construction-direction" data-copy="directionLabel">Choose a direction</label><select id="construction-direction"></select>
+        <label for="construction-visibility" data-copy="constructionFilter">Show</label><select id="construction-visibility"><option value="direct" data-copy="directOnly">Direct overlap only</option><option value="all" data-copy="allMapped">All mapped context</option></select>
+      </div>
+      <div class="analytics-panel construction-source" id="construction-source" role="status"></div>
+      <div id="construction-results" aria-live="polite"></div>
     </section>
     <section class="analytics-section method-section" id="methodology" aria-labelledby="method-title">
       <p class="eyebrow" data-copy="methodEyebrow">Methodology & data</p><h2 id="method-title" data-copy="methodTitle">Every result needs a prediction and an observed arrival.</h2>

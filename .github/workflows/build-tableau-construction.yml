@@ -9,7 +9,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: sf-transit-feature5-tableau
@@ -39,11 +39,25 @@ jobs:
           SF_TRANSIT_DATASF_APP_TOKEN: ${{ secrets.SF_TRANSIT_DATASF_APP_TOKEN }}
           INPUT_SNAPSHOT_DATE: ${{ inputs.snapshot_date }}
         run: |
-          args=(--output-dir feature5-output)
+          args=(--output-dir feature5-output --public-output site/data/construction-exposure.json)
           if [ -n "$INPUT_SNAPSHOT_DATE" ]; then
             args+=(--snapshot-date "$INPUT_SNAPSHOT_DATE")
           fi
           python scripts/prepare_tableau_construction.py "${args[@]}"
+
+      - name: Publish the browser construction map snapshot
+        run: |
+          git config user.name "sf-transit-data-bot"
+          git config user.email "sf-transit-data-bot@users.noreply.github.com"
+          git add site/data/construction-exposure.json
+          if git diff --cached --quiet; then
+            echo "Construction map snapshot is unchanged."
+          else
+            git commit -m "data: publish construction exposure snapshot"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
 
       - name: Upload Tableau Feature 5 data package
         uses: actions/upload-artifact@v4

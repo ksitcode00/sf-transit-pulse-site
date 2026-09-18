@@ -33,6 +33,10 @@ DATASF_EXCAVATIONS = "smdf-6c45"
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", default="feature5-output")
+    parser.add_argument(
+        "--public-output",
+        help="Optional compact JSON snapshot for the public Feature 5 browser map.",
+    )
     parser.add_argument("--network-json", default="site/data/network.json")
     parser.add_argument("--snapshot-date", help="San Francisco date, YYYY-MM-DD; default is today")
     parser.add_argument("--closures-file", help="Fixture or saved DataSF closure JSON")
@@ -299,6 +303,79 @@ def write_guides(output: Path, snapshot_date: str) -> None:
     )
 
 
+def write_public_snapshot(
+    path: Path,
+    snapshot_date: str,
+    events: list[dict[str, Any]],
+    shape_rows: list[dict[str, Any]],
+    exposures: list[dict[str, Any]],
+) -> None:
+    """Publish a map-sized representation without changing the Tableau files.
+
+    The browser needs event-to-route matching and a lightweight line geometry;
+    it does not need the raw GeoJSON or full CSV schema.  Keep evidence labels
+    and distance visible so this map remains spatial context, never causation.
+    """
+    compact_events = [
+        {
+            "event_id": event["event_id"],
+            "source": event["source"],
+            "evidence_type": event["evidence_type"],
+            "event_type": event["event_type"],
+            "status": event["status"],
+            "title": event["title"],
+            "street": event["street"],
+            "start_time": event["start_time"],
+            "end_time": event["end_time"],
+            "vehicle_impact": event["vehicle_impact"],
+            "latitude": event["latitude"],
+            "longitude": event["longitude"],
+        }
+        for event in events
+    ]
+    event_index = {event["event_id"]: index for index, event in enumerate(events)}
+    directions: dict[str, dict[str, Any]] = {}
+    for row in shape_rows:
+        key = f'{row["route_id"]}|{row["direction_id"]}'
+        item = directions.setdefault(
+            key,
+            {
+                "route_id": row["route_id"],
+                "route_short_name": row["route_short_name"],
+                "route_long_name": row["route_long_name"],
+                "direction_id": row["direction_id"],
+                "direction_label": row["direction_label"],
+                "shape": [],
+            },
+        )
+        item["shape"].append([row["latitude"], row["longitude"]])
+    matches = [
+        [
+            row["route_id"],
+            row["direction_id"],
+            event_index[row["event_id"]],
+            row["exposure_level"],
+            row["minimum_distance_m"],
+        ]
+        for row in exposures
+        if row["event_id"] in event_index
+    ]
+    payload = {
+        "status": "available",
+        "snapshot_date": snapshot_date,
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "direct_overlap_meters": DIRECT_METERS,
+        "nearby_context_meters": NEARBY_METERS,
+        "events": compact_events,
+        "route_directions": directions,
+        # Each compact row is route_id, direction_id, event-array index,
+        # exposure level, and nearest sampled distance in metres.
+        "matches": matches,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+
+
 def main() -> int:
     args = parse_args()
     snapshot_date = args.snapshot_date or sf_today()
@@ -326,6 +403,8 @@ def main() -> int:
     write_csv(output / "feature5_route_shapes.csv", shape_rows, shape_fields)
     write_csv(output / "feature5_route_exposure_current.csv", exposures, exposure_fields)
     write_guides(output, snapshot_date)
+    if args.public_output:
+        write_public_snapshot(Path(args.public_output), snapshot_date, events, shape_rows, exposures)
     print(json.dumps({"snapshot_date": snapshot_date, "event_count": len(events), "route_shape_points": len(shape_rows), "exposure_count": len(exposures)}))
     return 0
 

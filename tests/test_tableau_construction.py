@@ -18,6 +18,7 @@ def test_feature5_exports_sources_and_spatial_exposure(tmp_path: Path, monkeypat
     excavations = tmp_path / "excavations.json"
     wzdx = tmp_path / "wzdx.json"
     output = tmp_path / "output"
+    public_output = tmp_path / "construction-exposure.json"
     write_json(network, {
         "routes": [{"route_id": "1", "route_short_name": "1", "route_long_name": "CALIFORNIA"}],
         "route_directions": {"1|0": {"route_id": "1", "direction_id": "0", "direction_label": "Outbound", "shape": [[37.78, -122.42], [37.79, -122.41]]}},
@@ -26,7 +27,7 @@ def test_feature5_exports_sources_and_spatial_exposure(tmp_path: Path, monkeypat
     write_json(excavations, [{"permit_number": "exc-1", "permit_purpose": "Utility work", "status": "Approved", "latitude": "37.781", "longitude": "-122.421"}])
     write_json(wzdx, {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[-122.42, 37.78], [-122.419, 37.781]]}, "properties": {"id": "wzdx-1", "work_zone_type": "roadway", "status": "active"}}]})
     monkeypatch.setattr(sys, "argv", [
-        "prepare_tableau_construction.py", "--output-dir", str(output), "--network-json", str(network),
+        "prepare_tableau_construction.py", "--output-dir", str(output), "--network-json", str(network), "--public-output", str(public_output),
         "--snapshot-date", "2026-09-18", "--closures-file", str(closures),
         "--excavations-file", str(excavations), "--wzdx-file", str(wzdx),
     ])
@@ -42,3 +43,9 @@ def test_feature5_exports_sources_and_spatial_exposure(tmp_path: Path, monkeypat
     assert any(row["route_short_name"] == "1" and row["exposure_level"] == "DIRECT_OVERLAP" for row in exposure)
     assert (output / "feature5_route_shapes.csv").exists()
     assert (output / "feature5_data_dictionary.csv").exists()
+    public = json.loads(public_output.read_text(encoding="utf-8"))
+    assert public["status"] == "available"
+    assert public["direct_overlap_meters"] == 80
+    assert public["route_directions"]["1|0"]["shape"]
+    assert public["events"]
+    assert any(match[3] == "DIRECT_OVERLAP" for match in public["matches"])

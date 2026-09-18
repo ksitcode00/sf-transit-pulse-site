@@ -13,7 +13,7 @@ const COPY = {
     openEta: "Explore ETA trustworthiness",
     openHistory: "Explore historical service",
     scope:
-      "Features 1–3 use the latest complete historical Muni month and update after official data is published. Feature 4 is collecting predictions. Features 5–8 are planned.",
+      "Features 1–3 use the latest complete historical Muni month and update after official data is published. Feature 4 is collecting predictions. Feature 5 maps current street-work context. Features 6–8 are planned.",
     historyEyebrow: "Features 1–3 · Historical service",
     historyTitle: "Look at one route from three useful angles.",
     historyLead: "Select a route and direction. These results use the latest published complete month, not the live snapshot.",
@@ -41,6 +41,7 @@ const COPY = {
     catalogEyebrow: "One platform, two views",
     catalogTitle: "Now tells you how to go. History helps you understand why.",
     feature4: "Feature 4 · ETA Accuracy & Trustworthiness",
+    feature5: "Feature 5 · Construction & Closure Exposure",
     etaTitle: "It says “5 minutes.” How much can you trust it?",
     etaLead:
       "Compare the arrival estimate a rider saw with when the vehicle actually arrived. Start with Muni routes 1, 8, 30, and 45.",
@@ -96,6 +97,25 @@ const COPY = {
     loading: "Loading snapshot…",
     groupNote:
       "Counted within each horizon group; an arrival may appear in multiple groups.",
+    constructionTitle: "See the street work along a route.",
+    constructionLead:
+      "Choose a direction to see its route line and the current road-work or closure records spatially matched to it.",
+    constructionFilter: "Show",
+    directOnly: "Direct overlap only",
+    allMapped: "All mapped context",
+    constructionLoading: "Loading the latest construction snapshot…",
+    constructionUnavailable: "Construction context is not available yet. Please try again later.",
+    constructionSource: "{date} snapshot · {events} mapped records · refreshed daily",
+    constructionDirect: "direct overlaps",
+    constructionNearby: "nearby-context records",
+    constructionLimit:
+      "A mapped event is spatial context, not proof that it caused a Muni delay or reroute. Work zones and permitted closures are stronger road-condition signals; excavation permits are background context only.",
+    constructionEmpty: "No mapped events match this route direction and filter in this snapshot.",
+    constructionShown: "Showing {shown} of {total} mapped records",
+    closestEvents: "Closest mapped records",
+    eventDetails: "Event details",
+    distance: "Distance from route",
+    sourceLabel: "Source",
   },
   zh: {
     skip: "跳到通勤分析",
@@ -109,7 +129,7 @@ const COPY = {
     openEta: "查看预计到站时间可信度",
     openHistory: "查看历史运行情况",
     scope:
-      "功能 1–3 使用最新一个已完整发布的 Muni 历史月份，官方发布新数据后会自动更新。功能 4 正在积累预测，功能 5–8 为后续计划。",
+      "功能 1–3 使用最新一个已完整发布的 Muni 历史月份，官方发布新数据后会自动更新。功能 4 正在积累预测；功能 5 显示当前道路施工背景；功能 6–8 为后续计划。",
     historyEyebrow: "功能 1–3 · 历史运行情况",
     historyTitle: "从三个实用角度看一条线路。",
     historyLead: "选择线路和方向。以下结果来自最新一个完整发布的历史月份，不是实时快照。",
@@ -137,6 +157,7 @@ const COPY = {
     catalogEyebrow: "同一个产品，两种视角",
     catalogTitle: "实时信息回答怎么走，历史分析帮你理解为什么。",
     feature4: "功能 4 · 预计到站时间准确度与可信度",
+    feature5: "功能 5 · 道路施工与封路影响范围",
     etaTitle: "显示“还有 5 分钟”，到底能信多少？",
     etaLead:
       "把乘客当时看到的预计到站时间，与车辆实际到站时间配对比较。先研究 Muni 1、8、30、45 号线。",
@@ -185,6 +206,25 @@ const COPY = {
     example: "可以回答的问题",
     loading: "正在读取快照…",
     groupNote: "按提前量组内计数，同一次到站可能跨组重复。",
+    constructionTitle: "看一条线路沿途的施工与封路记录。",
+    constructionLead:
+      "选择方向后，地图会显示该方向的路线，以及空间上匹配到这条路线的当前施工或封路记录。",
+    constructionFilter: "显示范围",
+    directOnly: "只看直接重叠",
+    allMapped: "全部空间匹配记录",
+    constructionLoading: "正在读取最新施工快照…",
+    constructionUnavailable: "暂时无法读取道路施工背景数据，请稍后再试。",
+    constructionSource: "{date} 快照 · {events} 条空间匹配记录 · 每天刷新",
+    constructionDirect: "直接重叠",
+    constructionNearby: "附近背景记录",
+    constructionLimit:
+      "地图上的匹配只表示空间背景，不能证明施工导致了 Muni 延误或改道。施工区和许可封路是较强的道路状况信号；挖掘许可只作为背景信息。",
+    constructionEmpty: "这一线路方向在本次快照中没有符合筛选条件的空间匹配记录。",
+    constructionShown: "显示 {shown} / {total} 条空间匹配记录",
+    closestEvents: "距离路线最近的记录",
+    eventDetails: "事件详情",
+    distance: "距路线",
+    sourceLabel: "数据来源",
   },
 };
 const FEATURES = [
@@ -352,9 +392,11 @@ if (!["en", "zh"].includes(language)) language = "en";
 let analysis = null,
   live = null,
   historical = null,
+  construction = null,
   analysisError = false,
   liveError = false,
-  historicalError = false;
+  historicalError = false,
+  constructionError = false;
 const t = (k) => COPY[language][k];
 const esc = (v) =>
   String(v ?? "").replace(
@@ -394,7 +436,7 @@ function render() {
     );
   document.getElementById("feature-catalog").innerHTML = FEATURES.map(
     (f, i) =>
-      `<article class="feature-card ${i < 4 ? "feature-open" : ""}"><p class="feature-number">${t("feature")} ${i + 1}</p><h3>${esc(f[language === "zh" ? 1 : 0])}</h3><span class="feature-state">${t(i < 3 ? "tableau" : i === 3 ? "preview" : "planned")}</span><p>${t("example")}: ${esc(f[language === "zh" ? 3 : 2])}</p>${i < 3 ? `<a href="#historical-service">${t("openHistory")}</a>` : i === 3 ? `<a href="#eta-accuracy">${t("explore")}</a>` : ""}</article>`,
+      `<article class="feature-card ${i < 5 ? "feature-open" : ""}"><p class="feature-number">${t("feature")} ${i + 1}</p><h3>${esc(f[language === "zh" ? 1 : 0])}</h3><span class="feature-state">${t(i < 3 ? "tableau" : i === 3 ? "preview" : i === 4 ? "tableau" : "planned")}</span><p>${t("example")}: ${esc(f[language === "zh" ? 3 : 2])}</p>${i < 3 ? `<a href="#historical-service">${t("openHistory")}</a>` : i === 3 ? `<a href="#eta-accuracy">${t("explore")}</a>` : i === 4 ? `<a href="#construction-exposure">${t("explore")}</a>` : ""}</article>`,
   ).join("");
   document.getElementById("research-questions").innerHTML = QUESTIONS[language]
     .map(([a, b]) => `<article><h3>${esc(a)}</h3><p>${esc(b)}</p></article>`)
@@ -408,6 +450,7 @@ function render() {
   renderResults();
   renderCapture();
   renderHistorical();
+  renderConstruction();
 }
 function historyDirectionLabel(value) {
   if (value === "all") return t("bothDirections");
@@ -495,6 +538,76 @@ function renderHeatmap(rows) {
     }
   }
   return content + "</div></div>";
+}
+function constructionDirections() {
+  return Object.values(construction?.route_directions || {}).sort((a, b) =>
+    String(a.route_short_name).localeCompare(String(b.route_short_name), undefined, { numeric: true }) ||
+    String(a.direction_id).localeCompare(String(b.direction_id)),
+  );
+}
+function constructionDate(value) {
+  const date = new Date(`${value}T12:00:00-07:00`);
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleDateString(language === "zh" ? "zh-CN" : "en-US", { timeZone: "America/Los_Angeles", year: "numeric", month: "long", day: "numeric" })
+    : value || "—";
+}
+function constructionEventText(event, match) {
+  const level = match[3] === "DIRECT_OVERLAP" ? t("constructionDirect") : t("constructionNearby");
+  const distance = `${num(Number(match[4]))} m`;
+  return [event.title, event.street, `${level} · ${distance}`, event.status].filter(Boolean).join(" · ");
+}
+function renderConstructionMap(direction, records) {
+  const points = [
+    ...(direction.shape || []).map(([lat, lon]) => [Number(lat), Number(lon)]),
+    ...records.map(({ event }) => [Number(event.latitude), Number(event.longitude)]),
+  ].filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon));
+  if (!points.length) return "";
+  const lats = points.map((point) => point[0]), lons = points.map((point) => point[1]);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats), minLon = Math.min(...lons), maxLon = Math.max(...lons);
+  const lonRange = Math.max(maxLon - minLon, .003), latRange = Math.max(maxLat - minLat, .003);
+  const project = ([lat, lon]) => [56 + ((lon - minLon) / lonRange) * 888, 448 - ((lat - minLat) / latRange) * 396];
+  const routePath = (direction.shape || []).map((point, index) => `${index ? "L" : "M"}${project(point).map((value) => value.toFixed(1)).join(" ")}`).join(" ");
+  const circles = records.map(({ event, match }) => {
+    const [x, y] = project([Number(event.latitude), Number(event.longitude)]);
+    const level = match[3] === "DIRECT_OVERLAP" ? "direct" : "nearby";
+    return `<circle class="construction-event construction-event-${level}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5.5"><title>${esc(constructionEventText(event, match))}</title></circle>`;
+  }).join("");
+  return `<div class="construction-map-wrap"><svg class="construction-map" viewBox="0 0 1000 500" role="img" aria-label="${esc(t("feature5"))}"><path class="construction-route" d="${routePath}"/>${circles}</svg><div class="construction-legend"><span><i class="legend-dot legend-direct"></i>${esc(t("constructionDirect"))}</span><span><i class="legend-dot legend-nearby"></i>${esc(t("constructionNearby"))}</span></div></div>`;
+}
+function renderConstruction() {
+  const source = document.getElementById("construction-source");
+  const target = document.getElementById("construction-results");
+  const routeSelect = document.getElementById("construction-route");
+  const directionSelect = document.getElementById("construction-direction");
+  const visibilitySelect = document.getElementById("construction-visibility");
+  if (!construction?.route_directions || !Array.isArray(construction?.events) || !Array.isArray(construction?.matches)) {
+    source.textContent = constructionError ? t("constructionUnavailable") : t("constructionLoading");
+    target.innerHTML = "";
+    return;
+  }
+  const directions = constructionDirections();
+  const previousRoute = routeSelect.value;
+  const routes = [...new Map(directions.map((row) => [String(row.route_id), row])).values()];
+  routeSelect.innerHTML = routes.map((route) => `<option value="${esc(route.route_id)}">${esc(route.route_short_name)} — ${esc(route.route_long_name)}</option>`).join("");
+  routeSelect.value = [...routeSelect.options].some((option) => option.value === previousRoute) ? previousRoute : "1";
+  const routeDirections = directions.filter((row) => String(row.route_id) === routeSelect.value);
+  const previousDirection = directionSelect.value;
+  directionSelect.innerHTML = routeDirections.map((row) => `<option value="${esc(row.direction_id)}">${esc(row.direction_label || historyDirectionLabel(String(row.direction_id)))}</option>`).join("");
+  directionSelect.value = [...directionSelect.options].some((option) => option.value === previousDirection) ? previousDirection : String(routeDirections[0]?.direction_id || "");
+  const direction = routeDirections.find((row) => String(row.direction_id) === directionSelect.value);
+  const includeNearby = visibilitySelect.value === "all";
+  const records = construction.matches
+    .filter((match) => String(match[0]) === routeSelect.value && String(match[1]) === directionSelect.value && (includeNearby || match[3] === "DIRECT_OVERLAP"))
+    .map((match) => ({ match, event: construction.events[Number(match[2])] }))
+    .filter((row) => row.event)
+    .sort((a, b) => Number(a.match[4]) - Number(b.match[4]));
+  source.innerHTML = `<strong>${esc(t("constructionSource").replace("{date}", constructionDate(construction.snapshot_date)).replace("{events}", num(records.length)))}</strong><p>${esc(t("constructionLimit"))}</p>`;
+  if (!direction || !records.length) {
+    target.innerHTML = `<p class="history-empty">${esc(t("constructionEmpty"))}</p>`;
+    return;
+  }
+  const shownRows = records.slice(0, 10);
+  target.innerHTML = `<article class="construction-card"><p class="scope-note">${esc(t("constructionShown").replace("{shown}", num(records.length)).replace("{total}", num(records.length)))}</p>${renderConstructionMap(direction, records)}<h3>${esc(t("closestEvents"))}</h3><div class="table-scroll" tabindex="0" role="region" aria-label="${esc(t("eventDetails"))}"><table><thead><tr><th scope="col">${esc(t("eventDetails"))}</th><th scope="col">${esc(t("distance"))}</th><th scope="col">${esc(t("sourceLabel"))}</th></tr></thead><tbody>${shownRows.map(({ event, match }) => `<tr><td>${esc([event.title, event.street].filter(Boolean).join(" · ") || event.event_type)}</td><td>${num(Number(match[4]))} m</td><td>${esc(event.evidence_type)}</td></tr>`).join("")}</tbody></table></div></article>`;
 }
 function renderResults() {
   const ready =
@@ -650,6 +763,9 @@ document.getElementById("eta-route").addEventListener("change", () => {
 });
 document.getElementById("historical-route").addEventListener("change", renderHistorical);
 document.getElementById("historical-direction").addEventListener("change", renderHistorical);
+document.getElementById("construction-route").addEventListener("change", renderConstruction);
+document.getElementById("construction-direction").addEventListener("change", renderConstruction);
+document.getElementById("construction-visibility").addEventListener("change", renderConstruction);
 let firstLoad = true;
 async function load() {
   await Promise.all([
@@ -692,14 +808,28 @@ async function load() {
         historical = null;
         historicalError = true;
       }),
+    fetch("../data/construction-exposure.json", { cache: "no-store" })
+      .then((r) => {
+        if (!r.ok) throw Error();
+        return r.json();
+      })
+      .then((d) => {
+        construction = d?.status === "available" ? d : null;
+        constructionError = !construction;
+      })
+      .catch(() => {
+        construction = null;
+        constructionError = true;
+      }),
   ]);
   renderResults();
   renderCapture();
   renderHistorical();
+  renderConstruction();
   if (firstLoad) {
     firstLoad = false;
     const id = location.hash.slice(1);
-    if (["overview", "historical-service", "eta-accuracy", "methodology"].includes(id))
+    if (["overview", "historical-service", "eta-accuracy", "construction-exposure", "methodology"].includes(id))
       requestAnimationFrame(() =>
         document.getElementById(id).scrollIntoView({ behavior: "instant" }),
       );
