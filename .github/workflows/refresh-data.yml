@@ -79,6 +79,8 @@ jobs:
           git add site/data/latest.json site/data/live-transit.json site/data/alerts-roads.json
           git add site/data/parking-context.json site/data/safety-context.json site/data/network.json
           git add site/data/refresh-health.json
+          git add site/data/service-alert-history.json
+          git add site/data/tableau/feature6_service_disruptions.csv
           if [ -f data/parking-inventory.json ]; then
             git add data/parking-inventory.json
           fi

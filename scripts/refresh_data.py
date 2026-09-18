@@ -33,12 +33,14 @@ OUTPUT_PATH = ROOT / "site" / "data" / "latest.json"
 NETWORK_PATH = ROOT / "site" / "data" / "network.json"
 LIVE_TRANSIT_PATH = ROOT / "site" / "data" / "live-transit.json"
 ALERTS_ROADS_PATH = ROOT / "site" / "data" / "alerts-roads.json"
+SERVICE_ALERT_HISTORY_PATH = ROOT / "site" / "data" / "service-alert-history.json"
+SERVICE_ALERT_TABLEAU_PATH = ROOT / "site" / "data" / "tableau" / "feature6_service_disruptions.csv"
 PARKING_CONTEXT_PATH = ROOT / "site" / "data" / "parking-context.json"
 SAFETY_CONTEXT_PATH = ROOT / "site" / "data" / "safety-context.json"
 REFRESH_HEALTH_PATH = ROOT / "site" / "data" / "refresh-health.json"
 PARKING_INVENTORY_PATH = ROOT / "data" / "parking-inventory.json"
 STATIC_INDEX_PATH = ROOT / "data" / "static-index.json"
-PIPELINE_VERSION = "1.9.0"
+PIPELINE_VERSION = "1.10.0"
 PARKING_INVENTORY_SCHEMA_VERSION = 2
 PARKING_MIN_MATCH_COVERAGE = 0.70
 USER_AGENT = "SF-Transit-Pulse/1.0 (+https://github.com/ksitcode00/sf-transit-pulse)"
@@ -839,7 +841,11 @@ def active_now(periods: Iterable[Any], now_epoch: int) -> bool:
     return False
 
 
-def parse_alerts(feed: gtfs_realtime_pb2.FeedMessage) -> list[dict[str, Any]]:
+def parse_alerts(
+    feed: gtfs_realtime_pb2.FeedMessage,
+    *,
+    limit: int | None = 20,
+) -> list[dict[str, Any]]:
     now_epoch = int(datetime.now(timezone.utc).timestamp())
     alerts = []
     for entity in feed.entity:
@@ -866,7 +872,204 @@ def parse_alerts(feed: gtfs_realtime_pb2.FeedMessage) -> list[dict[str, Any]]:
                 "description": description[:600],
             }
         )
-    return alerts[:20]
+    return alerts if limit is None else alerts[:limit]
+
+
+def classify_service_alert(title: str, description: str) -> str:
+    """Assign a transparent, Tableau-friendly disruption category.
+
+    中文：511 没有为所有公告提供一致的事件类型，所以用标题和说明中的
+    明确关键词做可复核分类。分类只描述服务变化，不推断原因或严重程度。
+    English: 511 does not expose one consistent category for every notice. Use
+    auditable title/description keywords without inferring cause or severity.
+    """
+
+    text = f"{title} {description}".lower()
+    rules = (
+        ("SERVICE_SUSPENSION", ("suspend", "no service", "not operating")),
+        ("REROUTE", ("reroute", "re-route", "detour")),
+        ("STOP_CLOSED", ("stop closed", "closed stop", "station closed")),
+        (
+            "STOP_MOVED",
+            ("stop temp", "stop moved", "temporary stop", "permanently moved", "permanent stop", "relocated"),
+        ),
+        ("DELAY", ("delay", "delayed")),
+    )
+    for category, keywords in rules:
+        if any(keyword in text for keyword in keywords):
+            return category
+    return "SERVICE_NOTICE"
+
+
+def _history_timestamp(value: str) -> datetime:
+    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
+
+
+def _alert_episode_key(row: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(row.get("alert_id", "")),
+        str(row.get("route_id") or ""),
+        str(row.get("direction_id") or ""),
+    )
+
+
+def update_service_alert_history(
+    alerts: list[dict[str, Any]],
+    snapshot_time: str,
+    *,
+    history_path: Path = SERVICE_ALERT_HISTORY_PATH,
+    tableau_path: Path = SERVICE_ALERT_TABLEAU_PATH,
+) -> dict[str, Any]:
+    """Update one lifecycle row per alert/route/direction episode.
+
+    中文：只有真正重新请求 Service Alerts 后才调用本函数。仍存在的事件更新
+    last_seen；本次消失的事件转为 inactive；结束后重新出现则开启新 episode。
+    因此不会把每 15 分钟的相同公告无限复制，也不会把中断的两次事件误合并。
+    English: Call only after a successful Service Alerts fetch. Continuing
+    notices update last_seen, missing notices close, and later reappearances open
+    a new episode. This preserves history without storing duplicate snapshots.
+    """
+
+    snapshot = _history_timestamp(snapshot_time).isoformat()
+    try:
+        history = json.loads(history_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        history = {"schema_version": 1, "records": []}
+
+    records = [row for row in history.get("records", []) if isinstance(row, dict)]
+    active_rows = {
+        _alert_episode_key(row): row
+        for row in records
+        if row.get("active_flag") is True
+    }
+    observed_keys: set[tuple[str, str, str]] = set()
+
+    for alert in alerts:
+        alert_id = str(alert.get("id") or "").strip()
+        if not alert_id:
+            continue
+        route_ids = [str(value) for value in alert.get("route_ids", []) if str(value).strip()] or [""]
+        direction_id = str(alert.get("direction_id") or "")
+        title = str(alert.get("title") or "Muni service notice")
+        description = str(alert.get("description") or "")
+        alert_type = classify_service_alert(title, description)
+
+        for route_id in route_ids:
+            key = (alert_id, route_id, direction_id)
+            observed_keys.add(key)
+            row = active_rows.get(key)
+            if row is None:
+                previous_occurrences = [
+                    int(item.get("occurrence_index", 1) or 1)
+                    for item in records
+                    if _alert_episode_key(item) == key
+                ]
+                occurrence_index = max(previous_occurrences, default=0) + 1
+                row = {
+                    "history_id": "|".join(
+                        (alert_id, route_id or "NETWORK_WIDE", direction_id or "ALL", str(occurrence_index))
+                    ),
+                    "snapshot_time": snapshot,
+                    "alert_id": alert_id,
+                    "route_id": route_id or None,
+                    "direction_id": direction_id or None,
+                    "title": title,
+                    "description": description,
+                    "alert_type": alert_type,
+                    "first_seen": snapshot,
+                    "last_seen": snapshot,
+                    "duration_hours": 0.0,
+                    "active_flag": True,
+                    "inactive_detected_at": None,
+                    "occurrence_index": occurrence_index,
+                    "observation_count": 1,
+                    "route_match_status": alert.get("route_match_status", "NETWORK_WIDE"),
+                }
+                records.append(row)
+                active_rows[key] = row
+            else:
+                row.update(
+                    {
+                        "snapshot_time": snapshot,
+                        "title": title,
+                        "description": description,
+                        "alert_type": alert_type,
+                        "last_seen": snapshot,
+                        "duration_hours": round(
+                            max(0.0, (_history_timestamp(snapshot) - _history_timestamp(row["first_seen"])).total_seconds())
+                            / 3600,
+                            3,
+                        ),
+                        "observation_count": int(row.get("observation_count", 0) or 0) + 1,
+                        "route_match_status": alert.get("route_match_status", row.get("route_match_status")),
+                    }
+                )
+
+    # A successful empty feed is meaningful: it closes every previously active
+    # episode. A failed fetch never reaches this function, so it cannot erase state.
+    for key, row in active_rows.items():
+        if key not in observed_keys:
+            row["snapshot_time"] = snapshot
+            row["active_flag"] = False
+            row["inactive_detected_at"] = snapshot
+            row["duration_hours"] = round(
+                max(0.0, (_history_timestamp(row["last_seen"]) - _history_timestamp(row["first_seen"])).total_seconds())
+                / 3600,
+                3,
+            )
+
+    records.sort(key=lambda row: (str(row.get("first_seen", "")), str(row.get("history_id", ""))))
+    type_counts = Counter(str(row.get("alert_type", "SERVICE_NOTICE")) for row in records)
+    route_ids = {str(row["route_id"]) for row in records if row.get("route_id")}
+    history = {
+        "schema_version": 1,
+        "generated_at": snapshot,
+        "source": "511 GTFS-Realtime Service Alerts (agency=SF)",
+        "methodology": {
+            "unit": "one alert × route × direction episode",
+            "refresh_interval_minutes": 15,
+            "api_request_note": "Reuses the existing service-alert request; no additional 511 call.",
+            "episode_rule": "A notice that disappears is closed; if it returns later, a new occurrence is created.",
+            "duration_rule": "last_seen minus first_seen; inactive_detected_at records when absence was first observed.",
+        },
+        "summary": {
+            "episode_count": len(records),
+            "active_episode_count": sum(row.get("active_flag") is True for row in records),
+            "route_count": len(route_ids),
+            "alert_type_counts": dict(sorted(type_counts.items())),
+        },
+        "records": records,
+    }
+    write_json(history, history_path, compact=True)
+
+    columns = [
+        "snapshot_time",
+        "history_id",
+        "alert_id",
+        "route_id",
+        "direction_id",
+        "title",
+        "description",
+        "alert_type",
+        "first_seen",
+        "last_seen",
+        "duration_hours",
+        "active_flag",
+        "inactive_detected_at",
+        "occurrence_index",
+        "observation_count",
+        "route_match_status",
+    ]
+    tableau_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = tableau_path.with_suffix(".tmp")
+    with temporary.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=columns, extrasaction="ignore")
+        writer.writeheader()
+        for row in records:
+            writer.writerow({column: row.get(column) for column in columns})
+    temporary.replace(tableau_path)
+    return history
 
 
 def flatten_events(payload: Any) -> list[dict[str, Any]]:
@@ -1699,6 +1902,8 @@ def main() -> int:
     errors: list[str] = []
     configured_sources = 0
     alerts_refreshed = False
+    refreshed_alerts: list[dict[str, Any]] | None = None
+    alert_snapshot_time: str | None = None
     roads_refreshed = False
     roads_failed = False
     road_feed_counts: dict[str, int | None] = {
@@ -1767,7 +1972,17 @@ def main() -> int:
         if refresh_service_context:
             try:
                 alert_feed = fetch_gtfs_rt("https://api.511.org/transit/servicealerts", api_key)
-                payload["alerts"] = parse_alerts(alert_feed)
+                # Feature 6 · Service disruption history / 服务中断历史
+                # 中文：网页仍只需要少量当前公告，但历史归档必须看到完整 feed。
+                # 这里复用同一次 511 请求，不会增加 API 用量。
+                # English: Keep the public current-alert list compact while the
+                # historian consumes the full feed from the same 511 request.
+                refreshed_alerts = parse_alerts(alert_feed, limit=None)
+                payload["alerts"] = refreshed_alerts[:20]
+                # snapshot_time means when our collector observed the notice.
+                # The upstream feed timestamp may be older and is not a substitute
+                # for the archive's own observation clock.
+                alert_snapshot_time = datetime.now(timezone.utc).isoformat()
                 alerts_refreshed = True
                 configured_sources += 1
             except Exception as exc:
@@ -1880,6 +2095,11 @@ def main() -> int:
         "request_budget": REQUEST_BUDGET,
         "refresh_policy": "Vehicles and trip updates every 3 minutes; alerts/roads every 15 minutes; parking every 30 minutes; safety and static GTFS daily",
     }
+    if alerts_refreshed and refreshed_alerts is not None:
+        update_service_alert_history(
+            refreshed_alerts,
+            alert_snapshot_time or checked_at,
+        )
     write_snapshot(payload)
     print(json.dumps({"status": status, "errors": len(errors), "vehicles": len(payload.get("vehicles", [])), "routes": len(payload.get("routes", []))}))
     return 0
