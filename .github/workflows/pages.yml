@@ -20,7 +20,10 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  # A rapid data refresh must not cancel a user-facing site release. Data
+  # deployments may supersede each other; a code/site deployment gets its own
+  # queue and therefore always reaches Pages.
+  group: pages-${{ github.event_name == 'push' && 'site' || 'data' }}
   cancel-in-progress: true
 
 jobs:

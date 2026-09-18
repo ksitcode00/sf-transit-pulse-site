@@ -89,7 +89,20 @@ jobs:
             echo "Snapshot is unchanged."
           else
             git commit -m "data: refresh public transit snapshot"
-            git fetch origin main
-            git rebase origin/main
-            git push origin HEAD:main
+            # A person can push a UI change while this job is collecting data.
+            # Retry a normal fetch/rebase/push sequence so that harmless timing
+            # races do not turn a successfully-built snapshot into a failed run.
+            # Never force-push: data automation must not overwrite user work.
+            for attempt in 1 2 3; do
+              git fetch origin main
+              if ! git rebase origin/main; then
+                git rebase --abort || true
+                exit 1
+              fi
+              if git push origin HEAD:main; then
+                exit 0
+              fi
+              echo "Push race on attempt ${attempt}; synchronizing and retrying."
+            done
+            exit 1
           fi
