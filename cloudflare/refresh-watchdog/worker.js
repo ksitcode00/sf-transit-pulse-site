@@ -2,6 +2,8 @@ const RAW_SNAPSHOT_URL =
   "https://raw.githubusercontent.com/ksitcode00/sf-transit-pulse-site/main/site/data/live-transit.json";
 const MIN_REFRESH_AGE_SECONDS = 2 * 60;
 const ACTIVE_RUN_LOOKBACK_SECONDS = 10 * 60;
+const HISTORY_RUN_LOOKBACK_SECONDS = 24 * 60 * 60;
+const HISTORY_CRON = "47 12 15,22 * *";
 const PLACE_SEARCH_ORIGIN = "https://ksitcode00.github.io";
 const PLACE_SEARCH_BBOX = "-122.55,37.69,-122.32,37.84";
 const PHOTON_SEARCH_URL = "https://photon.komoot.io/api/";
@@ -127,6 +129,37 @@ async function hasRecentActiveRun(env, nowMs) {
   });
 }
 
+function previousCompleteMonth(timestampMs) {
+  const date = new Date(timestampMs);
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() - 1);
+  return date.toISOString().slice(0, 7);
+}
+
+async function hasRecentHistoricalRun(env, nowMs) {
+  const path = `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/actions/workflows/build-tableau-history.yml/runs?per_page=10`;
+  const response = await githubRequest(env, path);
+  const payload = await response.json();
+  return (payload.workflow_runs || []).some(run => {
+    const created = parseEpoch(run.created_at);
+    return created !== null && (nowMs - created) / 1000 <= HISTORY_RUN_LOOKBACK_SECONDS;
+  });
+}
+
+async function dispatchHistoricalBuild(env, scheduledTime) {
+  if (!env.GITHUB_WORKFLOW_TOKEN) throw new Error("Missing GITHUB_WORKFLOW_TOKEN secret.");
+  if (await hasRecentHistoricalRun(env, scheduledTime)) return;
+  const path = `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/actions/workflows/build-tableau-history.yml/dispatches`;
+  await githubRequest(env, path, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      ref: env.GITHUB_REF || "main",
+      inputs: {month: previousCompleteMonth(scheduledTime)}
+    })
+  });
+}
+
 async function checkAndRecover(env, scheduledTime) {
   if (!env.GITHUB_WORKFLOW_TOKEN) throw new Error("Missing GITHUB_WORKFLOW_TOKEN secret.");
   const snapshotResponse = await fetch(`${RAW_SNAPSHOT_URL}?t=${scheduledTime}`, {
@@ -164,8 +197,14 @@ export default {
     // English: Cloudflare supplies the three-minute primary clock. Fresh data
     // and active runs are deduplicated, and there is no public trigger endpoint.
     controller.noRetry();
+    // The 15th starts the normal monthly publication; the 22nd is a small
+    // independent retry window for a delayed official 511 historic package.
+    if (controller.cron === HISTORY_CRON) {
+      ctx.waitUntil(dispatchHistoricalBuild(env, controller.scheduledTime));
+      return;
+    }
     ctx.waitUntil(checkAndRecover(env, controller.scheduledTime));
   }
 };
 
-export {buildPlaceSearchUrl, checkAndRecover, handlePlaceSearch, normalizePhotonResults, snapshotAgeSeconds};
+export {buildPlaceSearchUrl, checkAndRecover, dispatchHistoricalBuild, handlePlaceSearch, normalizePhotonResults, previousCompleteMonth, snapshotAgeSeconds};

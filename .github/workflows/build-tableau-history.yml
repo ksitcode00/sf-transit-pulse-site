@@ -1,13 +1,12 @@
 name: Build Tableau historical data
 
 on:
-  schedule:
-    # Build the prior month after the official 511 historic feed has had time to publish.
-    - cron: "45 12 15 * *"
+  # Cloudflare independently dispatches this workflow on the 15th and retries
+  # on the 22nd. GitHub's own scheduled runner is intentionally not the clock.
   workflow_dispatch:
     inputs:
       month:
-        description: "Optional complete historic month in YYYY-MM format; blank uses last month"
+        description: "Optional complete historic month in YYYY-MM format; blank uses the latest complete month"
         required: false
         type: string
 

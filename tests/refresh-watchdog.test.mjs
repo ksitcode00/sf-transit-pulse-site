@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildPlaceSearchUrl, normalizePhotonResults, snapshotAgeSeconds} from "../cloudflare/refresh-watchdog/worker.js";
+import {buildPlaceSearchUrl, normalizePhotonResults, previousCompleteMonth, snapshotAgeSeconds} from "../cloudflare/refresh-watchdog/worker.js";
+
+test("monthly history trigger targets the previous complete calendar month", () => {
+  assert.equal(previousCompleteMonth(Date.parse("2026-10-15T12:47:00Z")), "2026-09");
+  assert.equal(previousCompleteMonth(Date.parse("2027-01-15T12:47:00Z")), "2026-12");
+});
 
 test("external watchdog uses the older of generated and observed timestamps", () => {
   const now = Date.parse("2026-09-15T12:10:00Z");

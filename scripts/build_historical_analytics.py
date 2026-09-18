@@ -25,6 +25,25 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def validate_month(value: str) -> str:
+    """Accept only a complete calendar month suitable for public replacement."""
+    try:
+        return dt.datetime.strptime(value, "%Y-%m").strftime("%Y-%m")
+    except ValueError as error:
+        raise SystemExit("--month must use YYYY-MM, for example 2026-09") from error
+
+
+def existing_source_month(output: Path) -> str | None:
+    """Return the current public month, without treating an unreadable file as data."""
+    if not output.exists():
+        return None
+    try:
+        value = json.loads(output.read_text(encoding="utf-8")).get("source_month")
+        return validate_month(str(value)) if value else None
+    except (json.JSONDecodeError, OSError, SystemExit):
+        return None
+
+
 def sql_path(path: Path) -> str:
     return str(path.resolve()).replace("'", "''")
 
@@ -76,6 +95,7 @@ def simplify_geometries(shape_csv: Path) -> list[dict[str, object]]:
 
 def main() -> int:
     args = parse_args()
+    args.month = validate_month(args.month)
     input_dir = Path(args.input_dir)
     output = Path(args.output)
     trips = input_dir / "trip_performance.csv"
@@ -84,6 +104,11 @@ def main() -> int:
     missing = [path.name for path in (trips, routes, shapes) if not path.exists()]
     if missing:
         raise SystemExit("Missing source table(s): " + ", ".join(missing))
+    previous_month = existing_source_month(output)
+    if previous_month and args.month < previous_month:
+        raise SystemExit(
+            f"Refusing to replace public {previous_month} data with older {args.month} data."
+        )
 
     con = duckdb.connect()
     con.execute(

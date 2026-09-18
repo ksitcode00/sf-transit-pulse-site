@@ -66,3 +66,31 @@ def test_public_history_is_recomputed_from_completed_trip_rows(
         "p90_absolute_delay_min",
     ]
     assert any(row[:4] == ["1", "0", 5, 8] for row in payload["heatmap"])
+
+
+def test_public_history_rejects_an_older_month(tmp_path: Path, monkeypatch) -> None:
+    output = tmp_path / "historical-analytics.json"
+    output.write_text('{"source_month":"2026-10"}', encoding="utf-8")
+    source = tmp_path / "source"
+    source.mkdir()
+    for filename in ("trip_performance.csv", "routes.csv", "route_shapes.csv"):
+        (source / filename).write_text("placeholder\n", encoding="utf-8")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "build_historical_analytics.py",
+            "--input-dir",
+            str(source),
+            "--output",
+            str(output),
+            "--month",
+            "2026-09",
+        ],
+    )
+    try:
+        build_historical_analytics.main()
+    except SystemExit as error:
+        assert "Refusing to replace public 2026-10 data" in str(error)
+    else:
+        raise AssertionError("Expected an older month to be rejected")

@@ -33,6 +33,10 @@ EN: The public Analytics page receives a compact monthly JSON summary built dire
 
 中文：公开通勤分析页接收一个精简的月度 JSON：线路形状、行程时间分布、终点站延误指标，以及按星期/小时汇总的延误格。它直接从已完成班次重新计算中位数、P90 和晚点比例，绝不把每日汇总值相加。原始班次明细保留在月度 Tableau artifact 中。
 
+EN: The public file is replaced with the latest complete month, never accumulated into an ambiguous multi-month average. Cloudflare dispatches the monthly build independently on the 15th and retries on the 22nd; the workflow requests the preceding calendar month. An older manual run is refused if a newer public month is already present.
+
+中文：公开文件会替换为最新的完整月份，不会悄悄累积成含义不清的跨月平均值。Cloudflare 在每月 15 日独立触发构建，并在 22 日重试；流程请求上一个完整自然月。若网站已有更新月份，手动运行旧月份会被拒绝，不能把数据倒退。
+
 ## Adding Tableau later / 后续接入 Tableau
 
 EN: Publish a completed workbook and supply its Tableau Public view URL. Add one on-demand embed or link beside the corresponding available web analysis; preserve `?lang=en/zh` in navigation. No Tableau iframe is currently loaded, so the product page remains fast on mobile.
