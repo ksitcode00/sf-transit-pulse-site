@@ -8,9 +8,9 @@ EN: One SF Transit Pulse site, two complementary views: live planning answers �
 
 | Feature / 功能 | Release state / 当前状态 | Purpose / 用途 |
 | --- | --- | --- |
-| 1 Route Map / 线路地图 | Tableau in progress / 用户制作中 | Route geography / 理解线路走向 |
-| 2 Route Reliability / 线路可靠度 | Tableau in progress / 用户制作中 | Compare historical consistency / 比较历史稳定性 |
-| 3 Best Time / 出行时间 | Tableau in progress / 用户制作中 | Compare times of day / 比较出行时段 |
+| 1 Route Map / 线路地图 | Available on web / 网站已上线 | Route geography / 理解线路走向 |
+| 2 Route Reliability / 线路可靠度 | Available on web / 网站已上线 | Compare historical consistency / 比较历史稳定性 |
+| 3 Best Time / 出行时间 | Available on web / 网站已上线 | Compare times of day / 比较出行时段 |
 | 4 ETA Trustworthiness / 到站可信度 | Research preview / 研究预览 | Evaluate predictions against observed arrivals / 配对预测与实际到站 |
 | 5 Construction / 道路施工 | Planned / 计划中 | Spatial exposure, not causal attribution / 空间关联，不证明延误原因 |
 | 6 Disruptions / 服务变更 | Planned / 计划中 | Historical service notices / 历史服务通知 |
@@ -27,11 +27,17 @@ EN: Current public status is awaiting actual arrivals. The three error cards int
 
 中文：当前公开状态为等待实际到站，三张误差卡片有意显示横线。最近快照数量只是一份数据的清单。未来匹配后的公开 JSON 包含提前量汇总、校正关系表、站点和时段分析。P90 绝对误差不是 90% 预测区间；校正关系表只描述历史关系，并不代表已部署校正模型。现有分析排除实际等待超过 120 分钟或绝对误差超过 120 分钟的记录，因此公开结果受此清洗规则约束。
 
+## Features 1–3 publication / 功能 1–3 发布流程
+
+EN: The public Analytics page receives a compact monthly JSON summary built directly from completed trip instances: route geometry, travel-time distribution, final-stop delay metrics, and weekday/hour delay cells. It deliberately recomputes medians, P90 values, and late-trip share from trip-level records rather than summing daily summary statistics. Raw trip rows remain in the monthly Tableau artifact.
+
+中文：公开通勤分析页接收一个精简的月度 JSON：线路形状、行程时间分布、终点站延误指标，以及按星期/小时汇总的延误格。它直接从已完成班次重新计算中位数、P90 和晚点比例，绝不把每日汇总值相加。原始班次明细保留在月度 Tableau artifact 中。
+
 ## Adding Tableau later / 后续接入 Tableau
 
-EN: Publish a completed workbook and supply its Tableau Public view URL. Replace only that feature's status and card link, or add a dedicated subpage with one on-demand embed. Preserve `?lang=en/zh` in navigation. Do not mark unfinished features as available. No Tableau iframe is currently loaded.
+EN: Publish a completed workbook and supply its Tableau Public view URL. Add one on-demand embed or link beside the corresponding available web analysis; preserve `?lang=en/zh` in navigation. No Tableau iframe is currently loaded, so the product page remains fast on mobile.
 
-中文：完成工作簿后提供 Tableau Public 视图网址。只更新相应功能状态与入口，或新增一个按需加载该视图的子页。导航保留语言参数，不把未完成功能标记为可用。目前没有加载任何 Tableau iframe。
+中文：完成工作簿后提供 Tableau Public 视图网址。可在对应的已上线网页分析旁新增按需加载的嵌入或链接。导航保留 `?lang=en/zh`；目前没有加载 Tableau iframe，因此手机页面保持轻量。
 
 ## Verification / 验收
 

@@ -8,7 +8,7 @@
   <title>Commute Analytics · SF Transit Pulse</title>
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../styles.css?v=42">
-  <link rel="stylesheet" href="analytics.css?v=1">
+  <link rel="stylesheet" href="analytics.css?v=2">
 </head>
 <body class="analytics-page">
   <a class="skip-link" href="#main" data-copy="skip">Skip to analytics</a>
@@ -16,14 +16,22 @@
     <a class="wordmark" href="../?lang=en" data-home><span class="pulse-mark" aria-hidden="true"></span>SF Transit Pulse</a>
     <nav aria-label="Main navigation"><a href="../?lang=en#network" data-home data-copy="live">Muni now</a><a href="../?lang=en#journey" data-home data-copy="journey">Plan a trip</a><a href="#overview" data-copy="analytics">Commute analytics</a></nav>
   </div></header>
-  <div class="sub-nav"><div class="sub-nav-inner"><span data-copy="beta">Analytics · Research preview</span><button class="text-action" id="language-toggle" type="button">中文</button></div></div>
+  <div class="sub-nav"><div class="sub-nav-inner"><span data-copy="beta">Commute analytics</span><button class="text-action" id="language-toggle" type="button">中文</button></div></div>
   <main id="main">
     <section class="analytics-intro" id="overview">
       <p class="eyebrow" data-copy="eyebrow">Beyond your next ride</p>
       <h1 data-copy="title">Understand your commute.</h1>
       <p class="intro-lead" data-copy="lead">Plan with current conditions. Look back to understand reliability, arrival estimates, and the places along your route.</p>
-      <a class="primary-button" href="#eta-accuracy" data-copy="openEta">Explore ETA trustworthiness</a>
-      <p class="scope-note" data-copy="scope">Feature 4 is open as a research preview. Features 1–3 are being built in Tableau; features 5–8 are planned. Not all eight dashboards are available yet.</p>
+      <a class="primary-button" href="#historical-service" data-copy="openHistory">Explore historical service</a>
+      <p class="scope-note" data-copy="scope">Features 1–3 use completed historical Muni observations. Feature 4 is collecting predictions. Features 5–8 are planned.</p>
+    </section>
+    <section class="analytics-section historical-section" id="historical-service" aria-labelledby="history-title">
+      <p class="eyebrow" data-copy="historyEyebrow">Features 1–3 · Historical service</p>
+      <h2 id="history-title" data-copy="historyTitle">Look at one route from three useful angles.</h2>
+      <p class="intro-lead" data-copy="historyLead">Select a route and direction. These results use completed historic trips, not the live snapshot.</p>
+      <div class="route-controls history-controls"><label for="historical-route" data-copy="routeLabel">Choose a route</label><select id="historical-route"></select><label for="historical-direction" data-copy="directionLabel">Choose a direction</label><select id="historical-direction"><option value="all" data-copy="bothDirections">Both directions</option></select></div>
+      <div class="analytics-panel history-source" id="historical-source" role="status"></div>
+      <div id="historical-results" aria-live="polite"></div>
     </section>
     <section class="analytics-section catalog-section" aria-labelledby="catalog-title">
       <p class="eyebrow" data-copy="catalogEyebrow">One platform, two views</p><h2 id="catalog-title" data-copy="catalogTitle">Now tells you how to go. History helps you understand why.</h2>
@@ -48,6 +56,6 @@
     </section>
   </main>
   <footer><span>SF Transit Pulse</span><span data-copy="footer">Independent research prototype · Not an official SFMTA service</span><a href="../?lang=en#journey" data-home data-copy="back">Back to trip planning →</a></footer>
-  <script type="module" src="analytics.js?v=1"></script>
+  <script type="module" src="analytics.js?v=3"></script>
 </body>
 </html>

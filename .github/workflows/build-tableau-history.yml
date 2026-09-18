@@ -70,6 +70,25 @@ jobs:
           --month "${{ steps.period.outputs.month }}"
           --output-dir tableau-output
 
+      - name: Build browser historical analytics
+        run: >-
+          python scripts/build_historical_analytics.py
+          --input-dir tableau-output
+          --output site/data/historical-analytics.json
+          --month "${{ steps.period.outputs.month }}"
+
+      - name: Publish historical Analytics summary
+        run: |
+          git config user.name "sf-transit-data-bot"
+          git config user.email "sf-transit-data-bot@users.noreply.github.com"
+          git add site/data/historical-analytics.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data: publish historical commute analytics"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
+
       - name: Save monthly historic feed cache
         if: always() && steps.historic_cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -88,7 +107,9 @@ jobs:
           --allow-missing
 
       - name: Match predictions to official actual arrivals
+        id: eta_match
         if: steps.predictions.outputs.has_data == 'true'
+        continue-on-error: true
         run: >-
           python scripts/build_eta_accuracy.py
           --predictions-dir eta-predictions
@@ -97,7 +118,7 @@ jobs:
           --public-output site/data/eta-analytics.json
 
       - name: Publish matched Analytics summary
-        if: steps.predictions.outputs.has_data == 'true'
+        if: steps.predictions.outputs.has_data == 'true' && steps.eta_match.outcome == 'success'
         run: |
           git config user.name "sf-transit-data-bot"
           git config user.email "sf-transit-data-bot@users.noreply.github.com"
@@ -118,7 +139,7 @@ jobs:
           retention-days: 14
 
       - name: Upload ETA accuracy and trustworthiness tables
-        if: steps.predictions.outputs.has_data == 'true'
+        if: steps.predictions.outputs.has_data == 'true' && steps.eta_match.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: sf-transit-eta-accuracy-${{ steps.period.outputs.month }}

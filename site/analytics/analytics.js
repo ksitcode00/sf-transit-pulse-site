@@ -6,13 +6,38 @@ const COPY = {
     live: "Muni now",
     journey: "Plan a trip",
     analytics: "Commute analytics",
-    beta: "Analytics · Research preview",
+    beta: "Commute analytics",
     eyebrow: "Beyond your next ride",
     title: "Understand your commute.",
     lead: "Plan with current conditions. Look back to understand reliability, arrival estimates, and the places along your route.",
     openEta: "Explore ETA trustworthiness",
+    openHistory: "Explore historical service",
     scope:
-      "Feature 4 is open as a research preview. Features 1–3 are being built in Tableau; features 5–8 are planned. Not all eight dashboards are available yet.",
+      "Features 1–3 use completed historical Muni observations. Feature 4 is collecting predictions. Features 5–8 are planned.",
+    historyEyebrow: "Features 1–3 · Historical service",
+    historyTitle: "Look at one route from three useful angles.",
+    historyLead: "Select a route and direction. These results use completed historic trips, not the live snapshot.",
+    directionLabel: "Choose a direction",
+    bothDirections: "Both directions",
+    historyLoading: "Loading historical service data…",
+    historyUnavailable: "Historical service data could not be loaded. Please reload to try again.",
+    historySource: "{month} · {trips} completed Muni trips · 511 historic stop observations",
+    historyLimit: "Delays compare each completed trip's observed final-stop time with its schedule. Historical patterns help with context; they do not describe current service or guarantee a future trip.",
+    routeMapTitle: "1. Route map",
+    routeMapLead: "The route geometry used by the historical feed. Blue and orange show the two recorded directions.",
+    reliabilityTitle: "2. Route reliability",
+    reliabilityLead: "Travel-time spread and final-stop delay across completed trips.",
+    medianDelay: "Median final-stop delay",
+    p90Delay: "P90 absolute delay",
+    lateTrips: "Trips more than 5 min late",
+    tripInstances: "Completed trips",
+    travelSpread: "Travel-time distribution",
+    travelSpreadLead: "The box covers the middle half of trips. The line marks the median.",
+    bestTimeTitle: "3. Best time to travel",
+    bestTimeLead: "Darker cells mean a larger median absolute final-stop delay. Each cell uses completed trips that started in that hour.",
+    noHistory: "No historical records are available for this selection.",
+    direction0: "Direction 0",
+    direction1: "Direction 1",
     catalogEyebrow: "One platform, two views",
     catalogTitle: "Now tells you how to go. History helps you understand why.",
     feature4: "Feature 4 · ETA Accuracy & Trustworthiness",
@@ -63,7 +88,7 @@ const COPY = {
     horizon: "Minutes before actual arrival",
     n: "Predictions",
     feature: "Feature",
-    tableau: "Tableau in progress",
+    tableau: "Available",
     planned: "Planned",
     preview: "Research preview",
     explore: "Open research preview →",
@@ -77,13 +102,38 @@ const COPY = {
     live: "Muni 当前状况",
     journey: "规划行程",
     analytics: "通勤分析",
-    beta: "通勤分析 · 研究预览",
+    beta: "通勤分析",
     eyebrow: "不只看下一班车",
     title: "更了解你的通勤。",
     lead: "实时信息帮你决定现在怎么走；历史分析帮你理解线路稳不稳定、预计到站时间准不准，以及沿途的背景情况。",
     openEta: "查看预计到站时间可信度",
+    openHistory: "查看历史运行情况",
     scope:
-      "第 4 个功能已开放研究预览。第 1–3 个功能正在 Tableau 中制作，第 5–8 个功能计划以后上线。这里并不是八个已完成的仪表板。",
+      "功能 1–3 使用已完成的 Muni 历史观测数据。功能 4 正在积累预测，功能 5–8 为后续计划。",
+    historyEyebrow: "功能 1–3 · 历史运行情况",
+    historyTitle: "从三个实用角度看一条线路。",
+    historyLead: "选择线路和方向。以下结果来自已完成的历史班次，不是实时快照。",
+    directionLabel: "选择方向",
+    bothDirections: "两个方向合并",
+    historyLoading: "正在读取历史运行数据…",
+    historyUnavailable: "暂时无法读取历史运行数据，请重新加载再试。",
+    historySource: "{month} · {trips} 个完成的 Muni 班次 · 511 历史站点观测数据",
+    historyLimit: "延误比较的是每趟已完成班次的终点站观测时间与原定时刻。历史规律只用于提供背景，不能代表当前运行，也不能保证下一趟车。",
+    routeMapTitle: "1. 线路地图",
+    routeMapLead: "历史数据所用的线路形状。蓝色和橙色表示记录到的两个方向。",
+    reliabilityTitle: "2. 线路可靠度",
+    reliabilityLead: "查看完成班次的行程时间分布和终点站延误。",
+    medianDelay: "终点延误中位数",
+    p90Delay: "绝对延误第 90 百分位",
+    lateTrips: "晚超过 5 分钟的班次",
+    tripInstances: "完成的班次",
+    travelSpread: "行程时间分布",
+    travelSpreadLead: "箱体表示中间一半班次，竖线表示中位数。",
+    bestTimeTitle: "3. 更合适的出行时间",
+    bestTimeLead: "颜色越深，终点站绝对延误中位数越大。每格只使用该小时开始的已完成班次。",
+    noHistory: "这个选择暂时没有可用的历史记录。",
+    direction0: "方向 0",
+    direction1: "方向 1",
     catalogEyebrow: "同一个产品，两种视角",
     catalogTitle: "实时信息回答怎么走，历史分析帮你理解为什么。",
     feature4: "功能 4 · 预计到站时间准确度与可信度",
@@ -128,7 +178,7 @@ const COPY = {
     horizon: "距离实际到站的分钟数",
     n: "预测记录数",
     feature: "功能",
-    tableau: "Tableau 制作中",
+    tableau: "已上线",
     planned: "计划中",
     preview: "研究预览",
     explore: "打开研究预览 →",
@@ -301,8 +351,10 @@ if (!["en", "zh"].includes(language)) {
 if (!["en", "zh"].includes(language)) language = "en";
 let analysis = null,
   live = null,
+  historical = null,
   analysisError = false,
-  liveError = false;
+  liveError = false,
+  historicalError = false;
 const t = (k) => COPY[language][k];
 const esc = (v) =>
   String(v ?? "").replace(
@@ -342,7 +394,7 @@ function render() {
     );
   document.getElementById("feature-catalog").innerHTML = FEATURES.map(
     (f, i) =>
-      `<article class="feature-card ${i === 3 ? "feature-open" : ""}"><p class="feature-number">${t("feature")} ${i + 1}</p><h3>${esc(f[language === "zh" ? 1 : 0])}</h3><span class="feature-state">${t(i < 3 ? "tableau" : i === 3 ? "preview" : "planned")}</span><p>${t("example")}: ${esc(f[language === "zh" ? 3 : 2])}</p>${i === 3 ? `<a href="#eta-accuracy">${t("explore")}</a>` : ""}</article>`,
+      `<article class="feature-card ${i < 4 ? "feature-open" : ""}"><p class="feature-number">${t("feature")} ${i + 1}</p><h3>${esc(f[language === "zh" ? 1 : 0])}</h3><span class="feature-state">${t(i < 3 ? "tableau" : i === 3 ? "preview" : "planned")}</span><p>${t("example")}: ${esc(f[language === "zh" ? 3 : 2])}</p>${i < 3 ? `<a href="#historical-service">${t("openHistory")}</a>` : i === 3 ? `<a href="#eta-accuracy">${t("explore")}</a>` : ""}</article>`,
   ).join("");
   document.getElementById("research-questions").innerHTML = QUESTIONS[language]
     .map(([a, b]) => `<article><h3>${esc(a)}</h3><p>${esc(b)}</p></article>`)
@@ -355,6 +407,94 @@ function render() {
     .join("");
   renderResults();
   renderCapture();
+  renderHistorical();
+}
+function historyDirectionLabel(value) {
+  if (value === "all") return t("bothDirections");
+  if (value === "0") return t("direction0");
+  if (value === "1") return t("direction1");
+  return `${t("directionLabel")} ${value}`;
+}
+function historySourceText() {
+  const [year, month] = String(historical.source_month || "").split("-");
+  const label = year && month
+    ? language === "zh"
+      ? `${year} 年 ${Number(month)} 月`
+      : new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${year}-${month}-01T00:00:00Z`))
+    : "—";
+  return t("historySource")
+    .replace("{month}", label)
+    .replace("{trips}", num(historical.trip_instance_count));
+}
+function renderHistorical() {
+  const source = document.getElementById("historical-source");
+  const target = document.getElementById("historical-results");
+  const routeSelect = document.getElementById("historical-route");
+  const directionSelect = document.getElementById("historical-direction");
+  if (!historical) {
+    source.textContent = historicalError ? t("historyUnavailable") : t("historyLoading");
+    target.innerHTML = "";
+    return;
+  }
+  const previousRoute = routeSelect.value;
+  routeSelect.innerHTML = (historical.routes || []).map((route) => `<option value="${esc(route.route_short_name)}">${esc(route.route_short_name)} — ${esc(route.route_long_name)}</option>`).join("");
+  routeSelect.value = [...routeSelect.options].some((option) => option.value === previousRoute) ? previousRoute : "1";
+  const route = routeSelect.value;
+  const directions = [...new Set((historical.reliability || []).filter((row) => row.route_short_name === route).map((row) => String(row.direction_id)))].sort();
+  const previousDirection = directionSelect.value;
+  directionSelect.innerHTML = `<option value="all">${esc(t("bothDirections"))}</option>${directions.filter((direction) => direction !== "all").map((direction) => `<option value="${esc(direction)}">${esc(historyDirectionLabel(direction))}</option>`).join("")}`;
+  directionSelect.value = [...directionSelect.options].some((option) => option.value === previousDirection) ? previousDirection : "all";
+  const direction = directionSelect.value;
+  source.innerHTML = `<strong>${esc(historySourceText())}</strong><p>${esc(t("historyLimit"))}</p>`;
+  const reliability = (historical.reliability || []).find((row) => row.route_short_name === route && String(row.direction_id) === direction);
+  const geometry = (historical.geometries || []).filter((row) => row.route_short_name === route && (direction === "all" || String(row.direction_id) === direction));
+  const rawHeatmap = (historical.heatmap || []).map((row) => ({
+    route_short_name: String(row[0]), direction_id: String(row[1]), weekday_order: Number(row[2]), hour: Number(row[3]), trip_count: Number(row[4]), median_absolute_delay_min: Number(row[5]), p90_absolute_delay_min: Number(row[6]),
+  }));
+  const heatmap = rawHeatmap.filter((row) => row.route_short_name === route && row.direction_id === direction);
+  if (!reliability || !geometry.length || !heatmap.length) {
+    target.innerHTML = `<p class="history-empty">${t("noHistory")}</p>`;
+    return;
+  }
+  target.innerHTML = `<div class="history-grid"><article class="history-card"><h3>${t("routeMapTitle")}</h3><p>${t("routeMapLead")}</p>${renderRouteMap(geometry, direction)}</article><article class="history-card"><h3>${t("reliabilityTitle")}</h3><p>${t("reliabilityLead")}</p>${renderReliability(reliability)}</article></div><article class="history-card"><h3>${t("bestTimeTitle")}</h3><p>${t("bestTimeLead")}</p>${renderHeatmap(heatmap)}</article>`;
+}
+function renderRouteMap(geometries, direction) {
+  const paths = geometries.flatMap((entry) => entry.paths.map((points) => ({ direction: String(entry.direction_id), points })));
+  const points = paths.flatMap((path) => path.points);
+  const lats = points.map((point) => Number(point[0]));
+  const lons = points.map((point) => Number(point[1]));
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats), minLon = Math.min(...lons), maxLon = Math.max(...lons);
+  const lonRange = Math.max(maxLon - minLon, .001), latRange = Math.max(maxLat - minLat, .001);
+  const project = ([lat, lon]) => [60 + ((lon - minLon) / lonRange) * 880, 440 - ((lat - minLat) / latRange) * 380];
+  const pathMarkup = paths.map((path) => {
+    const pathData = path.points.map((point, index) => `${index ? "L" : "M"}${project(point).map((value) => value.toFixed(1)).join(" ")}`).join(" ");
+    const color = direction === "all" && path.direction === "1" ? "#ff9500" : "#0071e3";
+    return `<path class="route-path" style="stroke:${color}" d="${pathData}"/>`;
+  }).join("");
+  return `<svg class="route-map-svg" viewBox="0 0 1000 500" role="img" aria-label="${esc(t("routeMapTitle"))}">${pathMarkup}</svg>`;
+}
+function renderReliability(row) {
+  const min = Number(row.travel_time_p05_min), q1 = Number(row.travel_time_p25_min), median = Number(row.travel_time_median_min), q3 = Number(row.travel_time_p75_min), max = Number(row.travel_time_p95_min);
+  const scale = (value) => 5 + ((value - min) / Math.max(max - min, .1)) * 90;
+  return `<div class="kpi-grid"><div class="kpi"><strong>${num(row.median_end_delay_min)} ${t("minutes")}</strong><span>${t("medianDelay")}</span></div><div class="kpi"><strong>${num(row.p90_absolute_delay_min)} ${t("minutes")}</strong><span>${t("p90Delay")}</span></div><div class="kpi"><strong>${num(row.late_trip_pct)}%</strong><span>${t("lateTrips")}</span></div><div class="kpi"><strong>${num(row.trip_count)}</strong><span>${t("tripInstances")}</span></div></div><h3 class="boxplot-title">${t("travelSpread")}</h3><p>${t("travelSpreadLead")}</p><div class="boxplot" aria-label="${esc(t("travelSpread"))}"><span class="boxplot-line"></span><span class="boxplot-tick" style="left:${scale(min)}%"></span><span class="boxplot-range" style="left:${scale(q1)}%;width:${Math.max(scale(q3) - scale(q1), .5)}%"></span><span class="boxplot-median" style="left:${scale(median)}%"></span><span class="boxplot-tick" style="left:${scale(max)}%"></span><div class="boxplot-axis"><span>${num(min)}</span><span>${num(median)} ${t("minutes")}</span><span>${num(max)}</span></div></div>`;
+}
+function renderHeatmap(rows) {
+  const byCell = new Map(rows.map((row) => [`${row.weekday_order}-${row.hour}`, row]));
+  const maxDelay = Math.max(...rows.map((row) => row.median_absolute_delay_min), 1);
+  const weekdays = language === "zh" ? ["周一", "周二", "周三", "周四", "周五", "周六", "周日"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  let content = `<div class="heatmap-scroll"><div class="heatmap"><span></span>`;
+  for (let hour = 0; hour < 24; hour += 1) content += `<span class="heatmap-hour">${hour % 3 === 0 ? hour : ""}</span>`;
+  for (let weekday = 1; weekday <= 7; weekday += 1) {
+    content += `<span class="heatmap-label">${weekdays[weekday - 1]}</span>`;
+    for (let hour = 0; hour < 24; hour += 1) {
+      const cell = byCell.get(`${weekday}-${hour}`);
+      if (!cell) { content += '<span class="heatmap-cell no-data"></span>'; continue; }
+      const intensity = .13 + .82 * Math.min(cell.median_absolute_delay_min / maxDelay, 1);
+      const title = `${weekdays[weekday - 1]} ${hour}:00 · ${num(cell.median_absolute_delay_min)} ${t("minutes")} · ${num(cell.trip_count)} ${t("trips")}`;
+      content += `<span class="heatmap-cell" title="${esc(title)}" style="background:rgba(0,102,204,${intensity.toFixed(2)})"></span>`;
+    }
+  }
+  return content + "</div></div>";
 }
 function renderResults() {
   const ready =
@@ -508,6 +648,8 @@ document.getElementById("eta-route").addEventListener("change", () => {
   renderResults();
   renderCapture();
 });
+document.getElementById("historical-route").addEventListener("change", renderHistorical);
+document.getElementById("historical-direction").addEventListener("change", renderHistorical);
 let firstLoad = true;
 async function load() {
   await Promise.all([
@@ -537,13 +679,27 @@ async function load() {
         live = null;
         liveError = true;
       }),
+    fetch("../data/historical-analytics.json", { cache: "force-cache" })
+      .then((r) => {
+        if (!r.ok) throw Error();
+        return r.json();
+      })
+      .then((d) => {
+        historical = d?.status === "available" ? d : null;
+        historicalError = !historical;
+      })
+      .catch(() => {
+        historical = null;
+        historicalError = true;
+      }),
   ]);
   renderResults();
   renderCapture();
+  renderHistorical();
   if (firstLoad) {
     firstLoad = false;
     const id = location.hash.slice(1);
-    if (["overview", "eta-accuracy", "methodology"].includes(id))
+    if (["overview", "historical-service", "eta-accuracy", "methodology"].includes(id))
       requestAnimationFrame(() =>
         document.getElementById(id).scrollIntoView({ behavior: "instant" }),
       );
