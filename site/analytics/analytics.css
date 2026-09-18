@@ -154,17 +154,36 @@
 .history-empty { color:var(--muted); padding:32px 0; }
 .construction-section { border-top: 1px solid var(--hairline); }
 .construction-source { background: var(--parchment); }
+.construction-overview-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr); gap: 24px; margin: 28px 0; }
 .construction-card { border: 1px solid var(--hairline); border-radius: 18px; padding: 28px; background: var(--white); }
+.construction-card > p { color: var(--muted); margin-bottom: 18px; }
+.construction-ranking .rank-list { display: grid; gap: 10px; margin-top: 20px; }
+.rank-row { display: grid; grid-template-columns: minmax(96px, 1fr) minmax(120px, 2.2fr) 42px; align-items: center; gap: 10px; font-size: 13px; }
+.rank-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-bar { display: flex; min-height: 14px; overflow: hidden; border-radius: 99px; background: #f0f0f2; }
+.rank-bar i { display: block; min-width: 0; }
+.rank-direct { background: #ff7a00; }
+.rank-nearby { background: #8e8e93; }
+.rank-row strong { text-align: right; font-variant-numeric: tabular-nums; }
+.construction-kpis .kpi-grid { grid-template-columns: 1fr; gap: 18px; }
+.construction-kpis .kpi { border-top: 0; border-bottom: 1px solid var(--hairline); padding: 0 0 16px; }
+.construction-kpis .kpi:last-child { border-bottom: 0; padding-bottom: 0; }
+.construction-kpis .kpi strong { font-size: 32px; }
 .construction-map-wrap { position: relative; margin: 20px 0 28px; overflow: hidden; border: 1px solid var(--hairline); border-radius: 14px; background: var(--parchment); }
 .construction-map { display: block; width: 100%; min-height: 390px; background-image: linear-gradient(125deg, transparent 0 47%, rgba(0,0,0,.045) 47.1% 47.35%, transparent 47.45%), linear-gradient(40deg, transparent 0 68%, rgba(0,0,0,.035) 68.1% 68.3%, transparent 68.4%); }
 .construction-route { fill: none; stroke: var(--blue); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
 .construction-event { stroke: white; stroke-width: 2; opacity: .88; }
 .construction-event-direct { fill: #ff7a00; }
 .construction-event-nearby { fill: #6d6d72; opacity: .58; }
+.city-event { stroke: white; stroke-width: .45; opacity: .72; }
+.city-event-work { fill: #ff7a00; }
+.city-event-closure { fill: var(--blue); }
+.city-event-permit { fill: #6d6d72; }
 .construction-legend { position: absolute; right: 14px; bottom: 14px; display: flex; gap: 14px; flex-wrap: wrap; padding: 9px 12px; border: 1px solid var(--hairline); border-radius: 10px; background: rgba(255,255,255,.94); font-size: 12px; color: var(--muted); }
 .construction-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
 .legend-direct { background: #ff7a00; }
+.legend-closure { background: var(--blue); }
 .legend-nearby { background: #6d6d72; }
 .metrics-grid {
   display: grid;
@@ -259,7 +278,8 @@
   }
   .feature-grid,
   .metrics-grid,
-  .history-grid {
+  .history-grid,
+  .construction-overview-grid {
     grid-template-columns: 1fr;
   }
   .feature-card,

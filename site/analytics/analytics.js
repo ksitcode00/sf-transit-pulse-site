@@ -116,6 +116,15 @@ const COPY = {
     eventDetails: "Event details",
     distance: "Distance from route",
     sourceLabel: "Source",
+    exposureRankingTitle: "5A · Which routes have the most mapped road-event context?",
+    exposureRankingLead: "Each bar counts distinct events once per route. Orange is a direct overlap; gray is nearby context only.",
+    selectedRouteKpiTitle: "5B · A quick summary for this route direction",
+    distinctEvents: "Distinct mapped events",
+    nearbyEvents: "Nearby-context events",
+    medianDistance: "Median distance to route",
+    cityMapTitle: "5C · Where are the records across San Francisco?",
+    cityMapLead: "This citywide view shows event locations from the same daily snapshot. It is not filtered to the selected route.",
+    combinedMapTitle: "5D · Where do those records sit along this route?",
   },
   zh: {
     skip: "跳到通勤分析",
@@ -225,6 +234,15 @@ const COPY = {
     eventDetails: "事件详情",
     distance: "距路线",
     sourceLabel: "数据来源",
+    exposureRankingTitle: "5A · 哪些路线附近的道路事件最多？",
+    exposureRankingLead: "每条路线对同一事件只计一次。橙色表示直接重叠；灰色表示只属于附近背景。",
+    selectedRouteKpiTitle: "5B · 这条线路方向的快速摘要",
+    distinctEvents: "不同的空间匹配事件",
+    nearbyEvents: "附近背景事件",
+    medianDistance: "距路线中位距离",
+    cityMapTitle: "5C · 这些记录在旧金山哪里？",
+    cityMapLead: "全市地图展示同一份每日快照中的事件位置，不会按当前选择的路线筛选。",
+    combinedMapTitle: "5D · 这些记录落在这条路线的哪里？",
   },
 };
 const FEATURES = [
@@ -574,6 +592,42 @@ function renderConstructionMap(direction, records) {
   }).join("");
   return `<div class="construction-map-wrap"><svg class="construction-map" viewBox="0 0 1000 500" role="img" aria-label="${esc(t("feature5"))}"><path class="construction-route" d="${routePath}"/>${circles}</svg><div class="construction-legend"><span><i class="legend-dot legend-direct"></i>${esc(t("constructionDirect"))}</span><span><i class="legend-dot legend-nearby"></i>${esc(t("constructionNearby"))}</span></div></div>`;
 }
+function median(values) {
+  const sorted = values.map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  if (!sorted.length) return null;
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+function renderExposureRanking() {
+  const labels = new Map(constructionDirections().map((row) => [String(row.route_id), `${row.route_short_name} — ${row.route_long_name}`]));
+  const grouped = new Map();
+  for (const match of construction.matches) {
+    const routeId = String(match[0]), eventIndex = Number(match[2]);
+    const current = grouped.get(routeId) || { direct: new Set(), nearby: new Set() };
+    if (match[3] === "DIRECT_OVERLAP") current.direct.add(eventIndex);
+    else current.nearby.add(eventIndex);
+    grouped.set(routeId, current);
+  }
+  const rows = [...grouped.entries()].map(([routeId, groups]) => {
+    const nearbyOnly = [...groups.nearby].filter((id) => !groups.direct.has(id)).length;
+    return { routeId, label: labels.get(routeId) || routeId, direct: groups.direct.size, nearby: nearbyOnly, total: groups.direct.size + nearbyOnly };
+  }).sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, undefined, { numeric: true })).slice(0, 12);
+  const maximum = Math.max(...rows.map((row) => row.total), 1);
+  return `<article class="construction-card construction-ranking"><h3>${esc(t("exposureRankingTitle"))}</h3><p>${esc(t("exposureRankingLead"))}</p><div class="rank-list">${rows.map((row) => `<div class="rank-row"><span class="rank-label">${esc(row.label)}</span><span class="rank-bar"><i class="rank-direct" style="width:${(row.direct / maximum * 100).toFixed(2)}%"></i><i class="rank-nearby" style="width:${(row.nearby / maximum * 100).toFixed(2)}%"></i></span><strong>${num(row.total)}</strong></div>`).join("")}</div></article>`;
+}
+function renderCityEventMap() {
+  const events = construction.events || [];
+  const bounds = { minLat: 37.68, maxLat: 37.84, minLon: -122.55, maxLon: -122.33 };
+  const project = ([lat, lon]) => [56 + ((lon - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * 888, 448 - ((lat - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * 396];
+  const dots = events.map((event) => {
+    const lat = Number(event.latitude), lon = Number(event.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return "";
+    const [x, y] = project([lat, lon]);
+    const type = event.evidence_type === "WORK_ZONE" ? "work" : event.evidence_type === "EXCAVATION_PERMIT" ? "permit" : "closure";
+    return `<circle class="city-event city-event-${type}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.2"><title>${esc([event.title, event.street, event.evidence_type, event.status].filter(Boolean).join(" · "))}</title></circle>`;
+  }).join("");
+  return `<article class="construction-card city-event-card"><h3>${esc(t("cityMapTitle"))}</h3><p>${esc(t("cityMapLead"))}</p><div class="construction-map-wrap"><svg class="construction-map city-event-map" viewBox="0 0 1000 500" role="img" aria-label="${esc(t("cityMapTitle"))}">${dots}</svg><div class="construction-legend"><span><i class="legend-dot legend-direct"></i>WORK_ZONE</span><span><i class="legend-dot legend-closure"></i>PERMITTED_CLOSURE</span><span><i class="legend-dot legend-nearby"></i>EXCAVATION_PERMIT</span></div></div></article>`;
+}
 function renderConstruction() {
   const source = document.getElementById("construction-source");
   const target = document.getElementById("construction-results");
@@ -601,13 +655,20 @@ function renderConstruction() {
     .map((match) => ({ match, event: construction.events[Number(match[2])] }))
     .filter((row) => row.event)
     .sort((a, b) => Number(a.match[4]) - Number(b.match[4]));
+  const allDirectionRecords = construction.matches
+    .filter((match) => String(match[0]) === routeSelect.value && String(match[1]) === directionSelect.value)
+    .map((match) => ({ match, event: construction.events[Number(match[2])] }))
+    .filter((row) => row.event);
+  const distinctAll = new Set(allDirectionRecords.map(({ match }) => Number(match[2]))).size;
+  const nearbyOnly = new Set(allDirectionRecords.filter(({ match }) => match[3] === "NEARBY_CONTEXT").map(({ match }) => Number(match[2]))).size;
+  const medianDistance = median(allDirectionRecords.map(({ match }) => Number(match[4])));
   source.innerHTML = `<strong>${esc(t("constructionSource").replace("{date}", constructionDate(construction.snapshot_date)).replace("{events}", num(records.length)))}</strong><p>${esc(t("constructionLimit"))}</p>`;
   if (!direction || !records.length) {
     target.innerHTML = `<p class="history-empty">${esc(t("constructionEmpty"))}</p>`;
     return;
   }
   const shownRows = records.slice(0, 10);
-  target.innerHTML = `<article class="construction-card"><p class="scope-note">${esc(t("constructionShown").replace("{shown}", num(records.length)).replace("{total}", num(records.length)))}</p>${renderConstructionMap(direction, records)}<h3>${esc(t("closestEvents"))}</h3><div class="table-scroll" tabindex="0" role="region" aria-label="${esc(t("eventDetails"))}"><table><thead><tr><th scope="col">${esc(t("eventDetails"))}</th><th scope="col">${esc(t("distance"))}</th><th scope="col">${esc(t("sourceLabel"))}</th></tr></thead><tbody>${shownRows.map(({ event, match }) => `<tr><td>${esc([event.title, event.street].filter(Boolean).join(" · ") || event.event_type)}</td><td>${num(Number(match[4]))} m</td><td>${esc(event.evidence_type)}</td></tr>`).join("")}</tbody></table></div></article>`;
+  target.innerHTML = `<div class="construction-overview-grid">${renderExposureRanking()}<article class="construction-card construction-kpis"><h3>${esc(t("selectedRouteKpiTitle"))}</h3><div class="kpi-grid"><div class="kpi"><strong>${num(distinctAll)}</strong><span>${esc(t("distinctEvents"))}</span></div><div class="kpi"><strong>${num(nearbyOnly)}</strong><span>${esc(t("nearbyEvents"))}</span></div><div class="kpi"><strong>${medianDistance === null ? "—" : `${num(medianDistance)} m`}</strong><span>${esc(t("medianDistance"))}</span></div></div></article></div>${renderCityEventMap()}<article class="construction-card"><h3>${esc(t("combinedMapTitle"))}</h3><p class="scope-note">${esc(t("constructionShown").replace("{shown}", num(records.length)).replace("{total}", num(records.length)))}</p>${renderConstructionMap(direction, records)}<h3>${esc(t("closestEvents"))}</h3><div class="table-scroll" tabindex="0" role="region" aria-label="${esc(t("eventDetails"))}"><table><thead><tr><th scope="col">${esc(t("eventDetails"))}</th><th scope="col">${esc(t("distance"))}</th><th scope="col">${esc(t("sourceLabel"))}</th></tr></thead><tbody>${shownRows.map(({ event, match }) => `<tr><td>${esc([event.title, event.street].filter(Boolean).join(" · ") || event.event_type)}</td><td>${num(Number(match[4]))} m</td><td>${esc(event.evidence_type)}</td></tr>`).join("")}</tbody></table></div></article>`;
 }
 function renderResults() {
   const ready =
