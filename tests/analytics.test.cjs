@@ -37,6 +37,14 @@ test('analytics has complete bilingual copy and never invents pending accuracy',
   assert.equal((node('feature-catalog').innerHTML.match(/class="feature-card/g)||[]).length, 8);
 });
 
+test('methodology renders each step as a numbered title and separate explanation', () => {
+  const {node} = page();
+  const steps = node('method-steps').innerHTML;
+  assert.equal((steps.match(/class="method-step-number"/g) || []).length, 4);
+  assert.equal((steps.match(/class="method-step-copy"/g) || []).length, 4);
+  assert.match(steps, /<strong>Capture without extra 511 requests<\/strong><p>Reuse production snapshots/);
+});
+
 test('analytics filters selected routes and shows source-computed matched statistics', () => {
   const {context, node} = page();
   vm.runInContext(`analysis={status:'available',service_date_start:'2026-09-16',service_date_end:'2026-09-16',summary:[

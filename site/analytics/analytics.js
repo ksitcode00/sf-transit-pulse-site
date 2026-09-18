@@ -464,7 +464,7 @@ function render() {
     .map(([a, b]) => `<article><h3>${esc(a)}</h3><p>${esc(b)}</p></article>`)
     .join("");
   document.getElementById("method-steps").innerHTML = STEPS[language]
-    .map(([a, b]) => `<li><strong>${esc(a)}</strong>${esc(b)}</li>`)
+    .map(([a, b], index) => `<li><span class="method-step-number" aria-hidden="true">${index + 1}</span><div class="method-step-copy"><strong>${esc(a)}</strong><p>${esc(b)}</p></div></li>`)
     .join("");
   document.getElementById("method-details").innerHTML = DEFINITIONS[language]
     .map(([a, b]) => `<p><strong>${esc(a)}</strong><br>${esc(b)}</p>`)
