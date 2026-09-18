@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildPlaceSearchUrl, normalizePhotonResults, previousCompleteMonth, snapshotAgeSeconds} from "../cloudflare/refresh-watchdog/worker.js";
+import {buildPlaceSearchUrl, dispatchTrafficSafetyBuild, normalizePhotonResults, previousCompleteMonth, snapshotAgeSeconds} from "../cloudflare/refresh-watchdog/worker.js";
 
 test("monthly history trigger targets the previous complete calendar month", () => {
   assert.equal(previousCompleteMonth(Date.parse("2026-10-15T12:47:00Z")), "2026-09");
@@ -20,6 +20,28 @@ test("external watchdog uses the older of generated and observed timestamps", ()
 
 test("external watchdog treats missing source time as stale", () => {
   assert.equal(snapshotAgeSeconds({meta: {}}, Date.now()), Infinity);
+});
+
+test("weekly traffic history dispatch skips recent success but retries failure", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  let conclusion = "success";
+  globalThis.fetch = async (url, init) => {
+    calls.push({url, init});
+    if (init.method === "POST") return new Response(null, {status: 204});
+    return Response.json({workflow_runs: [{created_at: "2026-09-18T12:00:00Z", status: "completed", conclusion}]});
+  };
+  try {
+    const env = {GITHUB_OWNER: "owner", GITHUB_REPO: "repo", GITHUB_WORKFLOW_TOKEN: "test-token", GITHUB_REF: "main"};
+    const now = Date.parse("2026-09-18T13:37:00Z");
+    await dispatchTrafficSafetyBuild(env, now);
+    assert.equal(calls.length, 1);
+    conclusion = "failure";
+    await dispatchTrafficSafetyBuild(env, now);
+    assert.equal(calls.length, 3);
+    assert.ok(calls[2].url.endsWith("build-traffic-safety.yml/dispatches"));
+    assert.deepEqual(JSON.parse(calls[2].init.body), {ref: "main"});
+  } finally { globalThis.fetch = originalFetch; }
 });
 
 test("place proxy keeps searches inside San Francisco and normalizes results", () => {

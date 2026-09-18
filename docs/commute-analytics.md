@@ -12,9 +12,9 @@ EN: One SF Transit Pulse site, two complementary views: live planning answers �
 | 2 Route Reliability / 线路可靠度 | Available on web / 网站已上线 | Compare historical consistency / 比较历史稳定性 |
 | 3 Best Time / 出行时间 | Available on web / 网站已上线 | Compare times of day / 比较出行时段 |
 | 4 ETA Trustworthiness / 到站可信度 | Research preview / 研究预览 | Evaluate predictions against observed arrivals / 配对预测与实际到站 |
-| 5 Construction / 道路施工 | Planned / 计划中 | Spatial exposure, not causal attribution / 空间关联，不证明延误原因 |
-| 6 Disruptions / 服务变更 | Planned / 计划中 | Historical service notices / 历史服务通知 |
-| 7 Traffic Safety / 交通事故历史 | Planned / 计划中 | Reported traffic incidents / 已报告交通事故 |
+| 5 Construction / 道路施工 | Available / 已上线 | Spatial exposure, not causal attribution / 空间关联，不证明延误原因 |
+| 6 Disruptions / 服务变更 | Archive collecting / 正在积累归档 | Historical service notices / 历史服务通知 |
+| 7 Traffic Safety / 交通事故历史 | Available / 已上线 | Reported injury and fatal crashes / 已报告伤亡事故 |
 | 8 Incident Environment / 历史事件背景 | Planned / 计划中 | Context, not personal safety predictions / 背景信息，不预测个人安全 |
 
 ## Feature 4 publication / 功能 4 发布流程

@@ -1,0 +1,29 @@
+/* 中文：功能 7 样式限定在自己的区块，避免影响实时规划；手机单列、不挤压筛选器。
+   English: Scope Feature 7 styles to protect the planner. Stack mobile cards and filters. */
+#traffic-safety { border-top:1px solid var(--hairline); }
+#traffic-safety .analytics-panel { margin:24px 0; }
+.traffic-status { background:var(--parchment); }
+.traffic-kpi-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:28px 0; }
+.traffic-kpi-grid strong { display:block;font-size:32px;letter-spacing:-.03em; }
+.traffic-kpi-grid span { display:block;font-size:14px;color:var(--muted);margin-top:8px; }
+.traffic-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px; }
+#traffic-map { height:480px;border-radius:12px;background:var(--parchment);isolation:isolate; }
+.traffic-bars { margin-top:24px; }
+.traffic-bar-row { display:grid;grid-template-columns:minmax(120px,2fr) minmax(80px,3fr) 60px;gap:14px;align-items:center;padding:10px 0;font-size:14px; }
+.traffic-bar-row>div { height:12px;background:var(--parchment);border-radius:10px;overflow:hidden; }
+.traffic-bar-row i { display:block;height:100%;background:var(--blue);border-radius:10px; }
+.traffic-bar-row strong { text-align:right; }
+.traffic-links { display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-top:28px; }
+#traffic-safety summary { cursor:pointer;min-height:44px; }
+#traffic-safety .traffic-controls select { max-width:100%; }
+@media(max-width:760px) {
+  .traffic-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .traffic-grid { grid-template-columns:1fr;gap:0; }
+  #traffic-map { height:360px; }
+  .traffic-controls { display:grid;grid-template-columns:1fr;gap:10px; }
+  #traffic-safety .traffic-controls select { width:100%;min-width:0; }
+  .traffic-bar-row { grid-template-columns:minmax(90px,2fr) minmax(40px,1fr) 48px;gap:8px;font-size:12px; }
+}
+.traffic-map-legend{display:flex;flex-wrap:wrap;gap:10px 18px;color:var(--muted);font-size:14px}
+.traffic-map-legend>span{display:inline-flex;align-items:center;gap:6px}
+.traffic-map-legend i{display:inline-block;width:10px;height:10px;border-radius:50%}

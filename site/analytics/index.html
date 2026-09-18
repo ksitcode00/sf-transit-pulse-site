@@ -9,6 +9,8 @@
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../styles.css?v=42">
   <link rel="stylesheet" href="analytics.css?v=2">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="traffic-safety.css?v=1">
 </head>
 <body class="analytics-page">
   <a class="skip-link" href="#main" data-copy="skip">Skip to analytics</a>
@@ -23,7 +25,7 @@
       <h1 data-copy="title">Understand your commute.</h1>
       <p class="intro-lead" data-copy="lead">Plan with current conditions. Look back to understand reliability, arrival estimates, and the places along your route.</p>
       <a class="primary-button" href="#historical-service" data-copy="openHistory">Explore historical service</a>
-      <p class="scope-note" data-copy="scope">Features 1–3 use completed historical Muni observations. Feature 4 is collecting predictions. Feature 5 maps current street-work context. Features 6–8 are planned.</p>
+      <p class="scope-note" data-copy="scope">Features 1–3 use historical Muni observations. Feature 4 collects predictions. Feature 5 maps street work, Feature 6 archives alerts, Feature 7 explores injury-crash history, and Feature 8 is planned.</p>
     </section>
     <section class="analytics-section historical-section" id="historical-service" aria-labelledby="history-title">
       <p class="eyebrow" data-copy="historyEyebrow">Features 1–3 · Historical service</p>
@@ -59,6 +61,29 @@
       <div class="analytics-panel construction-source" id="construction-source" role="status"></div>
       <div id="construction-results" aria-live="polite"></div>
     </section>
+    <section class="analytics-section" id="traffic-safety" aria-labelledby="traffic-title">
+      <p class="eyebrow" data-traffic-copy="feature">Feature 7 · Traffic safety history</p>
+      <h2 id="traffic-title" data-traffic-copy="title">Understand the crash history along a route.</h2>
+      <p class="intro-lead" data-traffic-copy="lead"></p>
+      <div class="route-controls traffic-controls">
+        <label for="traffic-route" data-traffic-copy="route">Choose a route</label><select id="traffic-route"><option value="all">All routes</option></select>
+        <label for="traffic-direction" data-traffic-copy="direction">Choose a direction</label><select id="traffic-direction"><option value="all">Both directions</option></select>
+        <label for="traffic-year" data-traffic-copy="year">Choose a year</label><select id="traffic-year"><option value="all">All available years</option></select>
+        <label for="traffic-radius" data-traffic-copy="radius">Distance from route</label><select id="traffic-radius"><option value="100">100 m</option><option value="200">200 m</option></select>
+      </div>
+      <div class="analytics-panel traffic-status" id="traffic-status" role="status"></div>
+      <p class="scope-note" data-traffic-copy="disclaimer"></p>
+      <div class="traffic-kpi-grid" id="traffic-kpis" aria-live="polite"></div>
+      <article class="analytics-panel"><h3 data-traffic-copy="map">Crash locations and route lines</h3><p class="traffic-map-legend"><span><i style="background:#9e1424"></i><span data-traffic-copy="FATAL">Fatal</span></span><span><i style="background:#b65b00"></i><span data-traffic-copy="SEVERE">Severe injury</span></span><span><i style="background:#0066cc"></i><span data-traffic-copy="otherInjury">Other injury</span></span><span><i style="background:#636366"></i><span data-traffic-copy="UNKNOWN">Unknown</span></span></p><div id="traffic-map" role="region" aria-label="Traffic crash map"></div></article>
+      <div class="traffic-grid">
+        <article class="analytics-panel"><h3 data-traffic-copy="trend">Crash counts by year</h3><p class="scope-note" data-traffic-copy="trendNote"></p><div id="traffic-trend"></div></article>
+        <article class="analytics-panel"><h3 data-traffic-copy="groups">Who was involved?</h3><p class="scope-note" data-traffic-copy="groupNote"></p><div id="traffic-groups"></div></article>
+      </div>
+      <article class="analytics-panel"><h3 data-traffic-copy="hotspots">Intersections with more reports</h3><p class="scope-note" data-traffic-copy="hotNote"></p><div id="traffic-hotspots"></div></article>
+      <article class="analytics-panel traffic-details"><h3 data-traffic-copy="details">Crash details</h3><p class="scope-note" data-traffic-copy="shown"></p><div id="traffic-table" class="table-scroll" tabindex="0"></div></article>
+      <details class="analytics-panel"><summary data-traffic-copy="methodology">How this is calculated</summary><p data-traffic-copy="method"></p></details>
+      <div class="traffic-links"><a class="primary-button" href="../data/tableau/feature7_traffic_safety.zip" download data-traffic-copy="download">Download the traffic crash data</a><a class="text-action" id="traffic-source-link" href="https://data.sf.gov/d/ubvf-ztfx" data-traffic-copy="source">Read the official source</a></div>
+    </section>
     <section class="analytics-section method-section" id="methodology" aria-labelledby="method-title">
       <p class="eyebrow" data-copy="methodEyebrow">Methodology & data</p><h2 id="method-title" data-copy="methodTitle">Every result needs a prediction and an observed arrival.</h2>
       <ol class="method-steps" id="method-steps"></ol>
@@ -68,6 +93,8 @@
     </section>
   </main>
   <footer><span>SF Transit Pulse</span><span data-copy="footer">Independent research prototype · Not an official SFMTA service</span><a href="../?lang=en#journey" data-home data-copy="back">Back to trip planning →</a></footer>
-  <script type="module" src="analytics.js?v=4"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="analytics.js?v=5"></script>
+  <script type="module" src="traffic-safety.mjs?v=1"></script>
 </body>
 </html>

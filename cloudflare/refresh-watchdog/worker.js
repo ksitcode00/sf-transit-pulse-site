@@ -6,6 +6,7 @@ const HISTORY_RUN_LOOKBACK_SECONDS = 24 * 60 * 60;
 const HISTORY_CRON = "47 12 15,22 * *";
 const FEATURE5_RUN_LOOKBACK_SECONDS = 20 * 60 * 60;
 const FEATURE5_CRON = "19 13 * * *";
+const TRAFFIC_SAFETY_CRON = "37 13 * * 5";
 const PLACE_SEARCH_ORIGIN = "https://ksitcode00.github.io";
 const PLACE_SEARCH_BBOX = "-122.55,37.69,-122.32,37.84";
 const PHOTON_SEARCH_URL = "https://photon.komoot.io/api/";
@@ -202,6 +203,26 @@ async function checkAndRecover(env, scheduledTime) {
   });
 }
 
+// 中文：历史事故每周独立检查，不走 511，不影响三分钟公交刷新配额。
+// English: Check historical crashes weekly, independently of 511 and transit refresh quotas.
+async function dispatchTrafficSafetyBuild(env, scheduledTime) {
+  if (!env.GITHUB_WORKFLOW_TOKEN) throw new Error("Missing GITHUB_WORKFLOW_TOKEN secret.");
+  const workflow = "build-traffic-safety.yml";
+  const root = `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/actions/workflows/${workflow}`;
+  const response = await githubRequest(env, `${root}/runs?per_page=10`);
+  const payload = await response.json();
+  const recent = (payload.workflow_runs || []).some(run => {
+    const created = parseEpoch(run.created_at);
+    return created !== null && scheduledTime >= created && scheduledTime - created < 6 * 86400000
+      && (run.conclusion === "success" || ["queued", "in_progress", "waiting", "pending"].includes(run.status));
+  });
+  if (recent) return;
+  await githubRequest(env, `${root}/dispatches`, {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ref: env.GITHUB_REF || "main"})
+  });
+}
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
@@ -227,8 +248,12 @@ export default {
       ctx.waitUntil(dispatchFeature5Build(env, controller.scheduledTime));
       return;
     }
+    if (controller.cron === TRAFFIC_SAFETY_CRON) {
+      ctx.waitUntil(dispatchTrafficSafetyBuild(env, controller.scheduledTime));
+      return;
+    }
     ctx.waitUntil(checkAndRecover(env, controller.scheduledTime));
   }
 };
 
-export {buildPlaceSearchUrl, checkAndRecover, dispatchFeature5Build, dispatchHistoricalBuild, handlePlaceSearch, normalizePhotonResults, previousCompleteMonth, snapshotAgeSeconds};
+export {buildPlaceSearchUrl, checkAndRecover, dispatchFeature5Build, dispatchTrafficSafetyBuild, dispatchHistoricalBuild, handlePlaceSearch, normalizePhotonResults, previousCompleteMonth, snapshotAgeSeconds};
