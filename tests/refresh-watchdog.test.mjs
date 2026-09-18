@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import worker from "../cloudflare/refresh-watchdog/worker.js";
 import {buildPlaceSearchUrl, dispatchTrafficSafetyBuild, normalizePhotonResults, previousCompleteMonth, snapshotAgeSeconds} from "../cloudflare/refresh-watchdog/worker.js";
 
 test("monthly history trigger targets the previous complete calendar month", () => {
@@ -42,6 +43,24 @@ test("weekly traffic history dispatch skips recent success but retries failure",
     assert.ok(calls[2].url.endsWith("build-traffic-safety.yml/dispatches"));
     assert.deepEqual(JSON.parse(calls[2].init.body), {ref: "main"});
   } finally { globalThis.fetch = originalFetch; }
+});
+
+test("daily incident timer dispatches its own pipeline rather than refreshing transit", async()=>{
+  const originalFetch=globalThis.fetch,posts=[],pending=[];
+  globalThis.fetch=async(url,init={})=>{
+    if(init.method==='POST'){posts.push({url,body:JSON.parse(init.body)});return new Response(null,{status:204});}
+    if(url.includes('raw.githubusercontent.com'))return Response.json({meta:{generated_at:'2026-09-18T13:52:59Z',source_status:{transit:{observed_at:'2026-09-18T13:52:59Z'}}}});
+    return Response.json({workflow_runs:[]});
+  };
+  try{
+    await worker.scheduled({cron:'53 13 * * *',scheduledTime:Date.parse('2026-09-18T13:53:00Z'),noRetry(){}},
+      {GITHUB_WORKFLOW_TOKEN:'test',GITHUB_OWNER:'owner',GITHUB_REPO:'repo',GITHUB_REF:'main'},
+      {waitUntil(promise){pending.push(promise);}});
+    await Promise.all(pending);
+    assert.equal(posts.length,1);
+    assert.ok(posts[0].url.endsWith('build-incident-environment.yml/dispatches'));
+    assert.deepEqual(posts[0].body,{ref:'main'});
+  }finally{globalThis.fetch=originalFetch;}
 });
 
 test("place proxy keeps searches inside San Francisco and normalizes results", () => {

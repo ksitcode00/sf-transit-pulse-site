@@ -13,7 +13,7 @@ const COPY = {
     openEta: "Explore ETA trustworthiness",
     openHistory: "Explore historical service",
     scope:
-      "Features 1–3 use the latest complete historical Muni month. Feature 4 is collecting predictions. Feature 5 maps current street work. Feature 7 shows reported injury-crash history. Feature 6 is archiving notices; Feature 8 analytics are planned.",
+      "Features 1–3 use the latest complete historical Muni month. Feature 4 is collecting predictions. Feature 5 maps current street work. Feature 6 is archiving notices. Features 7–8 show crash history and incident reports, not personal safety predictions.",
     historyEyebrow: "Features 1–3 · Historical service",
     historyTitle: "Look at one route from three useful angles.",
     historyLead: "Select a route and direction. These results use the latest published complete month, not the live snapshot.",
@@ -94,6 +94,7 @@ const COPY = {
     preview: "Research preview",
     explore: "Open research preview →",
     exploreTraffic: "Explore traffic crash history →",
+    exploreIncidents: "Explore incident history →",
     example: "Example question",
     loading: "Loading snapshot…",
     groupNote:
@@ -139,7 +140,7 @@ const COPY = {
     openEta: "查看预计到站时间可信度",
     openHistory: "查看历史运行情况",
     scope:
-      "功能 1–3 使用最新完整的 Muni 历史月份；功能 4 正在积累预测；功能 5 显示当前道路施工；功能 7 显示伤亡事故历史。功能 6 正在归档公告，功能 8 的分析页为后续计划。",
+      "功能 1–3 使用最新完整的 Muni 历史月份；功能 4 正在积累预测；功能 5 显示当前道路施工；功能 6 正在归档公告。功能 7–8 提供事故历史与事件报告，不预测个人安全。",
     historyEyebrow: "功能 1–3 · 历史运行情况",
     historyTitle: "从三个实用角度看一条线路。",
     historyLead: "选择线路和方向。以下结果来自最新一个完整发布的历史月份，不是实时快照。",
@@ -214,6 +215,7 @@ const COPY = {
     preview: "研究预览",
     explore: "打开研究预览 →",
     exploreTraffic: "查看交通事故历史 →",
+    exploreIncidents: "查看历史事件背景 →",
     example: "可以回答的问题",
     loading: "正在读取快照…",
     groupNote: "按提前量组内计数，同一次到站可能跨组重复。",
@@ -456,7 +458,7 @@ function render() {
     );
   document.getElementById("feature-catalog").innerHTML = FEATURES.map(
     (f, i) =>
-      `<article class="feature-card ${i < 5 || i === 6 ? "feature-open" : ""}"><p class="feature-number">${t("feature")} ${i + 1}</p><h3>${esc(f[language === "zh" ? 1 : 0])}</h3><span class="feature-state">${t(i < 3 ? "tableau" : i === 3 ? "preview" : i === 4 || i === 6 ? "tableau" : "planned")}</span><p>${t("example")}: ${esc(f[language === "zh" ? 3 : 2])}</p>${i < 3 ? `<a href="#historical-service">${t("openHistory")}</a>` : i === 3 ? `<a href="#eta-accuracy">${t("explore")}</a>` : i === 4 ? `<a href="#construction-exposure">${t("explore")}</a>` : i === 6 ? `<a href="#traffic-safety">${t("exploreTraffic")}</a>` : ""}</article>`,
+      `<article class="feature-card ${i < 5 || i >= 6 ? "feature-open" : ""}"><p class="feature-number">${t("feature")} ${i + 1}</p><h3>${esc(f[language === "zh" ? 1 : 0])}</h3><span class="feature-state">${t(i < 3 ? "tableau" : i === 3 ? "preview" : i === 4 || i >= 6 ? "tableau" : "planned")}</span><p>${t("example")}: ${esc(f[language === "zh" ? 3 : 2])}</p>${i < 3 ? `<a href="#historical-service">${t("openHistory")}</a>` : i === 3 ? `<a href="#eta-accuracy">${t("explore")}</a>` : i === 4 ? `<a href="#construction-exposure">${t("explore")}</a>` : i === 6 ? `<a href="#traffic-safety">${t("exploreTraffic")}</a>` : i === 7 ? `<a href="#incident-environment">${t("exploreIncidents")}</a>` : ""}</article>`,
   ).join("");
   document.getElementById("research-questions").innerHTML = QUESTIONS[language]
     .map(([a, b]) => `<article><h3>${esc(a)}</h3><p>${esc(b)}</p></article>`)
@@ -892,7 +894,7 @@ async function load() {
   if (firstLoad) {
     firstLoad = false;
     const id = location.hash.slice(1);
-    if (["overview", "historical-service", "eta-accuracy", "construction-exposure", "traffic-safety", "methodology"].includes(id))
+    if (["overview", "historical-service", "eta-accuracy", "construction-exposure", "traffic-safety", "incident-environment", "methodology"].includes(id))
       requestAnimationFrame(() =>
         document.getElementById(id).scrollIntoView({ behavior: "instant" }),
       );

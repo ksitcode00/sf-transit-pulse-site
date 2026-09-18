@@ -7,6 +7,7 @@ const HISTORY_CRON = "47 12 15,22 * *";
 const FEATURE5_RUN_LOOKBACK_SECONDS = 20 * 60 * 60;
 const FEATURE5_CRON = "19 13 * * *";
 const TRAFFIC_SAFETY_CRON = "37 13 * * 5";
+const INCIDENT_ENVIRONMENT_CRON = "53 13 * * *";
 const PLACE_SEARCH_ORIGIN = "https://ksitcode00.github.io";
 const PLACE_SEARCH_BBOX = "-122.55,37.69,-122.32,37.84";
 const PHOTON_SEARCH_URL = "https://photon.komoot.io/api/";
@@ -223,6 +224,24 @@ async function dispatchTrafficSafetyBuild(env, scheduledTime) {
   });
 }
 
+// 中文：警方事件每日单独更新；成功或正在执行的近期任务不重复调度，失败不冒充成功。
+// English: Refresh incident history separately; deduplicate recent success/active runs, not failures.
+async function dispatchIncidentEnvironmentBuild(env, scheduledTime) {
+  if (!env.GITHUB_WORKFLOW_TOKEN) throw new Error("Missing GITHUB_WORKFLOW_TOKEN secret.");
+  const root = `/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/actions/workflows/build-incident-environment.yml`;
+  const response = await githubRequest(env, `${root}/runs?per_page=10`);
+  const payload = await response.json();
+  if ((payload.workflow_runs || []).some(run => {
+    const created = parseEpoch(run.created_at);
+    return created !== null && scheduledTime >= created && scheduledTime - created < 20 * 3600000
+      && (run.conclusion === "success" || ["queued", "in_progress", "waiting", "pending"].includes(run.status));
+  })) return;
+  await githubRequest(env, `${root}/dispatches`, {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ref: env.GITHUB_REF || "main"})
+  });
+}
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
@@ -250,6 +269,10 @@ export default {
     }
     if (controller.cron === TRAFFIC_SAFETY_CRON) {
       ctx.waitUntil(dispatchTrafficSafetyBuild(env, controller.scheduledTime));
+      return;
+    }
+    if (controller.cron === INCIDENT_ENVIRONMENT_CRON) {
+      ctx.waitUntil(dispatchIncidentEnvironmentBuild(env, controller.scheduledTime));
       return;
     }
     ctx.waitUntil(checkAndRecover(env, controller.scheduledTime));

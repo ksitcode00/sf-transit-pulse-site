@@ -44,6 +44,7 @@ jobs:
           node --check site/app.js
           node --check site/analytics/analytics.js
           node --check site/analytics/traffic-safety.mjs
+          node --check site/analytics/incident-environment.mjs
           node --check site/nearby-stops.js
           node --check site/place-search.js
           node --check site/stop-catalog.js
@@ -52,7 +53,7 @@ jobs:
           node --check cloudflare/refresh-watchdog/worker.js
 
       - name: Verify Scheme B browser planner contracts
-        run: node --test tests/browser-planner.test.mjs tests/nearby-stops.test.cjs tests/place-search.test.cjs tests/stop-catalog.test.cjs tests/refresh-watchdog.test.mjs tests/analytics.test.cjs tests/traffic-safety.test.mjs
+        run: node --test tests/*.test.mjs tests/*.test.cjs
 
       - name: Verify public JSON caches
         run: |
@@ -68,3 +69,4 @@ jobs:
           python -m json.tool site/data/construction-exposure.json > /dev/null
           python -m json.tool site/data/service-alert-history.json > /dev/null
           python -m json.tool site/data/traffic-safety.json > /dev/null
+          python -m json.tool site/data/incident-environment.json > /dev/null

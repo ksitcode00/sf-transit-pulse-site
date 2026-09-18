@@ -10,7 +10,7 @@ on:
   # push workflow event. Listen for the refresh workflow itself so every
   # successful scheduled snapshot is published to Pages.
   workflow_run:
-    workflows: ["Refresh transit snapshot", "Refresh static transit network", "Build Tableau historical data", "Build Feature 5 Tableau data", "Build traffic safety history"]
+    workflows: ["Refresh transit snapshot", "Refresh static transit network", "Build Tableau historical data", "Build Feature 5 Tableau data", "Build traffic safety history", "Build incident environment history"]
     types: [completed]
   workflow_dispatch:
 

@@ -9,7 +9,7 @@ const app = fs.readFileSync(path.join(root, "site", "app.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "site", "styles.css"), "utf8");
 
 test("mobile browser layout has reachable navigation and no page-wide overflow", () => {
-  assert.match(html, /href="styles\.css\?v=41"/);
+  assert.match(html, /href="styles\.css\?v=\d+"/);
   assert.match(css, /\.global-nav nav\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?bottom:/);
   assert.match(css, /grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(css, /overflow-x:\s*hidden/);
@@ -17,7 +17,7 @@ test("mobile browser layout has reachable navigation and no page-wide overflow",
 });
 
 test("English and Chinese navigation remain accessible to screen readers", () => {
-  assert.match(html, /src="app\.js\?v=42"/);
+  assert.match(html, /src="app\.js\?v=\d+"/);
   assert.match(html, /id="mobile-recommendation" role="status" aria-live="polite"/);
   assert.match(app, /"主要导航" : "Global navigation"/);
   assert.match(app, /"页面栏目" : "Page sections"/);

@@ -2,7 +2,11 @@
 
 [打开通勤分析](https://ksitcode00.github.io/sf-transit-pulse-site/analytics/?lang=zh) · [查看历史线路运行](https://ksitcode00.github.io/sf-transit-pulse-site/analytics/?lang=zh#historical-service) · [预计到站可信度研究预览](https://ksitcode00.github.io/sf-transit-pulse-site/analytics/?lang=zh#eta-accuracy)
 
-通勤分析与实时行程规划互补。功能 1–3（线路地图、线路可靠度、出行时间）已在网站通勤分析页开放，使用最新一个完整月份的 Muni 历史班次与 511 站点观测数据；官方发布新月份后，网站会自动替换为新数据，底层明细表仍可继续用于 Tableau 探索。功能 4 已开放**研究预览**：收集 **1、8、30、45 号线**预测，等待官方月度实际到站记录后再发布误差；目前不展示虚构准确率。功能 5 显示道路施工背景；功能 6 正在积累服务公告历史；功能 7 展示官方伤亡事故历史，每周自动检查来源。功能 8 的分析页为后续计划。预测校正模型和经过验证的不确定性区间尚未实现。
+通勤分析与实时行程规划互补。功能 1–3（线路地图、线路可靠度、出行时间）已在网站通勤分析页开放，使用最新一个完整月份的 Muni 历史班次与 511 站点观测数据；官方发布新月份后，网站会自动替换为新数据，底层明细表仍可继续用于 Tableau 探索。功能 4 已开放**研究预览**：收集 **1、8、30、45 号线**预测，等待官方月度实际到站记录后再发布误差；目前不展示虚构准确率。功能 5 显示道路施工背景；功能 6 正在积累服务公告历史；功能 7 展示官方伤亡事故历史，每周自动检查来源。功能 8 展示当前 Muni 站点附近匿名化的警方事件历史，每天自动检查来源。预测校正模型和经过验证的不确定性区间尚未实现。
+
+[查看历史事件背景](https://ksitcode00.github.io/sf-transit-pulse-site/analytics/?lang=zh#incident-environment) · [下载功能 8 数据](https://ksitcode00.github.io/sf-transit-pulse-site/data/tableau/feature8_incident_environment.zip) · [方法说明](docs/incident-environment.md)
+
+功能 8 支持线路、站点、月份、类别、白天／夜间和 100–400 米近似站点范围筛选，提供匿名位置地图、类别分布和月度趋势。事件按编号去重；不同类别和附近站点的范围可重叠，数量不能直接相加。只作历史背景，不是安全排名或个人风险预测。
 
 [查看交通事故历史](https://ksitcode00.github.io/sf-transit-pulse-site/analytics/?lang=zh#traffic-safety) · [下载功能 7 数据](https://ksitcode00.github.io/sf-transit-pulse-site/data/tableau/feature7_traffic_safety.zip) · [方法说明](docs/traffic-safety-history.md)
 

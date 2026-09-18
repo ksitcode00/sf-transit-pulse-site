@@ -15,7 +15,7 @@ EN: One SF Transit Pulse site, two complementary views: live planning answers �
 | 5 Construction / 道路施工 | Available / 已上线 | Spatial exposure, not causal attribution / 空间关联，不证明延误原因 |
 | 6 Disruptions / 服务变更 | Archive collecting / 正在积累归档 | Historical service notices / 历史服务通知 |
 | 7 Traffic Safety / 交通事故历史 | Available / 已上线 | Reported injury and fatal crashes / 已报告伤亡事故 |
-| 8 Incident Environment / 历史事件背景 | Planned / 计划中 | Context, not personal safety predictions / 背景信息，不预测个人安全 |
+| 8 Incident Environment / 历史事件背景 | Available; daily checks / 已上线，每日检查 | Police reports near current stops, not personal safety predictions / 当前站点周边报告，不预测个人安全 |
 
 ## Feature 4 publication / 功能 4 发布流程
 
