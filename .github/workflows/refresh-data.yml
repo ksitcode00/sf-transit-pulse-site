@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 8
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
@@ -53,7 +53,7 @@ jobs:
 
       - name: Set up Python
         if: steps.refresh_gate.outputs.run == 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -76,17 +76,7 @@ jobs:
         run: |
           git config user.name "sf-transit-pulse[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/data/latest.json site/data/live-transit.json site/data/alerts-roads.json
-          git add site/data/parking-context.json site/data/safety-context.json site/data/network.json
-          git add site/data/refresh-health.json
-          git add site/data/service-alert-history.json
-          git add site/data/tableau/feature6_service_disruptions.csv
-          if [ -f data/parking-inventory.json ]; then
-            git add data/parking-inventory.json
-          fi
-          if [ -f data/static-index.json ]; then
-            git add data/static-index.json
-          fi
+          python scripts/stage_refresh_outputs.py
           if git diff --cached --quiet; then
             echo "Snapshot is unchanged."
           else

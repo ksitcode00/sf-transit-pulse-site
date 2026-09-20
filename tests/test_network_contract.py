@@ -421,12 +421,7 @@ def test_cloudflare_drives_three_minutes_and_github_remains_fallback() -> None:
     assert "cancel-in-progress: false" in workflow
     assert "github.event_name == 'push' || inputs.force_context == true" in workflow
     assert "check_refresh_due.py --minimum-age-seconds 120" in workflow
-    assert "data/parking-inventory.json" in workflow
-    assert "data/static-index.json" in workflow
-    assert "site/data/live-transit.json" in workflow
-    assert "site/data/alerts-roads.json" in workflow
-    assert "site/data/parking-context.json" in workflow
-    assert "site/data/safety-context.json" in workflow
+    assert "python scripts/stage_refresh_outputs.py" in workflow
 
     static_workflow = (ROOT / ".github/workflows/refresh-static.yml").read_text(encoding="utf-8")
     assert 'cron: "37 11 * * *"' in static_workflow
@@ -435,6 +430,7 @@ def test_cloudflare_drives_three_minutes_and_github_remains_fallback() -> None:
     watchdog = (ROOT / ".github/workflows/refresh-watchdog.yml").read_text(encoding="utf-8")
     assert 'cron: "11,26,41,56 * * * *"' in watchdog
     assert "check_refresh_health.py --max-age-min 7" in watchdog
+    assert "python scripts/stage_refresh_outputs.py" in watchdog
 
     external_watchdog = (ROOT / "cloudflare/refresh-watchdog/worker.js").read_text(encoding="utf-8")
     assert "GITHUB_WORKFLOW_TOKEN" in external_watchdog

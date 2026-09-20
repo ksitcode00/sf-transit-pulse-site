@@ -19,10 +19,13 @@ jobs:
     timeout-minutes: 8
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -52,16 +55,24 @@ jobs:
         run: |
           git config user.name "sf-transit-pulse[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/data/latest.json site/data/live-transit.json site/data/alerts-roads.json
-          git add site/data/parking-context.json site/data/safety-context.json site/data/refresh-health.json
+          python scripts/stage_refresh_outputs.py
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "data: recover stale transit snapshot"
-            git fetch origin main
-            git rebase origin/main
-            git push origin HEAD:main
-            echo "changed=true" >> "$GITHUB_OUTPUT"
+            for attempt in 1 2 3; do
+              git fetch origin main
+              if ! git rebase origin/main; then
+                git rebase --abort || true
+                exit 1
+              fi
+              if git push origin HEAD:main; then
+                echo "changed=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "Push race on attempt ${attempt}; synchronizing and retrying."
+            done
+            exit 1
           fi
 
       - name: Publish recovered data
