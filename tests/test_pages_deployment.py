@@ -31,3 +31,9 @@ def test_pages_upload_retries_a_failed_artifact_with_a_distinct_name():
         "${{ steps.upload_primary.outcome == 'success' "
         "&& 'github-pages' || 'github-pages-retry' }}"
     )
+def test_live_refresh_is_not_a_pages_deployment_trigger():
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    triggers = workflow.get("on", workflow.get(True))
+    watched = triggers["workflow_run"]["workflows"]
+    assert "Refresh transit snapshot" not in watched
+    assert "Refresh static transit network" in watched

@@ -11,6 +11,7 @@ const INCIDENT_ENVIRONMENT_CRON = "53 13 * * *";
 const PLACE_SEARCH_ORIGIN = "https://ksitcode00.github.io";
 const PLACE_SEARCH_BBOX = "-122.55,37.69,-122.32,37.84";
 const PHOTON_SEARCH_URL = "https://photon.komoot.io/api/";
+const PUBLIC_DATA_FILES = new Set(["live-transit.json", "alerts-roads.json", "parking-context.json", "safety-context.json"]);
 
 function parseEpoch(value) {
   const epoch = Date.parse(value || "");
@@ -86,6 +87,61 @@ function placeResponse(payload, status, origin = "") {
   };
   if (origin) headers["Access-Control-Allow-Origin"] = origin;
   return new Response(JSON.stringify(payload), {status, headers});
+}
+
+async function servePublicData(request, env, filename) {
+  const origin = request.headers.get("Origin") || "";
+  if (!allowedPlaceSearchOrigin(origin)) return placeResponse({error: "Origin not allowed."}, 403);
+  if (!PUBLIC_DATA_FILES.has(filename)) return placeResponse({error: "Not found."}, 404, origin);
+  if (!env?.LIVE_DATA) return placeResponse({error: "Live data is temporarily unavailable."}, 503, origin);
+  const value = await env.LIVE_DATA.get(filename, "text");
+  if (!value) return placeResponse({error: "Live data is not ready yet."}, 503, origin);
+  const headers = {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "public, max-age=30",
+    "X-Content-Type-Options": "nosniff",
+    "Vary": "Origin"
+  };
+  if (origin) headers["Access-Control-Allow-Origin"] = origin;
+  return new Response(value, {status: 200, headers});
+}
+
+async function mirrorDataFile(env, filename, payload, raw) {
+  if (!env.LIVE_DATA) return;
+  const checkedAt = filename === "live-transit.json"
+    ? payload?.meta?.generated_at
+    : Object.values(payload?.source_status || {})[0]?.checked_at;
+  const revision = parseEpoch(checkedAt);
+  if (revision === null) return;
+  if (filename === "live-transit.json" && (
+    !Array.isArray(payload.vehicles) || !Array.isArray(payload.routes) || !Array.isArray(payload.trip_predictions)
+    || parseEpoch(payload?.meta?.source_status?.transit?.observed_at) === null
+  )) return;
+  const previous = await env.LIVE_DATA.getWithMetadata(filename, "text");
+  if (revision <= (parseEpoch(previous?.metadata?.checked_at) ?? -Infinity)) return;
+  await env.LIVE_DATA.put(filename, raw, {metadata: {checked_at: checkedAt}});
+}
+
+async function mirrorContextFiles(env, scheduledTime) {
+  if (!env.LIVE_DATA) return;
+  const date = new Date(scheduledTime);
+  const minute = date.getUTCMinutes();
+  const files = [];
+  if (minute % 15 === 1) files.push("alerts-roads.json");
+  if (minute % 30 === 1) files.push("parking-context.json");
+  if (date.getUTCHours() === 1 && minute === 1) files.push("safety-context.json");
+  for (const filename of files) {
+    try {
+      const response = await fetch(`${RAW_SNAPSHOT_URL.replace("live-transit.json", filename)}?t=${scheduledTime}`, {
+        headers: {"Cache-Control": "no-cache"}
+      });
+      if (!response.ok) throw new Error(`${filename}: HTTP ${response.status}`);
+      const raw = await response.text();
+      await mirrorDataFile(env, filename, JSON.parse(raw), raw);
+    } catch (error) {
+      console.error("Optional data mirror failed:", filename, String(error));
+    }
+  }
 }
 
 async function handlePlaceSearch(request) {
@@ -188,7 +244,15 @@ async function checkAndRecover(env, scheduledTime) {
     headers: {"Cache-Control": "no-cache"}
   });
   if (!snapshotResponse.ok) throw new Error(`Snapshot HTTP ${snapshotResponse.status}`);
-  const snapshot = await snapshotResponse.json();
+  const raw = await snapshotResponse.text();
+  const snapshot = JSON.parse(raw);
+  try {
+    await mirrorDataFile(env, "live-transit.json", snapshot, raw);
+    await mirrorContextFiles(env, scheduledTime);
+  } catch (error) {
+    // A Cloudflare storage failure must not prevent the existing refresh watchdog.
+    console.error("Transit data mirror failed:", String(error));
+  }
   const ageSeconds = snapshotAgeSeconds(snapshot, scheduledTime);
   if (ageSeconds < MIN_REFRESH_AGE_SECONDS) return;
   if (await hasRecentActiveRun(env, scheduledTime)) return;
@@ -243,10 +307,13 @@ async function dispatchIncidentEnvironmentBuild(env, scheduledTime) {
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/places") {
       return handlePlaceSearch(request);
+    }
+    if (request.method === "GET" && url.pathname.startsWith("/data/")) {
+      return servePublicData(request, env, url.pathname.slice("/data/".length));
     }
     return new Response("Not found", {status: 404});
   },

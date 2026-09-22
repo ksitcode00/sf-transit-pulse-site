@@ -2384,8 +2384,10 @@ function sourceRevision(value, names) {
 }
 
 async function loadPublicSnapshot(cacheBuster, {includeSafety = safetyContextLoaded} = {}) {
-  const coreResponse = await fetch(`data/live-transit.json?t=${cacheBuster}`, {cache:"no-store"});
-  if (!coreResponse.ok) {
+  let core;
+  try {
+    core = await window.SFTransitData.fetchPublicJson("live-transit.json", "data/live-transit.json", {cacheBuster});
+  } catch (_) {
     // Compatibility path for the first deployment before split files exist.
     const fallback = await fetch(`data/latest.json?t=${cacheBuster}`, {cache:"no-store"});
     if (!fallback.ok) throw new Error(`Snapshot request returned HTTP ${fallback.status}`);
@@ -2394,7 +2396,6 @@ async function loadPublicSnapshot(cacheBuster, {includeSafety = safetyContextLoa
     return fallbackPayload;
   }
 
-  const core = await coreResponse.json();
   const merged = {
     ...core,
     meta: {
@@ -2421,9 +2422,15 @@ async function loadPublicSnapshot(cacheBuster, {includeSafety = safetyContextLoa
   // English: Core transit wins first. Optional context files settle independently;
   // a failed context load keeps the previous browser copy with an explicit status.
   const loaded = await Promise.allSettled(due.map(async piece => {
-    const response = await fetch(`data/${piece.path}?t=${cacheBuster}`, {cache:"no-store"});
-    if (!response.ok) throw new Error(`${piece.path} returned HTTP ${response.status}`);
-    return {piece, payload: await response.json()};
+    const payload = await window.SFTransitData.fetchPublicJson(piece.path, `data/${piece.path}`, {cacheBuster});
+    for (const name of piece.names) {
+      const expected = core.meta?.source_status?.[name]?.checked_at;
+      const received = payload.source_status?.[name]?.checked_at;
+      if (expected && received && expected !== received) {
+        throw new Error(`${piece.path} has not caught up with the transit snapshot`);
+      }
+    }
+    return {piece, payload};
   }));
   loaded.forEach((result, index) => {
     const piece = due[index];
@@ -2452,9 +2459,7 @@ async function ensureSafetyContext() {
   if (safetyContextRequest) return safetyContextRequest;
   safetyContextRequest = (async () => {
     try {
-      const response = await fetch(`data/safety-context.json?t=${Date.now()}`, {cache:"no-store"});
-      if (!response.ok) throw new Error(`safety-context.json returned HTTP ${response.status}`);
-      const payload = await response.json();
+      const payload = await window.SFTransitData.fetchPublicJson("safety-context.json", "data/safety-context.json");
       snapshot.safety = payload.safety || {};
       snapshot.meta = snapshot.meta || {};
       snapshot.meta.source_status = snapshot.meta.source_status || {};

@@ -847,11 +847,7 @@ async function load() {
         analysis = null;
         analysisError = true;
       }),
-    fetch("../data/live-transit.json", { cache: "no-store" })
-      .then((r) => {
-        if (!r.ok) throw Error();
-        return r.json();
-      })
+    window.SFTransitData.fetchPublicJson("live-transit.json", "../data/live-transit.json")
       .then((d) => {
         live = d;
         liveError = false;

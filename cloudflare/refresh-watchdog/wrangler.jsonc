@@ -3,6 +3,9 @@
   "name": "sf-transit-refresh-watchdog",
   "main": "worker.js",
   "compatibility_date": "2026-09-15",
+  "kv_namespaces": [
+    {"binding": "LIVE_DATA", "id": "b434f52cf0264338ac8a6f150f26059a"}
+  ],
   "triggers": {
     "crons": ["1-59/3 * * * *", "47 12 15,22 * *", "19 13 * * *", "37 13 * * 5", "53 13 * * *"]
   },

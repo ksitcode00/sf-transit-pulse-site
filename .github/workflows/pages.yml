@@ -6,11 +6,10 @@ on:
     paths:
       - "site/**"
       - ".github/workflows/pages.yml"
-  # Commits created with the repository GITHUB_TOKEN do not emit another
-  # push workflow event. Listen for the refresh workflow itself so every
-  # successful scheduled snapshot is published to Pages.
+  # Live snapshots are served independently by Cloudflare KV. Only slower
+  # static/historical releases need a full GitHub Pages artifact deployment.
   workflow_run:
-    workflows: ["Refresh transit snapshot", "Refresh static transit network", "Build Tableau historical data", "Build Feature 5 Tableau data", "Build traffic safety history", "Build incident environment history"]
+    workflows: ["Refresh static transit network", "Build Tableau historical data", "Build Feature 5 Tableau data", "Build traffic safety history", "Build incident environment history"]
     types: [completed]
   workflow_dispatch:
 

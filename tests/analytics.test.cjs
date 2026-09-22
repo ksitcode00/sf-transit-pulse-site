@@ -22,6 +22,8 @@ function page() {
     document: {documentElement: {}, getElementById: node, querySelector: node, querySelectorAll() {return [];}},
     fetch() {return new Promise(() => {});}, setInterval() {}, requestAnimationFrame() {}
   });
+  context.window = {fetch: context.fetch};
+  vm.runInContext(fs.readFileSync('site/live-data.js', 'utf8'), context);
   vm.runInContext(fs.readFileSync('site/analytics/analytics.js', 'utf8'), context);
   return {context, node};
 }

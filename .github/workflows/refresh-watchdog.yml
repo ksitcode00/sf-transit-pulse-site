@@ -74,9 +74,3 @@ jobs:
             done
             exit 1
           fi
-
-      - name: Publish recovered data
-        if: steps.commit.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run pages.yml

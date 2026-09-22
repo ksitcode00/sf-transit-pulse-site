@@ -76,3 +76,73 @@ test("place proxy keeps searches inside San Francisco and normalizes results", (
   assert.equal(places.length, 1);
   assert.equal(places[0].name, "Ferry Building");
 });
+
+test("scheduled check publishes a valid newer transit snapshot and serves it to the site", async () => {
+  const originalFetch = globalThis.fetch;
+  const stored = new Map();
+  const writes = [];
+  const env = {
+    GITHUB_WORKFLOW_TOKEN: "test-token",
+    LIVE_DATA: {
+      async getWithMetadata(key) { return {value: stored.get(key)?.value ?? null, metadata: stored.get(key)?.metadata ?? null}; },
+      async get(key) { return stored.get(key)?.value ?? null; },
+      async put(key, value, options) { stored.set(key, {value, metadata: options.metadata}); writes.push(key); }
+    }
+  };
+  const payload = {
+    meta: {generated_at: "2026-09-22T12:04:00Z", source_status: {transit: {observed_at: "2026-09-22T12:03:59Z"}}},
+    vehicles: [], routes: [], trip_predictions: []
+  };
+  globalThis.fetch = async url => {
+    assert.match(url, /live-transit\.json/);
+    return Response.json(payload);
+  };
+  try {
+    const pending = [];
+    await worker.scheduled({cron: "1-59/3 * * * *", scheduledTime: Date.parse("2026-09-22T12:04:01Z"), noRetry() {}}, env,
+      {waitUntil(promise) { pending.push(promise); }});
+    await Promise.all(pending);
+    assert.deepEqual(writes, ["live-transit.json"]);
+    const response = await worker.fetch(new Request("https://worker.example/data/live-transit.json", {
+      headers: {Origin: "https://ksitcode00.github.io"}
+    }), env);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("Access-Control-Allow-Origin"), "https://ksitcode00.github.io");
+    assert.deepEqual(await response.json(), payload);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("a delayed older GitHub response cannot roll back the published snapshot", async () => {
+  const originalFetch = globalThis.fetch;
+  let writes = 0;
+  let stored = null;
+  const env = {GITHUB_WORKFLOW_TOKEN: "test-token", LIVE_DATA: {
+    async getWithMetadata() { return {metadata: stored?.metadata ?? null}; },
+    async get() { return stored?.value ?? null; },
+    async put(key, value, options) { writes++; stored = {value, metadata: options.metadata}; }
+  }};
+  let generatedAt = "2026-09-22T12:08:00Z";
+  globalThis.fetch = async () => Response.json({meta: {
+    generated_at: generatedAt, source_status: {transit: {observed_at: "2026-09-22T12:03:59Z"}}
+  }, vehicles: [], routes: [], trip_predictions: []});
+  try {
+    for (const timestamp of ["2026-09-22T12:10:01Z", "2026-09-22T12:13:01Z"]) {
+      const pending = [];
+      await worker.scheduled({cron: "1-59/3 * * * *", scheduledTime: Date.parse(timestamp), noRetry() {}}, env,
+        {waitUntil(promise) { pending.push(promise); }});
+      await Promise.all(pending);
+      generatedAt = "2026-09-22T12:04:00Z";
+    }
+    assert.equal(writes, 1);
+    const response = await worker.fetch(new Request("https://worker.example/data/live-transit.json"), env);
+    assert.equal((await response.json()).meta.generated_at, "2026-09-22T12:08:00Z");
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("public data endpoint rejects other origins and never exposes GitHub credentials", async () => {
+  const response = await worker.fetch(new Request("https://worker.example/data/live-transit.json", {
+    headers: {Origin: "https://untrusted.example"}
+  }), {GITHUB_WORKFLOW_TOKEN: "private-token", LIVE_DATA: {async get() { throw Error("should not read"); }}});
+  assert.equal(response.status, 403);
+  assert.doesNotMatch(await response.text(), /private-token/);
+});
