@@ -34,7 +34,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install API and test dependencies
-        run: python -m pip install --disable-pip-version-check -r backend/requirements.txt duckdb httpx pytest requests gtfs-realtime-bindings
+        run: python -m pip install --disable-pip-version-check -r backend/requirements.txt duckdb httpx pytest pyyaml requests gtfs-realtime-bindings
 
       - name: Verify planner and API contracts
         run: python -m pytest -q tests
