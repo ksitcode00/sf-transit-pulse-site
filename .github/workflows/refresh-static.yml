@@ -18,10 +18,13 @@ jobs:
     timeout-minutes: 8
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -43,5 +46,5 @@ jobs:
             echo "Static network is unchanged."
           else
             git commit -m "data: refresh static transit network"
-            git push
+            bash scripts/push_static_network.sh
           fi
