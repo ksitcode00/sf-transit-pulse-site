@@ -1,7 +1,9 @@
 """Feature 8: report identity, multi-category preservation and approximate stop buffers."""
 import json
+import time
 import zipfile
 import pytest
+import requests
 from scripts.prepare_incident_environment import normalize_incidents, build_payload, write_outputs, fetch_incidents
 
 
@@ -54,6 +56,57 @@ def test_incomplete_pagination_is_rejected(monkeypatch):
     monkeypatch.setattr(pipeline,'query_rows',query)
     with pytest.raises(ValueError,match="Incomplete incident download"):
         fetch_incidents()
+
+
+def test_datasf_page_recovers_after_read_timeout(monkeypatch):
+    from scripts import prepare_incident_environment as pipeline
+    attempts = []
+
+    def get(url, **kwargs):
+        attempts.append(kwargs["params"]["pageNumber"])
+        if len(attempts) == 1:
+            raise requests.exceptions.ReadTimeout("DataSF stalled")
+        response = requests.Response()
+        response.status_code = 200
+        response._content = b'[{"incident_id":"A"}]'
+        return response
+
+    monkeypatch.setattr(pipeline.requests, "get", get)
+    monkeypatch.setattr(time, "sleep", lambda seconds: None)
+    assert pipeline.query_rows("SELECT incident_id", page=3) == [{"incident_id":"A"}]
+    assert attempts == [3, 3]
+
+
+def test_datasf_page_recovers_after_transient_server_error(monkeypatch):
+    from scripts import prepare_incident_environment as pipeline
+    attempts = []
+
+    def get(url, **kwargs):
+        attempts.append(kwargs["params"]["pageNumber"])
+        response = requests.Response()
+        response.status_code = 503 if len(attempts) == 1 else 200
+        response._content = b'[{"incident_id":"A"}]'
+        return response
+
+    monkeypatch.setattr(pipeline.requests, "get", get)
+    monkeypatch.setattr(time, "sleep", lambda seconds: None)
+    assert pipeline.query_rows("SELECT incident_id", page=2) == [{"incident_id":"A"}]
+    assert attempts == [2, 2]
+
+
+def test_datasf_page_stops_after_bounded_timeouts(monkeypatch):
+    from scripts import prepare_incident_environment as pipeline
+    attempts = []
+
+    def get(url, **kwargs):
+        attempts.append(kwargs["params"]["pageNumber"])
+        raise requests.exceptions.ReadTimeout("DataSF stalled")
+
+    monkeypatch.setattr(pipeline.requests, "get", get)
+    monkeypatch.setattr(time, "sleep", lambda seconds: None)
+    with pytest.raises(requests.exceptions.ReadTimeout):
+        pipeline.query_rows("SELECT incident_id", page=4)
+    assert attempts == [4, 4, 4]
 
 
 def test_download_preserves_identity_and_sf_local_time(tmp_path):

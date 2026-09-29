@@ -7,6 +7,7 @@ import io
 import json
 import math
 import os
+import time
 import zipfile
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -22,13 +23,26 @@ API = "https://data.sf.gov/api/v3/views/wg3w-h783/query.json"
 
 def query_rows(query, page=1, size=5000):
     token = os.environ.get("SF_TRANSIT_DATASF_APP_TOKEN", "").strip()
-    r = requests.get(API, params={"query":query,"pageNumber":page,"pageSize":size},
-                     headers={"X-App-Token":token} if token else {}, timeout=60)
-    r.raise_for_status()
-    rows = r.json()
-    if not isinstance(rows,list) or any(not isinstance(row,dict) for row in rows):
-        raise ValueError("Unrecognized DataSF response; preserve the last valid release.")
-    return rows
+    for attempt in range(1, 4):
+        try:
+            r = requests.get(API, params={"query":query,"pageNumber":page,"pageSize":size},
+                             headers={"X-App-Token":token} if token else {}, timeout=60)
+            r.raise_for_status()
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError,
+                requests.exceptions.HTTPError) as exc:
+            if isinstance(exc, requests.exceptions.HTTPError) and (
+                exc.response is None or exc.response.status_code not in {408, 429, 500, 502, 503, 504}
+            ):
+                raise
+            if attempt == 3:
+                raise
+            print(f"DataSF page {page} temporarily unavailable; retry {attempt}/2: {type(exc).__name__}", flush=True)
+            time.sleep(2 ** (attempt - 1))
+            continue
+        rows = r.json()
+        if not isinstance(rows,list) or any(not isinstance(row,dict) for row in rows):
+            raise ValueError("Unrecognized DataSF response; preserve the last valid release.")
+        return rows
 
 
 def fetch_incidents():
