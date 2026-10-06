@@ -60,17 +60,6 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "data: recover stale transit snapshot"
-            for attempt in 1 2 3; do
-              git fetch origin main
-              if ! git rebase origin/main; then
-                git rebase --abort || true
-                exit 1
-              fi
-              if git push origin HEAD:main; then
-                echo "changed=true" >> "$GITHUB_OUTPUT"
-                exit 0
-              fi
-              echo "Push race on attempt ${attempt}; synchronizing and retrying."
-            done
-            exit 1
+            bash scripts/push_refresh_snapshot.sh
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
