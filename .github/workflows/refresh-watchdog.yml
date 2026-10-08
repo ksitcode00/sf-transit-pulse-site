@@ -52,6 +52,8 @@ jobs:
       - name: Commit recovered snapshot
         id: commit
         if: steps.freshness.outcome == 'failure'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           git config user.name "sf-transit-pulse[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
