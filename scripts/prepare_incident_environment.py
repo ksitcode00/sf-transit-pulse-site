@@ -21,6 +21,14 @@ SOURCE = "https://data.sf.gov/d/wg3w-h783"
 API = "https://data.sf.gov/api/v3/views/wg3w-h783/query.json"
 
 
+class SourceDataUnavailable(ValueError):
+    """Expected source-quality failure, not a programming or publishing error."""
+    def __init__(self, reason, message, metadata=None):
+        super().__init__(message)
+        self.reason = reason
+        self.metadata = metadata or {}
+
+
 def query_rows(query, page=1, size=5000):
     token = os.environ.get("SF_TRANSIT_DATASF_APP_TOKEN", "").strip()
     for attempt in range(1, 4):
@@ -49,17 +57,28 @@ def fetch_incidents():
     # 中文：先限制未来日期，再以最新可用事件日为截止，读取含截止日的 365 个日历日。
     # English: Exclude future dates; download 365 calendar days ending at the latest available date.
     today = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
-    latest = str(query_rows(f"SELECT max(incident_datetime) AS latest WHERE incident_datetime <= '{today}T23:59:59'",size=1)[0]["latest"])[:10]
+    dates = query_rows(f"SELECT max(incident_datetime) AS latest WHERE incident_datetime <= '{today}T23:59:59'",size=1)
+    if not dates or not dates[0].get("latest"):
+        raise SourceDataUnavailable("NO_USABLE_HISTORY", "DataSF returned no incident dates.")
+    latest = str(dates[0]["latest"])[:10]
     start = (datetime.strptime(latest,"%Y-%m-%d")-timedelta(days=364)).strftime("%Y-%m-%d")
     where = f"incident_datetime >= '{start}T00:00:00' AND incident_datetime <= '{latest}T23:59:59'"
-    expected = int(query_rows(f"SELECT count(*) AS n WHERE {where}",size=1)[0]["n"])
+    counts = query_rows(f"SELECT count(*) AS n, count(latitude) AS geocoded, count(longitude) AS longitude_rows WHERE {where}",size=1)[0]
+    expected = int(counts["n"])
+    metadata = {"coverage_start":start,"coverage_end":latest,"source_row_count":expected,
+                "source_latitude_row_count":int(counts["geocoded"]),
+                "source_longitude_row_count":int(counts["longitude_rows"])}
+    # 中文：HTTP 200 不代表数据可用；缺失坐标不能用于站点空间匹配，也不能填假坐标。
+    # English: HTTP 200 is not data health. Never invent coordinates for unlocated reports.
+    if expected and (not metadata["source_latitude_row_count"] or not metadata["source_longitude_row_count"]):
+        raise SourceDataUnavailable("MISSING_COORDINATES", "DataSF returned reports without usable coordinates.", metadata)
     rows = []
     fields = "incident_id,row_id,incident_datetime,report_datetime,incident_category,latitude,longitude"
     for page in range(1,math.ceil(expected/5000)+1):
         rows.extend(query_rows(f"SELECT {fields} WHERE {where} ORDER BY row_id",page))
     if not rows or len(rows)!=expected:
-        raise ValueError(f"Incomplete incident download: expected {expected}, received {len(rows)}.")
-    return rows,{"coverage_start":start,"coverage_end":latest,"source_row_count":expected}
+        raise SourceDataUnavailable("INCOMPLETE_DOWNLOAD", f"Incomplete incident download: expected {expected}, received {len(rows)}.", metadata)
+    return rows,metadata
 
 
 def normalize_incidents(rows):
@@ -95,7 +114,9 @@ def project(lat,lon):
 def build_payload(rows,metadata,network):
     incidents,quality = normalize_incidents(rows)
     if not incidents:
-        raise ValueError("No usable incident history; preserve last valid release.")
+        missing_coordinates = rows and all(row.get("latitude") is None or row.get("longitude") is None for row in rows)
+        raise SourceDataUnavailable("MISSING_COORDINATES" if missing_coordinates else "NO_USABLE_HISTORY",
+                                    "No usable incident history; preserve last valid release.", metadata)
     stops = {}
     for pattern in (network.get("patterns") or network.get("route_directions") or {}).values():
         for row in pattern.get("stops",[]):
@@ -175,14 +196,47 @@ def write_outputs(payload,public_path,zip_path):
 
 
 def main():
-    rows,metadata=fetch_incidents()
     public=ROOT/"site/data/incident-environment.json"
-    if public.exists() and metadata["coverage_end"]<json.loads(public.read_text())["coverage_end"]:
-        raise ValueError("Source coverage regressed; retain the latest valid history.")
-    network=json.loads((ROOT/"site/data/network.json").read_text())
-    payload=build_payload(rows,metadata,network)
+    previous=json.loads(public.read_text()) if public.exists() else None
+    metadata={}
+    try:
+        rows,metadata=fetch_incidents()
+        if previous and metadata["coverage_end"]<previous["coverage_end"]:
+            raise SourceDataUnavailable("COVERAGE_REGRESSED", "Source coverage regressed; retain the latest valid history.", metadata)
+        network=json.loads((ROOT/"site/data/network.json").read_text())
+        payload=build_payload(rows,metadata,network)
+        # 中文：一年窗口一天内损失过半不是正常滚动；保留整份发布，不拼接新旧报告。
+        # English: A >50% collapse in a rolling year needs review. Do not stitch old/new records.
+        if previous and len(payload["incidents"]) < len(previous["incidents"]) * 0.5:
+            raise SourceDataUnavailable("HISTORY_COLLAPSE", "Mapped history lost more than half its reports; retain the latest valid history.", metadata)
+    except SourceDataUnavailable as exc:
+        # 中文：仅对已识别的上游数据问题降级。首次无数据、代码错误、发布失败仍失败。
+        # English: Handle known source problems only. No initial release, code bugs and push errors still fail.
+        if not previous or previous.get("status") != "available" or not previous.get("incidents") or not previous.get("stops"):
+            raise
+        write_health(public, previous, "DEGRADED", exc.reason, exc.metadata)
+        print(f"::warning title=Feature 8 source degraded::{exc} Last valid JSON and Tableau ZIP retained; automatic daily checks continue.")
+        summary=os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary:
+            with open(summary,"a",encoding="utf-8") as handle:
+                handle.write(f"## Feature 8: DEGRADED — {exc.reason}\n\nDataSF source is not usable. The last valid release ending **{previous['coverage_end']}** is unchanged. This is not a successful data refresh. Daily recovery checks continue.\n")
+        return
     write_outputs(payload,public,ROOT/"site/data/tableau/feature8_incident_environment.zip")
+    write_health(public, payload, "HEALTHY", None, metadata)
     print(json.dumps({**metadata,"unique_incidents":len(payload["incidents"]),"locations":len(payload["locations"]),"stop_matches":len(payload["matches"])}))
+
+
+def write_health(public, release, status, reason, metadata):
+    # 中文：检查时间与成功更新时间分开；写健康状态不会让旧数据的 generated_at 变新。
+    # English: Checking is not refreshing. Leave the retained release's generated_at untouched.
+    health={"schema_version":1,"status":status,"reason":reason,
+            "checked_at":datetime.now(timezone.utc).isoformat(),
+            "last_successful_at":release["generated_at"],
+            "retained_coverage_end":release["coverage_end"],"source":metadata}
+    path=public.with_name("incident-environment-health.json")
+    temp=path.with_suffix(".tmp")
+    temp.write_text(json.dumps(health,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+    temp.replace(path)
 
 
 if __name__=="__main__":

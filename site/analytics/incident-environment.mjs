@@ -65,7 +65,10 @@ const COPY={
   loading:'Loading incident history…',failed:'Incident history could not load. Reload the page to try again.',
   retained:'The latest check failed. Showing the previously loaded history.',
   count:'Distinct incident reports',locations:'Mapped report locations',dayCount:'Daytime reports',nightCount:'Nighttime reports',
-  coverage:'Incident dates',checked:'Last data check',updated:'Checks daily. Records depend on official publication and may be revised.',partial:'The first and last months may be incomplete. Do not compare their counts directly with complete months.',
+  coverage:'Incident dates',checked:'Latest source check',updatedAt:'Last successful data update',updated:'Checks daily. Records depend on official publication and may be revised.',partial:'The first and last months may be incomplete. Do not compare their counts directly with complete months.',
+  coordinatesUnavailable:'DataSF report coordinates are unavailable. Showing the previous valid history. Daily checks continue; updates resume when the source passes validation.',
+  sourceDegraded:'DataSF returned incomplete or unusable history. Showing the previous valid history. Daily checks continue; updates resume when the source passes validation.',
+  healthUnavailable:'Source health status is unavailable. Showing the last successful data update below.',
   boundary:'Locations are anonymous nearby intersections, not exact incident addresses. Distance is approximate straight-line distance, not walking distance. More reports do not establish a higher personal risk.',
   map:'Approximate report locations',mapNote:'Nearby locations are grouped when zoomed out. Circle size shows report count; zoom in to separate locations. Blue dots show selected stops.',mapFailed:'The map could not load. Counts and charts remain available.',grouped:'mapped locations in this group',
   types:'Which categories were reported?',typesNote:'The ten most common categories in this selection. One report can have several categories, so counts can overlap and should not be added.',
@@ -81,7 +84,10 @@ const COPY={
   allRoutes:'所有 Muni 站点周边合并',allStops:'当前范围内全部站点',allMonths:'所有可用月份',allCategories:'全部类别',both:'白天与夜间',day:'白天 · 06:00–17:59',night:'夜间 · 18:00–05:59',
   loading:'正在读取历史事件…',failed:'暂时无法读取历史事件，请重新加载页面再试。',retained:'最新读取失败，暂时显示此前已载入的历史数据。',
   count:'去重后的事件报告',locations:'有记录的地图位置',dayCount:'白天事件报告',nightCount:'夜间事件报告',
-  coverage:'事件日期范围',checked:'最近检查数据',updated:'每天自动检查；记录取决于官方发布，也可能被修订。',partial:'首尾月份可能不完整，不能直接与完整月份比较数量。',
+  coverage:'事件日期范围',checked:'最近检查上游数据',updatedAt:'最近成功更新数据',updated:'每天自动检查；记录取决于官方发布，也可能被修订。',partial:'首尾月份可能不完整，不能直接与完整月份比较数量。',
+  coordinatesUnavailable:'DataSF 事件坐标暂时不可用，当前显示上次有效历史数据。系统继续每天检查，上游数据通过验证后会自动更新。',
+  sourceDegraded:'DataSF 历史记录不完整或无法使用，当前显示上次有效历史数据。系统继续每天检查，上游数据通过验证后会自动更新。',
+  healthUnavailable:'暂时无法读取上游健康状态，下方显示最近成功更新的时间。',
   boundary:'位置是匿名化后的附近路口，不是事件的精确地址。距离为近似直线距离，不是步行距离。报告较多不能证明个人风险较高。',
   map:'事件报告的近似位置',mapNote:'缩小时合并附近位置；圆点大小表示报告数。放大地图可展开路口位置，蓝点表示所选站点。',mapFailed:'地图暂时无法加载，下方统计和图表仍可查看。',grouped:'个地图位置合并显示',
   types:'过去报告过哪些类别？',typesNote:'显示当前筛选中最多的十类。一份报告可有多个类别，数量有重叠，不能相加。',
@@ -96,7 +102,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 
 function bootstrap(){
  const byId=id=>document.getElementById(id), controls=['route','stop','month','category','period','radius'];
- let data=null,map=null,layer=null,failed=false,busy=false,mapCounts=new Map(),mapStops=[];
+ let data=null,health=null,healthFailed=false,map=null,layer=null,failed=false,busy=false,mapCounts=new Map(),mapStops=[];
  const filters={route:'all',stop:'all',month:'all',category:'all',period:'all',radius:200};
  const lang=()=>document.documentElement.lang.startsWith('zh')?'zh':'en';
  const t=key=>COPY[lang()][key],label=category=>lang()==='zh'?(CATEGORY_ZH[category]||category):category;
@@ -119,7 +125,9 @@ function bootstrap(){
   options('category',[['all',t('allCategories')],...data.categories.map(category=>[category,label(category)])]);
   options('period',[['all',t('both')],['day',t('day')],['night',t('night')]]);
   options('radius',[100,200,300,400].map(n=>[n,lang()==='zh'?`${n} 米以内`:`Within ${n} m`]));
-  byId('incident-status').innerHTML=`<strong>${t('coverage')}: ${esc(data.coverage_start)} – ${esc(data.coverage_end)}</strong><p>${t('checked')}: ${esc(new Date(data.generated_at).toLocaleString(lang()==='zh'?'zh-CN':'en-US'))}</p><p>${t('updated')}</p><p>${t('partial')}</p>${failed?`<p>${t('retained')}</p>`:''}${Date.now()-Date.parse(data.generated_at)>3*86400000?`<p>${t('stale')}</p>`:''}`;
+  const sourceWarning=health?.status==='DEGRADED'?t(health.reason==='MISSING_COORDINATES'?'coordinatesUnavailable':'sourceDegraded'):'';
+  const dateLabel=value=>esc(new Date(value).toLocaleString(lang()==='zh'?'zh-CN':'en-US'));
+  byId('incident-status').innerHTML=`${sourceWarning?`<p><strong>${esc(sourceWarning)}</strong></p>`:''}<strong>${t('coverage')}: ${esc(data.coverage_start)} – ${esc(data.coverage_end)}</strong><p>${t('updatedAt')}: ${dateLabel(data.generated_at)}</p>${health?.checked_at?`<p>${t('checked')}: ${dateLabel(health.checked_at)}</p>`:''}${healthFailed?`<p>${t('healthUnavailable')}</p>`:''}<p>${t('updated')}</p><p>${t('partial')}</p>${failed?`<p>${t('retained')}</p>`:''}${Date.now()-Date.parse(data.generated_at)>3*86400000?`<p>${t('stale')}</p>`:''}`;
   const rows=selectIncidents(data,filters),stats=summarizeIncidents(data,rows),counts=new Map();
   for(const row of rows)counts.set(row[2],(counts.get(row[2])||0)+1);
   byId('incident-kpis').innerHTML=[['count',stats.count],['locations',counts.size],['dayCount',stats.day],['nightCount',stats.night]].map(([key,n])=>`<article class="metric-card"><strong>${num(n)}</strong><span>${t(key)}</span></article>`).join('');
@@ -151,7 +159,11 @@ function bootstrap(){
  async function load(){
   if(busy)return;busy=true;
   try{const response=await fetch('../data/incident-environment.json',{cache:'no-store'});if(!response.ok)throw Error();const p=await response.json();if(p.status!=='available'||!p.incidents?.length||!p.stops?.length||!Array.isArray(p.matches)||!Array.isArray(p.locations)||!Array.isArray(p.categories))throw Error();data=p;failed=false;}
-  catch{failed=true;}finally{busy=false;render();}
+  catch{failed=true;}
+  // 中文：上游检查状态独立读取；状态文件失败不能清空已经载入的图表。
+  // English: Source health is separate from data age; a health fetch failure must not erase charts.
+  try{const response=await fetch('../data/incident-environment-health.json',{cache:'no-store'});if(!response.ok)throw Error();const p=await response.json();if(!['HEALTHY','DEGRADED'].includes(p.status)||!Number.isFinite(Date.parse(p.checked_at)))throw Error();health=p;healthFailed=false;}
+  catch{healthFailed=true;}finally{busy=false;render();}
  }
  render();
  // 中文：历史文件按需下载，避免拖慢实时首页；直接打开功能锚点时立即加载。

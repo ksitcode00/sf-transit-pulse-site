@@ -51,7 +51,7 @@ def test_incomplete_pagination_is_rejected(monkeypatch):
     from scripts import prepare_incident_environment as pipeline
     def query(q,page=1,size=5000):
         if 'max(' in q:return [{"latest":"2026-09-16T23:53:00"}]
-        if 'count(' in q:return [{"n":"2"}]
+        if 'count(' in q:return [{"n":"2","geocoded":"2","longitude_rows":"2"}]
         return [row()]
     monkeypatch.setattr(pipeline,'query_rows',query)
     with pytest.raises(ValueError,match="Incomplete incident download"):
@@ -116,3 +116,96 @@ def test_download_preserves_identity_and_sf_local_time(tmp_path):
     with zipfile.ZipFile(tmp_path/'download.zip') as package:
         assert '2026-09-01T18:00' in package.read('feature8_incidents.csv').decode()
         assert 'Assault' in package.read('feature8_incident_categories.csv').decode()
+
+
+def prepare_release(tmp_path, monkeypatch, count=4):
+    from scripts import prepare_incident_environment as pipeline
+    monkeypatch.setattr(pipeline, 'ROOT', tmp_path)
+    public = tmp_path/'site/data/incident-environment.json'
+    package = tmp_path/'site/data/tableau/feature8_incident_environment.zip'
+    payload = build_payload([row(str(i)) for i in range(count)],
+                            {'coverage_start':'2025-09-02','coverage_end':'2026-09-01'}, network())
+    write_outputs(payload, public, package)
+    (public.parent/'network.json').write_text(json.dumps(network()))
+    return pipeline, public, package
+
+
+def test_missing_source_coordinates_preserve_release_and_publish_degraded_health(tmp_path, monkeypatch):
+    pipeline, public, package = prepare_release(tmp_path, monkeypatch)
+    before = (public.read_bytes(), package.read_bytes())
+    unlocated = row(); unlocated.pop('latitude'); unlocated.pop('longitude')
+    monkeypatch.setattr(pipeline, 'fetch_incidents', lambda: ([unlocated],
+        {'coverage_start':'2025-09-03','coverage_end':'2026-09-02','source_row_count':1}))
+    pipeline.main()
+    assert (public.read_bytes(), package.read_bytes()) == before
+    health = json.loads((public.parent/'incident-environment-health.json').read_text())
+    assert health['status'] == 'DEGRADED'
+    assert health['reason'] == 'MISSING_COORDINATES'
+    assert health['last_successful_at'] == json.loads(before[0])['generated_at']
+    assert health['retained_coverage_end'] == '2026-09-01'
+
+
+def test_source_recovery_replaces_release_and_clears_degradation(tmp_path, monkeypatch):
+    pipeline, public, package = prepare_release(tmp_path, monkeypatch)
+    (public.parent/'incident-environment-health.json').write_text('{"status":"DEGRADED"}')
+    monkeypatch.setattr(pipeline, 'fetch_incidents', lambda: ([row(str(i)) for i in range(4)],
+        {'coverage_start':'2025-09-03','coverage_end':'2026-09-02','source_row_count':4}))
+    pipeline.main()
+    assert json.loads(public.read_text())['coverage_end'] == '2026-09-02'
+    health = json.loads((public.parent/'incident-environment-health.json').read_text())
+    assert health['status'] == 'HEALTHY'
+    assert health['reason'] is None
+    assert health['last_successful_at'] == json.loads(public.read_text())['generated_at']
+    with zipfile.ZipFile(package) as archive:
+        assert '2026-09-02' in archive.read('README.md').decode()
+
+
+def test_abrupt_nonempty_source_collapse_does_not_replace_full_history(tmp_path, monkeypatch):
+    pipeline, public, package = prepare_release(tmp_path, monkeypatch, count=8)
+    before = public.read_bytes(), package.read_bytes()
+    monkeypatch.setattr(pipeline, 'fetch_incidents', lambda: ([row()],
+        {'coverage_start':'2025-09-03','coverage_end':'2026-09-02','source_row_count':1}))
+    pipeline.main()
+    assert (public.read_bytes(), package.read_bytes()) == before
+    health = json.loads((public.parent/'incident-environment-health.json').read_text())
+    assert health['reason'] == 'HISTORY_COLLAPSE'
+
+
+def test_initial_build_with_no_valid_source_remains_a_failure(tmp_path, monkeypatch):
+    from scripts import prepare_incident_environment as pipeline
+    monkeypatch.setattr(pipeline, 'ROOT', tmp_path)
+    folder = tmp_path/'site/data'; folder.mkdir(parents=True)
+    (folder/'network.json').write_text(json.dumps(network()))
+    monkeypatch.setattr(pipeline, 'fetch_incidents', lambda: ([], {'coverage_end':'2026-09-02'}))
+    with pytest.raises(ValueError):
+        pipeline.main()
+    assert not (folder/'incident-environment.json').exists()
+
+
+def test_stop_catalog_bug_is_not_disguised_as_upstream_degradation(tmp_path, monkeypatch):
+    pipeline, public, _ = prepare_release(tmp_path, monkeypatch)
+    (public.parent/'network.json').write_text('{}')
+    monkeypatch.setattr(pipeline, 'fetch_incidents', lambda: ([row(str(i)) for i in range(4)],
+        {'coverage_start':'2025-09-03','coverage_end':'2026-09-02','source_row_count':4}))
+    with pytest.raises(ValueError, match='GTFS stop catalog'):
+        pipeline.main()
+
+
+def test_zero_geocoded_source_is_rejected_before_downloading_pages(monkeypatch):
+    from scripts import prepare_incident_environment as pipeline
+    def query(q, page=1, size=5000):
+        if 'max(' in q: return [{'latest':'2026-09-02T10:00:00'}]
+        if 'count(' in q: return [{'n':'3366','geocoded':'0','longitude_rows':'0'}]
+        pytest.fail('An unlocated source must not download detail pages')
+    monkeypatch.setattr(pipeline, 'query_rows', query)
+    with pytest.raises(ValueError, match='coordinates'):
+        fetch_incidents()
+
+
+@pytest.mark.parametrize('response', [[], [{'latest':None}], [{}]])
+def test_empty_official_source_is_a_recognized_data_problem(monkeypatch, response):
+    from scripts import prepare_incident_environment as pipeline
+    monkeypatch.setattr(pipeline, 'query_rows', lambda *args, **kwargs: response)
+    with pytest.raises(pipeline.SourceDataUnavailable) as failure:
+        fetch_incidents()
+    assert failure.value.reason == 'NO_USABLE_HISTORY'

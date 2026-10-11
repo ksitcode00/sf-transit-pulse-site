@@ -70,3 +70,4 @@ jobs:
           python -m json.tool site/data/service-alert-history.json > /dev/null
           python -m json.tool site/data/traffic-safety.json > /dev/null
           python -m json.tool site/data/incident-environment.json > /dev/null
+          python -m json.tool site/data/incident-environment-health.json > /dev/null

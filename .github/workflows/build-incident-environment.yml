@@ -18,11 +18,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Avoid duplicate daily downloads
@@ -38,6 +38,10 @@ jobs:
           age = float('inf')
           if path.exists():
               age = (datetime.now(timezone.utc) - datetime.fromisoformat(json.loads(path.read_text())['generated_at'])).total_seconds()
+          health = Path('site/data/incident-environment-health.json')
+          if health.exists():
+              checked_age = (datetime.now(timezone.utc) - datetime.fromisoformat(json.loads(health.read_text())['checked_at'])).total_seconds()
+              age = min(age, checked_age)
           run = os.environ['EVENT_NAME'] == 'workflow_dispatch' or age > 20 * 3600
           with open(os.environ['GITHUB_OUTPUT'], 'a') as handle:
               handle.write(f'run={str(run).lower()}\n')
@@ -50,12 +54,12 @@ jobs:
         env:
           SF_TRANSIT_DATASF_APP_TOKEN: ${{ secrets.SF_TRANSIT_DATASF_APP_TOKEN }}
         run: python scripts/prepare_incident_environment.py
-      - name: Publish valid incident history
+      - name: Publish incident history and source health
         if: steps.gate.outputs.run == 'true'
         run: |
           git config user.name "sf-transit-data-bot"
           git config user.email "sf-transit-data-bot@users.noreply.github.com"
-          git add site/data/incident-environment.json site/data/tableau/feature8_incident_environment.zip
+          git add site/data/incident-environment.json site/data/tableau/feature8_incident_environment.zip site/data/incident-environment-health.json
           if git diff --cached --quiet; then
             exit 0
           fi

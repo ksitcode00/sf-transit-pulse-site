@@ -44,3 +44,46 @@ test('zoomed-out map groups nearby locations without changing report totals',()=
   assert.equal(groups.find(g=>g.count===5).locations,2);
   assert.equal(groupMapLocations(points,new Map([[0,2],[1,3],[2,7]]),16).length,3);
 });
+
+async function loadedPage(health, language='en') {
+  const nodes=new Map();
+  const node=id=>{if(!nodes.has(id))nodes.set(id,{value:'all',textContent:'',innerHTML:'',disabled:false,setAttribute(){},addEventListener(){}});return nodes.get(id);};
+  const payload={...data,status:'available',generated_at:'2026-10-09T19:07:37Z',
+    coverage_start:'2025-10-08',coverage_end:'2026-10-07',routes:[{route_id:'30'}]};
+  const context=vm.createContext({Set,Map,Date,Intl,Number,String,Math,Array,
+    document:{documentElement:{lang:language},getElementById:node,querySelectorAll:()=>[]},
+    location:{hash:'#incident-environment'},
+    fetch:async url=>url.includes('health')?{ok:!!health,json:async()=>health}:{ok:true,json:async()=>payload},
+    setInterval(){},requestAnimationFrame(){}});
+  vm.runInContext(fs.readFileSync('site/analytics/incident-environment.mjs','utf8').replaceAll('export ',''),context);
+  await new Promise(setImmediate);
+  return node;
+}
+
+test('upstream coordinate loss is explained in both languages while cached charts stay usable',async()=>{
+  const health={status:'DEGRADED',reason:'MISSING_COORDINATES',checked_at:'2026-10-11T04:00:00Z'};
+  const en=await loadedPage(health);
+  assert.match(en('incident-status').innerHTML,/DataSF.*coordinates/i);
+  assert.match(en('incident-status').innerHTML,/previous.*history/i);
+  assert.match(en('incident-status').innerHTML,/Last successful data update/i);
+  assert.match(en('incident-status').innerHTML,/Latest source check/i);
+  assert.equal(en('incident-route').disabled,false);
+  assert.match(en('incident-kpis').innerHTML,/Distinct incident reports/);
+  const zh=await loadedPage(health,'zh');
+  assert.match(zh('incident-status').innerHTML,/DataSF.*坐标/);
+  assert.match(zh('incident-status').innerHTML,/上次.*历史数据/);
+});
+
+test('healthy recovery removes the upstream warning without hiding coverage',async()=>{
+  const page=await loadedPage({status:'HEALTHY',reason:null,checked_at:'2026-10-11T04:00:00Z'});
+  assert.doesNotMatch(page('incident-status').innerHTML,/coordinates unavailable|previous valid history/i);
+  assert.match(page('incident-status').innerHTML,/2026-10-07/);
+  assert.match(page('incident-status').innerHTML,/Latest source check/);
+});
+
+test('a missing health file does not prevent valid incident charts from loading',async()=>{
+  const page=await loadedPage(null);
+  assert.equal(page('incident-route').disabled,false);
+  assert.match(page('incident-status').innerHTML,/2026-10-07/);
+  assert.match(page('incident-status').innerHTML,/health status.*unavailable/i);
+});

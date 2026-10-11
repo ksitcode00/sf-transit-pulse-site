@@ -56,10 +56,40 @@ Successful data commits trigger Pages deployment. **No additional 511 calls.**
 近期成功或正在运行的任务避免重复请求。重读一年窗口以捕获补录和修订。失败、空数据、
 不完整下载或日期倒退，不会替换已发布数据。成功后自动部署；**不增加 511 请求**。
 
+### Source-quality degradation / 上游数据质量降级
+
+On October 10, 2026, the official API returned reports with no latitude or
+longitude values. HTTP 200 and a complete download did not mean a usable spatial
+dataset. A coordinate preflight now rejects this case before downloading detail
+pages. A year-window losing more than half its mapped reports also requires
+review: this conservative guard can intentionally defer a legitimate major source
+revision. It never fills coordinates from old reports or invents new positions.
+
+2026 年 10 月 10 日，官方接口返回的事件没有经纬度。HTTP 200 和下载行数一致并不
+代表空间数据可用。现在先检查坐标数量，发现全空就不下载明细。一年窗口中可定位事件
+数量突然损失过半也会停止替换：这是保守保护，若上游进行合法大规模修订，需要人工
+检查后调整。不会从旧报告补坐标，也不会编造位置。
+
+When a validated release already exists, a known source-quality problem retains
+both its JSON and Tableau ZIP **byte-for-byte**, writes `DEGRADED` to a separate
+health file, and emits an Actions warning/summary. The job completing means the
+fallback was handled, **not** that fresh data was published. The website shows
+the reason, latest check, last successful update and retained coverage separately.
+Daily checks continue, and a valid source clears degradation automatically.
+No initial release, code errors and publication failures still fail the job.
+
+已有有效发布时，已识别的上游质量问题会保留 JSON 和 Tableau ZIP 原文件，只更新
+独立健康文件为 `DEGRADED`，并写 Actions 警告及摘要。任务完成仅代表降级流程正常，
+**不代表数据已更新**。网站分别显示原因、检查时间、成功更新时间和保留的数据范围。
+继续每天检查，通过验证后自动恢复。首次无有效数据、代码错误和发布失败仍会报错。
+
 ## Files and Tableau / 文件与 Tableau
 
 - `site/data/incident-environment.json`: packed unique reports, category catalog,
   anonymized positions, stop catalog and location matches. / 网页用去重事件与站点位置匹配。
+- `site/data/incident-environment-health.json`: source status, check time, reason
+  and last successful release time. Does not change cached data freshness.
+  / 独立上游状态、检查时间、原因和成功更新时间，不改变旧数据的新鲜度。
 - `site/data/tableau/feature8_incident_environment.zip`: incident, category,
   stop-location and stop CSVs with bilingual data instructions. / 四张 CSV 与双语说明。
 - `scripts/prepare_incident_environment.py`: daily data preparation. / 自动数据处理。
