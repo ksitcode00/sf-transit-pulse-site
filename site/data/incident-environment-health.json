@@ -2,12 +2,12 @@
   "schema_version": 1,
   "status": "DEGRADED",
   "reason": "MISSING_COORDINATES",
-  "checked_at": "2026-10-11T04:27:00.188037+00:00",
+  "checked_at": "2026-10-12T21:55:17.850967+00:00",
   "last_successful_at": "2026-10-09T19:07:37.320120+00:00",
   "retained_coverage_end": "2026-10-07",
   "source": {
-    "coverage_start": "2025-10-10",
-    "coverage_end": "2026-10-09",
+    "coverage_start": "2025-10-12",
+    "coverage_end": "2026-10-11",
     "source_row_count": 3366,
     "source_latitude_row_count": 0,
     "source_longitude_row_count": 0
