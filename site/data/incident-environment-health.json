@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "status": "DEGRADED",
-  "reason": "MISSING_COORDINATES",
-  "checked_at": "2026-10-13T19:59:31.711330+00:00",
-  "last_successful_at": "2026-10-09T19:07:37.320120+00:00",
-  "retained_coverage_end": "2026-10-07",
+  "status": "HEALTHY",
+  "reason": null,
+  "checked_at": "2026-10-14T18:14:19.458060+00:00",
+  "last_successful_at": "2026-10-14T18:14:18.436015+00:00",
+  "retained_coverage_end": "2026-10-12",
   "source": {
     "coverage_start": "2025-10-13",
     "coverage_end": "2026-10-12",
-    "source_row_count": 3370,
-    "source_latitude_row_count": 0,
-    "source_longitude_row_count": 0
+    "source_row_count": 92444,
+    "source_latitude_row_count": 89074,
+    "source_longitude_row_count": 89074
   }
 }
