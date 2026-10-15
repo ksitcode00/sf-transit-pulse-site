@@ -37,9 +37,27 @@ Tableau tables are uploaded before ETA downloading, so an ETA failure cannot dis
 全部所选归档和清单写完后才标记有数据。功能 1–3 的 Tableau 文件先上传，之后 ETA
 下载失败也不会丢失这部分已完成成果。此下载修复不调用 511。
 
-EN: Current public status is awaiting actual arrivals. The three error cards intentionally show a dash. The live capture panel is only one snapshot's inventory. Future matched public JSON contains horizon summaries plus calibration, stop, and time-of-day tables. P90 absolute error is not a 90% prediction interval. Calibration tables describe observed relationships; a trained calibration model has not been deployed. Existing analysis excludes actual waits over 120 minutes or absolute errors over 120 minutes, so published errors are conditional on this cleaning rule.
+EN: The monthly regional feed's trip ID is not the agency realtime trip ID.
+For example, `SF:12152653_M11:20260930` wraps `12152653_M11`; the final token is
+a historical version identifier, not the service date. Only the recognized SF
+wrapper is normalized. The full historical ID remains in the detailed Parquet.
+Service date, original trip ID, stop, stop sequence, route and direction still
+match exactly. Multiple historical versions for the same resulting trip-stop key
+fail validation rather than selecting a convenient arrival time. The September
+2026 input had no such ambiguous keys. See the official
+[511 specification, Appendix E](https://511.org/media/407/show).
+ETA matching errors now fail the job instead of being hidden by `continue-on-error`.
 
-中文：当前公开状态为等待实际到站，三张误差卡片有意显示横线。最近快照数量只是一份数据的清单。未来匹配后的公开 JSON 包含提前量汇总、校正关系表、站点和时段分析。P90 绝对误差不是 90% 预测区间；校正关系表只描述历史关系，并不代表已部署校正模型。现有分析排除实际等待超过 120 分钟或绝对误差超过 120 分钟的记录，因此公开结果受此清洗规则约束。
+中文：月度区域历史包的班次编号不同于单个运营商实时编号，例如
+`SF:12152653_M11:20260930` 包装了原始编号 `12152653_M11`；末尾是历史版本标识，
+不能拿它替代服务日期。只转换已识别的 SF 包装格式，明细 Parquet 保留完整历史编号。
+服务日、原始班次、站点、停站序号、线路与方向仍精确匹配。同一匹配键若出现多个历史
+版本则报错，不能挑一个时间最接近的结果。2026 年 9 月输入没有这种歧义键。
+ETA 匹配错误不再用 `continue-on-error` 隐藏，任务不会在零匹配时假装分析成功。
+
+EN: Before a successful match is published, the public status is awaiting actual arrivals and the three error cards intentionally show a dash. The live capture panel is only one snapshot's inventory. Matched public JSON contains horizon summaries plus calibration, stop, and time-of-day tables. P90 absolute error is not a 90% prediction interval. Calibration tables describe observed relationships; a trained calibration model has not been deployed. Existing analysis excludes actual waits over 120 minutes or absolute errors over 120 minutes, so published errors are conditional on this cleaning rule.
+
+中文：成功匹配结果发布前，公开状态为等待实际到站，三张误差卡片有意显示横线。最近快照数量只是一份数据的清单。匹配后的公开 JSON 包含提前量汇总、校正关系表、站点和时段分析。P90 绝对误差不是 90% 预测区间；校正关系表只描述历史关系，并不代表已部署校正模型。现有分析排除实际等待超过 120 分钟或绝对误差超过 120 分钟的记录，因此公开结果受此清洗规则约束。
 
 ## Features 1–3 publication / 功能 1–3 发布流程
 

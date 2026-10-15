@@ -75,6 +75,13 @@ This dataset measures whether a displayed Muni ETA was trustworthy, not merely w
 ## Method limitation
 
 Actual arrivals come from the official 511 historic `stop_observations.txt` feed and may still contain measurement error. Descriptive summaries are produced automatically. Mixed-effects/GEE, conformal intervals, and isotonic calibration should be fitted only after enough service dates and trip-stop clusters have accumulated, with train/test separation by service date.
+
+Regional historical IDs add the SF agency namespace and a version suffix to the
+agency trip ID. Matching normalizes only this recognized wrapper, preserves the
+full ID as `historical_trip_id`, and requires the same service date, original trip,
+stop, stop sequence, route and direction. Ambiguous historical versions are
+rejected, never resolved by the closest time. See the 511 transit specification,
+Appendix E (historical trip versions): https://511.org/media/407/show
 """
     (output_dir / "README.md").write_text(text, encoding="utf-8")
 
@@ -142,6 +149,13 @@ def build_outputs(
             cast(route_short_name AS VARCHAR) AS route_short_name,
             cast(direction_id AS VARCHAR) AS direction_id,
             cast(trip_id AS VARCHAR) AS trip_id,
+            CASE
+                WHEN starts_with(cast(route_id AS VARCHAR), 'SF:')
+                  AND regexp_matches(cast(trip_id AS VARCHAR), '^SF:[^:]+:[A-Za-z0-9]+$')
+                THEN regexp_extract(cast(trip_id AS VARCHAR), '^SF:([^:]+):[A-Za-z0-9]+$', 1)
+                ELSE cast(trip_id AS VARCHAR)
+            END AS match_trip_id,
+            regexp_replace(cast(route_id AS VARCHAR), '^SF:', '') AS match_route_id,
             cast(stop_id AS VARCHAR) AS stop_id,
             cast(stop_sequence AS INTEGER) AS stop_sequence,
             try_cast(actual_arrival_time AS TIMESTAMPTZ) AS actual_arrival_time
@@ -152,11 +166,28 @@ def build_outputs(
             PARTITION BY service_date, trip_id, stop_id, stop_sequence
             ORDER BY actual_arrival_time DESC
         ) = 1;
+        """
+    )
+    # 中文：只统一官方区域历史编号的命名空间／版本包装；保留原编号，不按时间猜班次。
+    # 同一服务日、原始班次、站点、序号、线路、方向若有多个历史版本，停止发布。
+    # English: Normalize the recognized regional wrapper only, never fuzzy-match by arrival time.
+    ambiguous = con.execute("""
+        SELECT count(*) FROM (
+            SELECT service_date, match_trip_id, stop_id, stop_sequence, match_route_id, direction_id
+            FROM actuals GROUP BY ALL HAVING count(*) > 1
+        )
+    """).fetchone()[0]
+    if ambiguous:
+        con.close()
+        raise RuntimeError(f"Ambiguous historical trip versions for {ambiguous} trip-stop keys; previous public results retained.")
 
+    con.execute(
+        """
         CREATE TABLE eta_accuracy AS
         WITH matched AS (
             SELECT
                 p.*,
+                a.trip_id AS historical_trip_id,
                 a.actual_arrival_time,
                 epoch(p.predicted_arrival_time - p.snapshot_time) / 60.0 AS displayed_eta_min,
                 epoch(a.actual_arrival_time - p.snapshot_time) / 60.0 AS actual_remaining_min,
@@ -164,9 +195,11 @@ def build_outputs(
             FROM predictions p
             INNER JOIN actuals a
               ON p.service_date = a.service_date
-             AND p.trip_id = a.trip_id
+             AND p.trip_id = a.match_trip_id
              AND p.stop_id = a.stop_id
              AND p.stop_sequence = a.stop_sequence
+             AND regexp_replace(p.route_id, '^SF:', '') = a.match_route_id
+             AND p.direction_id = a.direction_id
         ), enriched AS (
             SELECT
                 *,
@@ -213,6 +246,7 @@ def build_outputs(
         con.execute("SELECT count(DISTINCT trip_stop_instance_id) FROM eta_accuracy").fetchone()[0]
     )
     if matched_rows == 0:
+        con.close()
         raise RuntimeError(
             "No predictions matched actual arrivals. Check service dates and trip/stop identifiers."
         )

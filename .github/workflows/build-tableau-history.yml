@@ -91,7 +91,7 @@ jobs:
       # Preserve the completed Features 1–3 tables before optional ETA processing.
       # 后续 ETA 下载失败也不能让已经算好的 Tableau 数据无处下载。
       - name: Upload processed CSV files
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: sf-transit-tableau-${{ steps.period.outputs.month }}
           path: tableau-output/
@@ -118,7 +118,6 @@ jobs:
       - name: Match predictions to official actual arrivals
         id: eta_match
         if: steps.predictions.outputs.has_data == 'true'
-        continue-on-error: true
         run: >-
           python scripts/build_eta_accuracy.py
           --predictions-dir eta-predictions
@@ -141,7 +140,7 @@ jobs:
 
       - name: Upload ETA accuracy and trustworthiness tables
         if: steps.predictions.outputs.has_data == 'true' && steps.eta_match.outcome == 'success'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: sf-transit-eta-accuracy-${{ steps.period.outputs.month }}
           path: eta-accuracy-output/
