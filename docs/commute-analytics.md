@@ -23,6 +23,20 @@ EN: Daily prediction Parquet archives reuse existing production Git snapshots (r
 
 中文：每日 Parquet 归档复用生产 Git 快照（1、8、30、45 号线，显示等待 ≤30 分钟），不增加实时 511 请求。官方月度实际到站按服务日期、班次、站点、停站序号精确配对。月度构建成功后发布精简 JSON，Pages 监听该流程完成并部署。匹配失败不会覆盖上一份有效结果；没有预测归档的月份跳过，不显示“误差为零”。若官方月度源尚未发布，需要之后重试，不能保证上游发布时间。
 
+EN: Artifact downloads use GitHub authentication only at the API origin. Cross-origin
+redirects to signed archive storage strip the bearer token. Storage 401/403 or temporary
+server/connection failures get up to three attempts, each requesting a fresh, uncached
+API redirect rather than reusing an expired signed URL. API permission errors still fail;
+missing/corrupt archives are not silently skipped. `has_data=true` is emitted only after
+all selected archives and the download manifest are complete. Completed Features 1–3
+Tableau tables are uploaded before ETA downloading, so an ETA failure cannot discard them.
+
+中文：GitHub 凭证只发给 API 所在站点；跳转到签名存储链接时移除认证头。存储端
+401/403、临时服务或连接错误最多尝试三次，每次回 API 申请新的、绕过缓存的链接，
+不反复使用过期链接。真正的 API 权限错误仍会失败，不会悄悄跳过损坏或缺失的归档。
+全部所选归档和清单写完后才标记有数据。功能 1–3 的 Tableau 文件先上传，之后 ETA
+下载失败也不会丢失这部分已完成成果。此下载修复不调用 511。
+
 EN: Current public status is awaiting actual arrivals. The three error cards intentionally show a dash. The live capture panel is only one snapshot's inventory. Future matched public JSON contains horizon summaries plus calibration, stop, and time-of-day tables. P90 absolute error is not a 90% prediction interval. Calibration tables describe observed relationships; a trained calibration model has not been deployed. Existing analysis excludes actual waits over 120 minutes or absolute errors over 120 minutes, so published errors are conditional on this cleaning rule.
 
 中文：当前公开状态为等待实际到站，三张误差卡片有意显示横线。最近快照数量只是一份数据的清单。未来匹配后的公开 JSON 包含提前量汇总、校正关系表、站点和时段分析。P90 绝对误差不是 90% 预测区间；校正关系表只描述历史关系，并不代表已部署校正模型。现有分析排除实际等待超过 120 分钟或绝对误差超过 120 分钟的记录，因此公开结果受此清洗规则约束。

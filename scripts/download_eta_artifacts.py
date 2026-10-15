@@ -9,7 +9,11 @@ import json
 import os
 import re
 import sys
+import time
+import urllib.error
+import urllib.parse
 import urllib.request
+import uuid
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -66,18 +70,57 @@ def github_json(url: str, token: str) -> dict[str, Any]:
         return json.load(response)
 
 
+class ArtifactRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # 中文：GitHub 使用短期签名链接下载 ZIP。跨站跳转不能带 GitHub token，
+        # 否则存储服务可能把它当成不支持的认证并返回 401。
+        # English: Signed storage links authenticate themselves; never forward the GitHub bearer token.
+        old_origin = urllib.parse.urlsplit(req.full_url)
+        new_origin = urllib.parse.urlsplit(newurl)
+        if old_origin.scheme == 'https' and new_origin.scheme != 'https':
+            raise RuntimeError("Refusing an insecure artifact download redirect")
+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirected is not None and (old_origin.scheme, old_origin.netloc) != (new_origin.scheme, new_origin.netloc):
+            redirected.remove_header('Authorization')
+            redirected.remove_header('Cookie')
+        return redirected
+
+
 def download_bytes(url: str, token: str) -> bytes:
-    request = urllib.request.Request(
-        url,
-        headers={
+    opener = urllib.request.build_opener(ArtifactRedirectHandler())
+    origin = urllib.parse.urlsplit(url).netloc
+    for attempt in range(3):
+        # 中文：重试时回到 GitHub 申请新链接，不能重复使用可能已过期的存储链接。
+        # English: Renew the signed URL at the API on each retry, bypassing cached redirects.
+        parts = urllib.parse.urlsplit(url)
+        query = urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
+        query.append(('_eta_download_attempt', uuid.uuid4().hex))
+        fresh_url = urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(query)))
+        request = urllib.request.Request(fresh_url, headers={
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
             "X-GitHub-Api-Version": "2022-11-28",
             "User-Agent": "sf-transit-eta-collector",
-        },
-    )
-    with urllib.request.urlopen(request, timeout=300) as response:
-        return response.read()
+            "Cache-Control": "no-cache",
+        })
+        try:
+            with opener.open(request, timeout=300) as response:
+                return response.read()
+        except urllib.error.HTTPError as exc:
+            storage = urllib.parse.urlsplit(exc.url).netloc != origin
+            retryable = exc.code in {408, 429, 500, 502, 503, 504} or (storage and exc.code in {401, 403})
+            if not retryable:
+                raise
+            error = f"HTTP {exc.code} at {'archive storage' if storage else 'GitHub API'}"
+            exc.close()
+        except (urllib.error.URLError, TimeoutError, ConnectionError):
+            error = "temporary download connection failure"
+        if attempt == 2:
+            # Do not leak temporary signed URLs into persistent Actions logs.
+            raise RuntimeError(f"ETA artifact download failed after 3 attempts: {error}") from None
+        print(f"Retrying ETA artifact with a fresh download link ({attempt + 1}/2): {error}", flush=True)
+        time.sleep(2 ** attempt)
+    raise AssertionError("Unreachable artifact retry state")
 
 
 def main() -> int:
@@ -106,10 +149,10 @@ def main() -> int:
             break
 
     selected = select_latest_artifacts(artifacts, month)
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
-            handle.write(f"has_data={'true' if selected else 'false'}\n")
     if not selected:
+        if os.environ.get("GITHUB_OUTPUT"):
+            with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+                handle.write("has_data=false\n")
         print(f"No active daily ETA artifacts found for {month}", file=sys.stderr)
         return 0 if args.allow_missing else 1
 
@@ -145,6 +188,9 @@ def main() -> int:
     (output_dir / f"eta_prediction_artifacts_{month}.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+            handle.write("has_data=true\n")
     print(json.dumps(manifest, ensure_ascii=False))
     return 0
 
