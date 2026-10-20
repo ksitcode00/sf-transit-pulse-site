@@ -2,14 +2,14 @@
   "schema_version": 1,
   "status": "HEALTHY",
   "reason": null,
-  "checked_at": "2026-10-19T13:56:38.375450+00:00",
-  "last_successful_at": "2026-10-19T13:56:37.352486+00:00",
-  "retained_coverage_end": "2026-10-16",
+  "checked_at": "2026-10-20T18:11:57.015575+00:00",
+  "last_successful_at": "2026-10-20T18:11:55.789938+00:00",
+  "retained_coverage_end": "2026-10-19",
   "source": {
-    "coverage_start": "2025-10-17",
-    "coverage_end": "2026-10-16",
-    "source_row_count": 92853,
-    "source_latitude_row_count": 89413,
-    "source_longitude_row_count": 89413
+    "coverage_start": "2025-10-20",
+    "coverage_end": "2026-10-19",
+    "source_row_count": 92837,
+    "source_latitude_row_count": 89368,
+    "source_longitude_row_count": 89368
   }
 }
