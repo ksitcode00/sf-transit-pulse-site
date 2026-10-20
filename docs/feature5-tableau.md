@@ -13,6 +13,34 @@ This package is for spatial exposure analysis. It does **not** establish that a 
 
 The GitHub Actions artifact is retained for 90 days. The independent Cloudflare scheduler starts this workflow once daily at 13:19 UTC. You can also run it manually from **Actions → Build Feature 5 Tableau data → Run workflow**.
 
+## Upstream failures / 上游故障处理
+
+The October 20, 2026 failure was a 502 from the 511 WZDx endpoint, not a
+Node.js warning or a Tableau calculation error. Source downloads now retry
+temporary 408/500/502/503/504 and connection/timeout failures at most three
+times total, waiting 5 then 15 seconds. A normal Feature 5 build makes one
+511 WZDx call; transient failures can add at most two. DataSF uses the same
+bounded retry policy. Authentication errors and 429 quota responses are not
+retried. Logs omit request URLs and exception bodies to keep keys private.
+
+2026 年 10 月 20 日的失败来自 511 WZDx 返回 502，不是 Node.js 警告或 Tableau
+计算错误。临时 HTTP／连接／超时故障最多请求三次，两次间隔为 5、15 秒。正常只
+调用一次 511 WZDx；临时失败最多增加两次，不会无限重试。DataSF 采用相同策略。
+认证和 429 配额错误立即停止。日志不打印可能含密钥的请求 URL 或原始异常内容。
+
+Persistent failure still fails visibly and leaves the last valid public JSON
+and existing Tableau tables unchanged. An unavailable source is never treated
+as an empty event collection, and old data is not stamped as newly observed.
+This handles brief upstream interruptions; it cannot make an unavailable 511
+service work or guarantee that external services never fail.
+Publication reuses the shared safe Git push/backoff script, so a main-branch race
+does not force another data download. It never force-pushes.
+
+持续失败仍会明确报错，并保留上一份网页 JSON 与已有 Tableau 表，不把接口不可用
+解释为“没有事件”，也不把旧数据的时间改成最新。该机制处理短暂上游中断，不能
+保证外部服务永远正常。
+发布阶段复用已有 Git 安全重试脚本；分支竞态不需要重抓数据，也不强制推送覆盖代码。
+
 ## Sources and evidence labels
 
 | Source | Label | What it means |

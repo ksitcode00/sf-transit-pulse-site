@@ -14,6 +14,7 @@ import csv
 import json
 import math
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -130,30 +131,51 @@ def source_geometry(raw: dict[str, Any], row: dict[str, Any]) -> list[list[float
     return [[round(lat, 6), round(lon, 6)]] if inside_sf(lat, lon) else []
 
 
+def fetch_source_records(source: str, url: str, **kwargs: Any) -> list[dict[str, Any]]:
+    # 中文：功能 5 原先一次 502 就整次退出。仅对暂时性网络／服务端故障最多请求三次，
+    # 等待 5、15 秒；401/403/429 立即停止，不能用空列表伪装成功，也不能无限消耗配额。
+    # English: Retry transient faults only, with bounded backoff. Never replace failed sources with zero events.
+    for attempt in range(3):
+        try:
+            with requests.get(url, timeout=90, **kwargs) as response:
+                response.raise_for_status()
+                return records(response.json())
+        except requests.exceptions.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            reason = f"HTTP {status}" if status is not None else "HTTP failure"
+            if status not in {408, 500, 502, 503, 504}:
+                raise RuntimeError(f"{source}: {reason}; not retried. Previous published data retained.") from None
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+            # Do not log exception text: requests may include the API key in its URL.
+            reason = type(exc).__name__
+        if attempt == 2:
+            raise RuntimeError(f"{source}: {reason} after 3 attempts. Previous published data retained.") from None
+        wait_seconds = (5, 15)[attempt]
+        print(f"{source}: {reason}; retry {attempt + 1}/2 in {wait_seconds}s", flush=True)
+        time.sleep(wait_seconds)
+    raise AssertionError("Unreachable source retry state")
+
+
 def datasf_rows(dataset_id: str, query: str) -> list[dict[str, Any]]:
     token = os.environ.get("SF_TRANSIT_DATASF_APP_TOKEN", "").strip()
     headers = {"X-App-Token": token} if token else {}
-    response = requests.get(
+    return fetch_source_records(
+        f"DataSF {dataset_id}",
         f"https://data.sf.gov/api/v3/views/{dataset_id}/query.json",
         params={"pageNumber": 1, "pageSize": 5000, "query": query},
         headers=headers,
-        timeout=90,
     )
-    response.raise_for_status()
-    return records(response.json())
 
 
 def wzdx_rows() -> list[dict[str, Any]]:
     api_key = os.environ.get("SF_TRANSIT_511_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("SF_TRANSIT_511_API_KEY is not configured")
-    response = requests.get(
+    return fetch_source_records(
+        "511 WZDx",
         "https://api.511.org/traffic/wzdx",
         params={"api_key": api_key, "includeAllDefinedEnums": "true"},
-        timeout=90,
     )
-    response.raise_for_status()
-    return records(response.json())
 
 
 def read_or_fetch(path: str | None, fetcher: Any) -> list[dict[str, Any]]:

@@ -21,12 +21,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -54,13 +54,11 @@ jobs:
             echo "Construction map snapshot is unchanged."
           else
             git commit -m "data: publish construction exposure snapshot"
-            git fetch origin main
-            git rebase origin/main
-            git push origin HEAD:main
+            bash scripts/push_refresh_snapshot.sh
           fi
 
       - name: Upload Tableau Feature 5 data package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: sf-transit-feature5-construction-${{ inputs.snapshot_date || github.run_id }}
           path: feature5-output/
