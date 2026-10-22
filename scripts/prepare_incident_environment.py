@@ -16,9 +16,13 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+if __package__:
+    from .datasf_access import query_request
+else:
+    from datasf_access import query_request
+
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = "https://data.sf.gov/d/wg3w-h783"
-API = "https://data.sf.gov/api/v3/views/wg3w-h783/query.json"
 
 
 class SourceDataUnavailable(ValueError):
@@ -31,9 +35,10 @@ class SourceDataUnavailable(ValueError):
 
 def query_rows(query, page=1, size=5000):
     token = os.environ.get("SF_TRANSIT_DATASF_APP_TOKEN", "").strip()
+    url, params = query_request("wg3w-h783", query, page, size, token)
     for attempt in range(1, 4):
         try:
-            r = requests.get(API, params={"query":query,"pageNumber":page,"pageSize":size},
+            r = requests.get(url, params=params,
                              headers={"X-App-Token":token} if token else {}, timeout=60)
             r.raise_for_status()
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError,

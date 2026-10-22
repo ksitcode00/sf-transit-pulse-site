@@ -22,6 +22,10 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+if __package__:
+    from .datasf_access import query_request
+else:
+    from datasf_access import query_request
 
 ROOT = Path(__file__).resolve().parents[1]
 SF_BOUNDS = {"south": 37.68, "north": 37.84, "west": -122.55, "east": -122.33}
@@ -159,10 +163,11 @@ def fetch_source_records(source: str, url: str, **kwargs: Any) -> list[dict[str,
 def datasf_rows(dataset_id: str, query: str) -> list[dict[str, Any]]:
     token = os.environ.get("SF_TRANSIT_DATASF_APP_TOKEN", "").strip()
     headers = {"X-App-Token": token} if token else {}
+    url, params = query_request(dataset_id, query, 1, 5000, token)
     return fetch_source_records(
         f"DataSF {dataset_id}",
-        f"https://data.sf.gov/api/v3/views/{dataset_id}/query.json",
-        params={"pageNumber": 1, "pageSize": 5000, "query": query},
+        url,
+        params=params,
         headers=headers,
     )
 

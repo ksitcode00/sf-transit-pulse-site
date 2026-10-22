@@ -27,6 +27,10 @@ from zoneinfo import ZoneInfo
 import requests
 from google.transit import gtfs_realtime_pb2
 
+if __package__:
+    from .datasf_access import query_request
+else:
+    from datasf_access import query_request
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = ROOT / "site" / "data" / "latest.json"
@@ -1233,7 +1237,7 @@ def datasf_records(
     *,
     max_pages: int = 1,
 ) -> list[dict[str, Any]]:
-    """Read one or more DataSF v3 pages and surface silent API errors.
+    """Read bounded DataSF pages and surface silent API errors.
 
     中文：DataSF 对单页过大的查询有时不会返回标准 HTTP 错误，而是给一个没有
     rows 的说明对象。Feature 23/24 改成 5,000 行一页，并在响应结构异常时直接
@@ -1253,9 +1257,10 @@ def datasf_records(
     headers = {"X-App-Token": app_token} if app_token else None
     records: list[dict[str, Any]] = []
     for page_number in range(1, max_pages + 1):
+        url, params = query_request(dataset_id, query, page_number, page_size, app_token)
         response = request(
-            f"https://data.sf.gov/api/v3/views/{dataset_id}/query.json",
-            params={"pageNumber": page_number, "pageSize": page_size, "query": query},
+            url,
+            params=params,
             timeout=75,
             headers=headers,
         )

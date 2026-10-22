@@ -15,6 +15,12 @@ The GitHub Actions artifact is retained for 90 days. The independent Cloudflare 
 
 ## Upstream failures / 上游故障处理
 
+DataSF endpoint selection now follows the shared [access compatibility rules](datasf-access.md):
+use the public API without an optional App Token, and the identified v3 API with
+one. This resolves the October 22 `authentication_required` 403 without retrying
+permission failures or changing the dataset. / DataSF 现在按共享规则选择公开／有身份的
+接口，修复 10 月 22 日缺少可选 Token 导致的 403；不重试权限错误，也不更换数据集。
+
 The October 20, 2026 failure was a 502 from the 511 WZDx endpoint, not a
 Node.js warning or a Tableau calculation error. Source downloads now retry
 temporary 408/500/502/503/504 and connection/timeout failures at most three

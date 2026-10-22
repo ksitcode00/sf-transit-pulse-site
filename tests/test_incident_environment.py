@@ -59,6 +59,7 @@ def test_incomplete_pagination_is_rejected(monkeypatch):
 
 
 def test_datasf_page_recovers_after_read_timeout(monkeypatch):
+    monkeypatch.setenv('SF_TRANSIT_DATASF_APP_TOKEN', 'test-token')
     from scripts import prepare_incident_environment as pipeline
     attempts = []
 
@@ -78,6 +79,7 @@ def test_datasf_page_recovers_after_read_timeout(monkeypatch):
 
 
 def test_datasf_page_recovers_after_transient_server_error(monkeypatch):
+    monkeypatch.setenv('SF_TRANSIT_DATASF_APP_TOKEN', 'test-token')
     from scripts import prepare_incident_environment as pipeline
     attempts = []
 
@@ -95,6 +97,7 @@ def test_datasf_page_recovers_after_transient_server_error(monkeypatch):
 
 
 def test_datasf_page_stops_after_bounded_timeouts(monkeypatch):
+    monkeypatch.setenv('SF_TRANSIT_DATASF_APP_TOKEN', 'test-token')
     from scripts import prepare_incident_environment as pipeline
     attempts = []
 

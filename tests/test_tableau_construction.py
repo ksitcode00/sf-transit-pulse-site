@@ -144,9 +144,10 @@ def test_datasf_temporary_failure_uses_same_retry_policy(monkeypatch):
         calls.append(kwargs['params'])
         return source_response(503 if len(calls) == 1 else 200, b'[{"id":"permit-1"}]')
     monkeypatch.setattr(requests, 'get', get)
+    monkeypatch.setenv('SF_TRANSIT_DATASF_APP_TOKEN', '')
     monkeypatch.setattr(time, 'sleep', lambda _: None)
     assert prepare_tableau_construction.datasf_rows('8x25-yybr', 'SELECT * LIMIT 5000') == [{'id':'permit-1'}]
-    assert calls == [{'pageNumber':1,'pageSize':5000,'query':'SELECT * LIMIT 5000'}] * 2
+    assert calls == [{'$query':'SELECT * LIMIT 5000 OFFSET 0'}] * 2
 
 
 @pytest.mark.parametrize('payload, expected', [(b'{"features":[]}', []), (b'{}', None)])

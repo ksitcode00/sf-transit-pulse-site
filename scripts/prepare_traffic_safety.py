@@ -22,10 +22,14 @@ from pathlib import Path
 
 import requests
 
+if __package__:
+    from .datasf_access import query_request
+else:
+    from datasf_access import query_request
+
 ROOT = Path(__file__).resolve().parents[1]
 DATASET = "ubvf-ztfx"
 SOURCE_URL = f"https://data.sf.gov/d/{DATASET}"
-API_URL = f"https://data.sf.gov/api/v3/views/{DATASET}/query.json"
 MAX_BUFFER_M = 200
 GRID_M = 250
 FIELDS = (
@@ -37,7 +41,8 @@ FIELDS = (
 
 def query_rows(query: str, page: int = 1, size: int = 5000) -> list[dict]:
     token = os.environ.get("SF_TRANSIT_DATASF_APP_TOKEN", "").strip()
-    response = requests.get(API_URL, params={"query": query, "pageNumber": page, "pageSize": size},
+    url, params = query_request(DATASET, query, page, size, token)
+    response = requests.get(url, params=params,
                             headers={"X-App-Token": token} if token else {}, timeout=90)
     response.raise_for_status()
     rows = response.json()

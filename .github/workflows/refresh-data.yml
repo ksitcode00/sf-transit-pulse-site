@@ -10,6 +10,7 @@ on:
     paths:
       - ".github/workflows/refresh-data.yml"
       - "scripts/refresh_data.py"
+      - "scripts/datasf_access.py"
   schedule:
     # GitHub's documented minimum schedule is five minutes. Cloudflare supplies
     # the three-minute primary clock; this remains a quota-gated fallback.
