@@ -2,8 +2,8 @@
   "schema_version": 1,
   "status": "HEALTHY",
   "reason": null,
-  "checked_at": "2026-10-30T18:57:14.804012+00:00",
-  "last_successful_at": "2026-10-30T18:57:13.536378+00:00",
+  "checked_at": "2026-10-31T18:02:39.682764+00:00",
+  "last_successful_at": "2026-10-31T18:02:38.454500+00:00",
   "retained_coverage_end": "2026-10-29",
   "source": {
     "coverage_start": "2025-10-30",
