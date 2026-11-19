@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -26,6 +27,7 @@ def parse_time(value: object) -> datetime | None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--max-age-min", type=float, default=7)
+    parser.add_argument("--report-to-actions", action="store_true", help="Write the recovery decision to GITHUB_OUTPUT.")
     args = parser.parse_args()
     payload = json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8"))
     generated = parse_time(payload.get("meta", {}).get("generated_at"))
@@ -42,7 +44,12 @@ def main() -> int:
         "max_age_min": args.max_age_min,
     }
     print(json.dumps(result))
-    return 0 if result["status"] == "healthy" else 1
+    needs_recovery = result["status"] == "stale"
+    if args.report_to_actions:
+        with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+            output.write(f"needs_recovery={str(needs_recovery).lower()}\n")
+        return 0
+    return int(needs_recovery)
 
 
 if __name__ == "__main__":

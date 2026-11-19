@@ -1,9 +1,12 @@
 """Exercise live-snapshot publication against a real local Git remote."""
 
+import os
 import subprocess
 import tempfile
 import time
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -68,3 +71,50 @@ def test_temporary_remote_error_is_retried_with_wait_and_newer_commit_preserved(
         git("clone", "--branch", "main", str(remote), str(verification), cwd=root)
         assert (verification / "site" / "data" / "live-transit.json").read_text() == "new snapshot\n"
         assert (verification / "site" / "index.html").read_text() == "new UI\n"
+
+
+@pytest.mark.parametrize(
+    ("rejection", "expected_exit", "expected_pushes", "uses_rest"),
+    [
+        ("remote: fatal error in commit_refs", 0, 5, True),
+        ("remote: Permission denied to github-actions[bot].\nfatal: The requested URL returned error: 403", 1, 1, False),
+        ("! [rejected] HEAD -> main (non-fast-forward)", 1, 5, False),
+    ],
+)
+def test_publication_routes_server_errors_permission_denials_and_branch_races(
+    tmp_path, rejection, expected_exit, expected_pushes, uses_rest
+):
+    # Simulate the GitHub network boundary and clock. Run the real publisher.
+    binaries = tmp_path / "bin"
+    binaries.mkdir()
+    commands = {
+        "git": """#!/bin/sh
+if [ "$1" = push ]; then
+  echo push >> "$CALLS"
+  printf '%s\n' "$REJECTION" >&2
+  exit 1
+fi
+""",
+        "sleep": "#!/bin/sh\nexit 0\n",
+        "python": """#!/bin/sh
+case "$1" in
+  */publish_refresh_via_api.py) echo rest >> "$CALLS" ;;
+  *) exit 1 ;;
+esac
+""",
+    }
+    for name, script in commands.items():
+        executable = binaries / name
+        executable.write_text(script)
+        executable.chmod(0o755)
+    calls = tmp_path / "calls"
+    result = subprocess.run(
+        ["bash", str(PUBLISH_SCRIPT)], cwd=tmp_path, capture_output=True, text=True,
+        env={
+            **os.environ, "PATH": f"{binaries}:{os.environ['PATH']}", "CALLS": str(calls),
+            "REJECTION": rejection, "GITHUB_TOKEN": "test-token", "GITHUB_REPOSITORY": "owner/repo",
+        },
+    )
+    assert result.returncode == expected_exit, result.stderr
+    assert calls.read_text().splitlines() == ["push"] * expected_pushes + (["rest"] if uses_rest else [])
+    assert result.stderr.count(rejection.splitlines()[0]) == 1

@@ -31,27 +31,26 @@ jobs:
 
       - name: Check snapshot age
         id: freshness
-        continue-on-error: true
-        run: python scripts/check_refresh_health.py --max-age-min 7
+        run: python scripts/check_refresh_health.py --max-age-min 7 --report-to-actions
 
       - name: Install refresh dependencies
-        if: steps.freshness.outcome == 'failure'
+        if: steps.freshness.outputs.needs_recovery == 'true'
         run: python -m pip install --disable-pip-version-check requests gtfs-realtime-bindings
 
       - name: Recover stale snapshot
-        if: steps.freshness.outcome == 'failure'
+        if: steps.freshness.outputs.needs_recovery == 'true'
         env:
           SF_TRANSIT_511_API_KEY: ${{ secrets.SF_TRANSIT_511_API_KEY }}
           SF_TRANSIT_DATASF_APP_TOKEN: ${{ secrets.SF_TRANSIT_DATASF_APP_TOKEN }}
         run: python scripts/refresh_data.py
 
       - name: Verify recovered source time
-        if: steps.freshness.outcome == 'failure'
+        if: steps.freshness.outputs.needs_recovery == 'true'
         run: python scripts/check_refresh_health.py --max-age-min 7
 
       - name: Commit recovered snapshot
         id: commit
-        if: steps.freshness.outcome == 'failure'
+        if: steps.freshness.outputs.needs_recovery == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |

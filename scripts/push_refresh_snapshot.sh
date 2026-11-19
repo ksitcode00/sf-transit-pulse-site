@@ -2,12 +2,22 @@
 set -euo pipefail
 push_log="$(mktemp)"
 trap 'rm -f "${push_log}"' EXIT
+previous_error=
 server_error=false
+
+# Keep one full diagnostic for each consecutive group of identical failures.
+report_error() {
+  if [[ "$1" != "${previous_error}" ]]; then
+    printf '%s\n' "$1" >&2
+    previous_error="$1"
+  fi
+}
 
 # 中文：GitHub 临时 500 和 main 分支竞态都可能让推送失败。等待后重新同步，绝不强推。
 # English: Back off after transient GitHub failures or main-branch races; never force-push.
 for attempt in 1 2 3 4 5; do
-  if git fetch origin main; then
+  server_error=false
+  if git fetch origin main 2>"${push_log}"; then
     if ! git rebase origin/main; then
       git rebase --abort || true
       echo "Snapshot conflicts with a newer main commit; review required." >&2
@@ -17,15 +27,18 @@ for attempt in 1 2 3 4 5; do
       cat "${push_log}" >&2
       exit 0
     fi
-    push_error="$(<"${push_log}")"
-    printf '%s\n' "${push_error}" >&2
-    if [[ "${push_error}" == *"Internal Server Error"* ]]; then
-      server_error=true
-    fi
-    echo "GitHub rejected snapshot push on attempt ${attempt}; retrying safely." >&2
-  else
-    echo "Could not fetch main on attempt ${attempt}; retrying safely." >&2
   fi
+  git_error="$(<"${push_log}")"
+  report_error "${git_error}"
+  case "${git_error}" in
+    *"Permission to "*denied*|*"Permission denied"*|*"requested URL returned error: 401"*|*"requested URL returned error: 403"*)
+      echo "GitHub denied snapshot publication. Check the workflow token permissions and branch rules." >&2
+      exit 1
+      ;;
+    *"Internal Server Error"*|*"fatal error in commit_refs"*|*"requested URL returned error: 5"[0-9][0-9]*)
+      server_error=true
+      ;;
+  esac
 
   if [ "${attempt}" -lt 5 ]; then
     case "${attempt}" in
@@ -34,6 +47,7 @@ for attempt in 1 2 3 4 5; do
       3) delay=20 ;;
       4) delay=30 ;;
     esac
+    echo "Snapshot publication attempt ${attempt} failed; retrying in ${delay}s." >&2
     sleep "${delay}"
   fi
 done
